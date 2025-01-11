@@ -20,8 +20,8 @@ class User(BaseModel):
     username = Column(String(255), nullable=False , unique=True)
     email = Column(String(255), nullable=False, unique=True)
     password = Column(String(255), nullable=False)
-    Organizations = Column(JSON, nullable=False)
-    default_organization_id = Column(CHAR(255), nullable=False)
+    Organizations = Column(JSON, nullable=True , default=dict)
+    default_organization_id = Column(CHAR(255), nullable=True , default=None)
     is_email_verified = Column(Boolean, nullable=False, default=False)
     two_Step_verification = Column(Boolean, nullable=False, default=False)
 
@@ -29,7 +29,7 @@ class User(BaseModel):
     updated_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
     organizations = relationship('Organization', back_populates='owner')
-    members = relationship('Members', back_populates='users')
+    members = relationship('Members', back_populates='user')
 
 class Organization(BaseModel):
     __tablename__ = 'organizations'
@@ -44,7 +44,7 @@ class Organization(BaseModel):
     created_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
-    Members = relationship('Members', back_populates='organization')
+    members = relationship('Members', back_populates='organization')
 
 
 class Members(BaseModel):
