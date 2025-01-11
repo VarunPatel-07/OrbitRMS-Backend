@@ -1,22 +1,27 @@
-import jwt , os
+import jwt , os , hashlib
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
 from dotenv import load_dotenv
 load_dotenv()
 
 JWT_SECRET = os.getenv('JWT_SECRET_KEY')
 ALGORITHM = os.getenv('JWT_ALGORITHM')
 
+print(JWT_SECRET)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Function To Convert Plain Text Password To Hash Passwords
 def hash_passwords(password:str) -> str:
-    return pwd_context.hash(password)
+    salt = os.urandom(16)
+    hashed_password = hashlib.pbkdf2_hmac('sha256' , password.encode('utf-8') , salt, 100000 )
+    print(hashed_password)
+    return salt.hex() + hashed_password.hex()
 
 # Function To Verify The Hashed Password And Return True/False Accordingly
 def verify_password(plain_password:str,hashed_password:str) -> bool:
-    return pwd_context.verify(plain_password , hashed_password)
+    salt = bytes.fromhex(hashed_password[:32])
+    stored_hash = bytes.fromhex(hashed_password[32:])
+    password_hash = hashlib.pbkdf2_hmac('sha256' , plain_password.encode('utf-8') , salt, 100000 )
+    return stored_hash == password_hash
 
 # Function To Generate The JWT Auth Token
 
