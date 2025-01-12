@@ -4,15 +4,15 @@ from fastapi import Form
 
 
 class LoginUserInfo(BaseModel):
-    username: str
+    email: str
     password: str
     
     @classmethod
     def as_form(
-            cls, username: str = Form(...), password: str = Form(...),
+            cls, email: str = Form(...), password: str = Form(...),
             ) -> "LoginUserInfo":
         return cls(
-            username=username, password=password,
+            email=email, password=password,
             )
 
 
