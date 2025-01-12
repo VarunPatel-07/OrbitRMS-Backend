@@ -1,27 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request , Form
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status
 from SqlModels import Models
 from Database.Database import db_dependencies
 from Helper.jwtHelper import create_jwt_token , hash_passwords,verify_password
 from Helper.helper import generate_full_name
+from PydenticModels.UserModels import LoginUserInfo  ,SignUpUserInfo
 
 routes = APIRouter(
     prefix="/app/v1/auth",
     tags=["auth"]
 )
 
-# Pydantic model for JSON payload
-class UserInfo(BaseModel):
-    username: str
-    password: str
-    email: str
-    first_name: str
-    last_name: str
 
 
 @routes.post(path="/signUp", status_code=status.HTTP_201_CREATED)
-async def sign_up(user_info: UserInfo, db:db_dependencies):
+async def sign_up(
+    db:db_dependencies , user_info: SignUpUserInfo = Depends(SignUpUserInfo.as_form)):
     try:
+       
+        print(user_info)
         existing_user = db.query(Models.User).filter((Models.User.username == user_info.username) | (Models.User.email == user_info.email)).first()
         
         # If We Not Found The User
@@ -65,8 +61,10 @@ async def sign_up(user_info: UserInfo, db:db_dependencies):
 
 
 @routes.post(path="/login" , status_code=status.HTTP_201_CREATED)
-async def login(user_info:UserInfo , db:db_dependencies):
+async def login(
+    db:db_dependencies , user_info: LoginUserInfo = Depends(LoginUserInfo.as_form)):
     try:
+        print(user_info)
         find_user = db.query(Models.User).filter(Models.User.username == user_info.username).first()
        
         if not find_user:
