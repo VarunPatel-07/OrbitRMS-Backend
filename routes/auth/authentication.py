@@ -4,6 +4,8 @@ from Database.Database import db_dependencies
 from Helper.jwtHelper import create_jwt_token , hash_passwords,verify_password
 from Helper.helper import generate_full_name
 from PydenticModels.UserModels import LoginUserInfo  ,SignUpUserInfo
+from Middelware.verifyToken import oauth2_scheme , verify_token
+
 
 routes = APIRouter(
     prefix="/app/v1/auth",
@@ -11,7 +13,7 @@ routes = APIRouter(
 )
 
 
-
+# This is the api that is used to signUp user
 @routes.post(path="/signUp", status_code=status.HTTP_201_CREATED)
 async def sign_up(
     db:db_dependencies , user_info: SignUpUserInfo = Depends(SignUpUserInfo.as_form)):
@@ -47,7 +49,7 @@ async def sign_up(
         
         token = create_jwt_token(data=token_data)
         
-        return {"message":"The User Is Registered Successfully", "token":token}
+        return {"message":"The User Is Registered Successfully", "token":token , "success":True}
     
     except HTTPException:
         raise
@@ -60,12 +62,15 @@ async def sign_up(
             )
 
 
+
+
+# This is The Api that is used to log in the use
 @routes.post(path="/login" , status_code=status.HTTP_201_CREATED)
 async def login(
-    db:db_dependencies , user_info: LoginUserInfo = Depends(LoginUserInfo.as_form)):
+    db:db_dependencies, user_info: LoginUserInfo = Depends(LoginUserInfo.as_form)):
     try:
-        print(user_info)
-        find_user = db.query(Models.User).filter(Models.User.username == user_info.username).first()
+       
+        find_user = db.query(Models.User).filter(Models.User.email == user_info.email).first()
        
         if not find_user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -75,13 +80,42 @@ async def login(
         if not compare_password:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Incorrect password")
         
+        user = {
+            "id":find_user.id,
+            "username":find_user.username,
+            "email":find_user.email,
+            "first_name":find_user.first_name,
+            "last_name":find_user.last_name,
+            "full_name":find_user.full_name,
+            "default_organization_id":find_user.default_organization_id,
+            "organizations":find_user.Organizations,
+            }
+        
         token_data = {
             "sub":find_user.id
             }
         token = create_jwt_token(data=token_data)
         
-        return {"message": "Login successful" , "token":token}
+        return {"message": "Login successful" , "token":token , "success":True , "user_info":user}
     
     except Exception as e:
         print(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+
+
+
+# this is the api to verify the users token
+@routes.get(path="/verify-user" , status_code=status.HTTP_200_OK)
+async def verify_user(db:db_dependencies , token:str = Depends(oauth2_scheme)):
+    token_payload = verify_token(token)
+    if not token_payload:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    find_user = db.query(Models.User).filter(Models.User.id == token_payload).first()
+    if not find_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return {"message":"The User Is Verified Successfully", "success":True}
+
+
+
+# this is the api to get the user info
