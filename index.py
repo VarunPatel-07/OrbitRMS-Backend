@@ -1,8 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.auth.authentication import routes
-from  Database.Database import DATABASE_ENGINE , SessionLocal
-import SqlModels.Models as Models
+from SqlModels.Models import BaseModel
+from Database.Database import DATABASE_ENGINE
+
+
+app = FastAPI(
+    title="Your API Title",
+    description="Detailed API description.",
+    version="1.0.0",
+    contact={
+        "name": "Your Name",
+        "email": "your.email@example.com",
+    },
+)
 
 
 app = FastAPI()
@@ -18,7 +29,11 @@ app.add_middleware(
 )
 
 
-Models.BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 
 
+# Create database tables (consider using migrations instead)
+BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
+
+# Include application routes
 app.include_router(routes)
+
