@@ -24,6 +24,7 @@ class User(BaseModel):
     default_organization_id = Column(CHAR(255), nullable=True , default=None)
     is_email_verified = Column(Boolean, nullable=False, default=False)
     two_Step_verification = Column(Boolean, nullable=False, default=False)
+    profile_picture = Column(String(255), nullable=True , default="")
 
     created_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))

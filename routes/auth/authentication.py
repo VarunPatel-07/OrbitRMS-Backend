@@ -18,8 +18,6 @@ routes = APIRouter(
 async def sign_up(
     db:db_dependencies , user_info: SignUpUserInfo = Depends(SignUpUserInfo.as_form)):
     try:
-       
-        print(user_info)
         existing_user = db.query(Models.User).filter((Models.User.username == user_info.username) | (Models.User.email == user_info.email)).first()
         
         # If We Not Found The User
@@ -48,8 +46,19 @@ async def sign_up(
             }
         
         token = create_jwt_token(data=token_data)
+        user = {
+            "id": new_user.id,
+            "username": new_user.username,
+            "email": new_user.email,
+            "first_name": new_user.first_name,
+            "last_name": new_user.last_name,
+            "full_name": new_user.full_name,
+            "default_organization_id": new_user.default_organization_id,
+            "organizations": new_user.Organizations,
+            "profile_picture": new_user.profile_picture,
+            }
         
-        return {"message":"The User Is Registered Successfully", "token":token , "success":True}
+        return {"message":"The User Is Registered Successfully", "token":token , "success":True , "user_info":user}
     
     except HTTPException:
         raise
@@ -89,6 +98,7 @@ async def login(
             "full_name":find_user.full_name,
             "default_organization_id":find_user.default_organization_id,
             "organizations":find_user.Organizations,
+            "profile_picture":find_user.profile_picture,
             }
         
         token_data = {
