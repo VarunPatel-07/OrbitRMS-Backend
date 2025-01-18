@@ -18,6 +18,7 @@ routes = APIRouter(
 async def sign_up(
     db:db_dependencies , user_info: SignUpUserInfo = Depends(SignUpUserInfo.as_form)):
     try:
+
         existing_user = db.query(Models.User).filter((Models.User.username == user_info.username) | (Models.User.email == user_info.email)).first()
         
         # If We Not Found The User
@@ -46,6 +47,7 @@ async def sign_up(
             }
         
         token = create_jwt_token(data=token_data)
+
         user = {
             "id": new_user.id,
             "username": new_user.username,

@@ -33,4 +33,5 @@ def get_db():
         raise
     finally:
         db.close()
+
 db_dependencies = Annotated[Session , Depends(get_db)]
