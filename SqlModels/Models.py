@@ -39,6 +39,9 @@ class Organization(BaseModel):
     organization_name = Column(String(255), nullable=False)
     organization_password = Column(String(255), nullable=False)
     organization_secret = Column(String(255), nullable=False)
+    organization_logo = Column(String(255), nullable=False)
+    meta_tag_name = Column(String(255), nullable=False)
+    meta_tag_content = Column(String(255), nullable=False)
     owner_id = Column(CHAR(36),ForeignKey('users.id'), nullable=False)
     owner  = relationship('User', back_populates='organizations')
 

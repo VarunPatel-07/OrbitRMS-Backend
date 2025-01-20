@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes.auth.authentication import routes
+from routes.Organizations.organizations import organization_router
+from routes.auth.authentication import authRoutes
 from SqlModels.Models import BaseModel
 from Database.Database import DATABASE_ENGINE
 
@@ -31,5 +32,6 @@ app.add_middleware(
 BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 
 # Include application routes
-app.include_router(routes)
+app.include_router(authRoutes)
+app.include_router(organization_router)
 
