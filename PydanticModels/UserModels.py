@@ -1,40 +1,7 @@
 # Pydantic model for JSON payload
-from pydantic import BaseModel , EmailStr , HttpUrl
+from pydantic import BaseModel, EmailStr, HttpUrl
 from datetime import datetime
-from fastapi import Form
-from typing import Optional , List
-
-
-class LoginUserInfo(BaseModel):
-    email: str
-    password: str
-    
-    @classmethod
-    def as_form(
-            cls, email: str = Form(...), password: str = Form(...),
-            ) -> "LoginUserInfo":
-        return cls(
-            email=email, password=password,
-            )
-
-
-class SignUpUserInfo(BaseModel):
-    username: str
-    password: str
-    email: str
-    first_name: str
-    last_name: str
-    
-    @classmethod
-    def as_form(
-            cls, username: str = Form(...), password: str = Form(...), email: str = Form(...),
-            first_name: str = Form(...),
-            last_name: str = Form(...)
-            ) -> "SignUpUserInfo":
-        return cls(
-            username=username, password=password, email=email, first_name=first_name, last_name=last_name
-            )
-
+from typing import Optional, List
 
 
 class SocialLink(BaseModel):
@@ -59,14 +26,18 @@ class Address(BaseModel):
 class Children(BaseModel):
     name: str
     gender: str
-    date_of_birth: datetime
+    date_of_birth: str
+
+    class Config:
+        # Exclude the family_info attribute during serialization to avoid circular references
+        fields = {"family_info": {"exclude": True}}
 
 
 class FamilyInfo(BaseModel):
     father_name: str
     mother_name: str
     marital_status: str
-    children: List[Children]
+    children: Optional[List[Children]] = None
 
 
 class ContactInfo(BaseModel):
@@ -80,7 +51,7 @@ class EmployeeInfo(BaseModel):
     employee_code: str
     department: str
     designation: str
-    reporting_to_id: str
+    reporting_to: dict
     employee_role: str
     employee_email: EmailStr
 
@@ -105,4 +76,3 @@ class User(BaseModel):
     address: Address
     emergency_contact: List[EmergencyContact]
     social_link: List[SocialLink]
-  
