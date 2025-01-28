@@ -84,8 +84,8 @@ class PersonalContactInfo(BaseModel):
         CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True
     )
     personal_email = Column(CHAR(36), nullable=False, default=None)
-    country_code = Column(CHAR(36), nullable=True, default=None)
     mobile_number = Column(CHAR(36), nullable=False, default=None)
+    alternative_contact = Column(CHAR(36), nullable=True, default=None)
     user_id = Column(
         CHAR(36),
         ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
