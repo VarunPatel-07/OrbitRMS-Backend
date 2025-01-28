@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 def cerate_model_instance(
-    model: Type[BaseModel], data: Dict[str, Any], fields: List[str]
+    model: Type[BaseModel], data: Dict[str, Any], fields: List[str] = []
 ):
 
     if not isinstance(data, dict):

@@ -1,5 +1,5 @@
 from SqlModels.Models import BaseModel
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 import uuid
@@ -14,20 +14,21 @@ class OrganizationGeneralInfo(BaseModel):
     organization_name = Column(String(255), nullable=False, default=None)
     primary_email = Column(String(255), nullable=False, default=None)
     primary_number = Column(String(255), nullable=False, default=None)
+    country_info = Column(JSON, nullable=True)
     portal_url = Column(String(255), nullable=False, default=None)
     website_url = Column(String(255), nullable=True, default=None)
-    is_meta_verified = Column(Boolean, nullable=False, default=None)
+    is_meta_verified = Column(Boolean, nullable=False, default=False)
     meta_key = Column(String(255), nullable=False, default=None)
     meta_value = Column(String(255), nullable=False, default=None)
-    terms_accepted = Column(Boolean, nullable=False, default=None)
-    email_verified = Column(Boolean, nullable=False, default=None)
+    terms_accepted = Column(Boolean, nullable=False, default=False)
+    email_verified = Column(Boolean, nullable=False, default=False)
     organization_profile_picture = Column(String(255), nullable=True, default=None)
     organization_id = Column(
         CHAR(36),
         ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
         nullable=False,
     )
-    organization = relationship("Organization", back_populates="organization_general_info")
+    organization = relationship("Organization", back_populates="general_info")
 
 
 class OrganizationAddress(BaseModel):
@@ -44,7 +45,7 @@ class OrganizationAddress(BaseModel):
         ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
         nullable=False,
     )
-    organization = relationship("Organization", back_populates="organization_address")
+    organization = relationship("Organization", back_populates="address")
 
 
 class OrganizationContactInfo(BaseModel):
@@ -60,7 +61,7 @@ class OrganizationContactInfo(BaseModel):
         ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
         nullable=False,
     )
-    organization = relationship("Organization", back_populates="organization_contact_info")
+    organization = relationship("Organization", back_populates="contact_info")
 
 
 class OrganizationAboutInfo(BaseModel):
@@ -77,7 +78,7 @@ class OrganizationAboutInfo(BaseModel):
         ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
         nullable=False,
     )
-    organization = relationship("Organization", back_populates="organization_about_info")
+    organization = relationship("Organization", back_populates="about_info")
 
 
 class OrganizationSettings(BaseModel):

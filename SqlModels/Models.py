@@ -46,7 +46,7 @@ class User(BaseModel):
     organization_id = Column(
         CHAR(36), ForeignKey("organization.id"), nullable=False, index=True
     )
-    organization = relationship("Organization", back_populates="users")
+    organization = relationship("Organization", back_populates="employees")
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at = Column(
         DateTime,
@@ -63,7 +63,7 @@ class Organization(BaseModel):
         CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True
     )
     general_info = relationship(
-        "OrganizationGeneralInfo", back_populates="organization"
+        "OrganizationGeneralInfo", back_populates="organization", uselist=False
     )
     address = relationship("OrganizationAddress", back_populates="organization")
     contact_info = relationship(
@@ -74,8 +74,10 @@ class Organization(BaseModel):
         "OrganizationSettings", back_populates="organization"
     )
     status = Column(Boolean, nullable=False, default=True)
-    
-    employees = relationship("User", back_populates="organization", cascade="all, delete-orphan")
+
+    employees = relationship(
+        "User", back_populates="organization", cascade="all, delete-orphan"
+    )
 
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at = Column(

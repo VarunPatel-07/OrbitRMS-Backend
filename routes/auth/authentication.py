@@ -10,7 +10,7 @@ from Helper.createModelInstance import cerate_model_instance
 authRoutes = APIRouter(prefix="/app/v1/auth", tags=["auth"])
 
 
-@authRoutes.post(path="/add-employee", status_code=status.HTTP_200_OK)
+@authRoutes.post(path="/add-employee", status_code=status.HTTP_201_CREATED)
 async def add_employee(db: db_dependencies, user: User):
     try:
         find_user = (
@@ -37,17 +37,19 @@ async def add_employee(db: db_dependencies, user: User):
         db.commit()
 
         personal_info = cerate_model_instance(
-            model=Models.PersonalInfo, data=user.personal_info, fields=[]
+            model=Models.PersonalInfo, data=user.personal_info
         )
         personal_info.user_id = created_user.id
 
         employee_info = cerate_model_instance(
-            model=Models.EmployeeInfo, data=user.employee_info, fields=[]
+            model=Models.EmployeeInfo,
+            data=user.employee_info,
         )
         employee_info.user_id = created_user.id
 
         personal_contact_info = cerate_model_instance(
-            model=Models.PersonalContactInfo, data=user.personal_contact_info, fields=[]
+            model=Models.PersonalContactInfo,
+            data=user.personal_contact_info,
         )
         personal_contact_info.user_id = created_user.id
 
