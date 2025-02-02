@@ -1,7 +1,15 @@
-import secrets
+import secrets, os
 from typing import List, Optional, Dict, Union
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from fastapi import HTTPException, status
+from dotenv import load_dotenv
+from Crypto.Cipher import AES
+import base64
+
+load_dotenv(override=True)
+
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
 
 
 def generate_full_name(first_name: str, last_name: str, middle_name: str = None) -> str:
@@ -70,6 +78,12 @@ def filter_fields(
 
 def model_to_filtered_dict(data, fields: Optional[List[str]] = []) -> Dict[str, str]:
 
+    if data is None:
+        return {}
+
+    if fields is None:
+        fields = []
+
     if not isinstance(data.__class__, DeclarativeMeta):
         raise ValueError("The module must be a sql model")
 
@@ -91,3 +105,62 @@ def model_to_filtered_dict(data, fields: Optional[List[str]] = []) -> Dict[str, 
         result[column_name] = getattr(data, column_name)
 
     return result
+
+
+def urlsafe_data_encoding_function(data: dict | str) -> str:
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "The Data is required", "success": False},
+        )
+
+    # Convert dict to JSON string if necessary
+    if isinstance(data, dict):
+        data = json.dumps(data)
+
+    cipher = AES.new(ENCRYPTION_KEY, AES.MODE_EAX)
+    nonce = cipher.nonce
+    ciphertext, tag = cipher.encrypt_and_digest(data.encode())
+    return base64.urlsafe_b64encode(nonce + tag + ciphertext).decode()
+
+
+def urlsafe_data_decoding_function(encrypted_data: str) -> str:
+    if not encrypted_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "The Data is required", "success": False},
+        )
+
+    try:
+        row_data = base64.urlsafe_b64decode(encrypted_data)
+        nonce = row_data[:16]  # First 16 bytes: Nonce
+        tag = row_data[16:32]  # Next 16 bytes: Authentication tag
+        ciphertext = row_data[32:]
+
+        # Initialize AES cipher in EAX mode
+        cipher = AES.new(ENCRYPTION_KEY, AES.MODE_EAX, nonce=nonce)
+        decrypted_data = cipher.decrypt(ciphertext)
+        cipher.verify(tag)  # Verify the integrity of the data
+
+        # If decrypted data is already in bytes, directly decode it
+        if isinstance(decrypted_data, bytes):
+            return decrypted_data.decode()  # Assuming the original data is a string
+        else:
+            raise ValueError("Decrypted data is not in bytes format.")
+
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "Decryption failed: Data may have been altered or corrupted!",
+                "success": False,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": f"Unexpected error during decryption: {str(e)}",
+                "success": False,
+            },
+        )
