@@ -43,6 +43,7 @@ class User(BaseModel):
     account_status = Column(Boolean, nullable=False, default=True)
     profile_created = Column(Boolean, nullable=False, default=False)
     reset_password_token = Column(String(255), nullable=True, default=None)
+    password_created = Column(Boolean, nullable=False, default=False)
     organization_id = Column(
         CHAR(36), ForeignKey("organization.id"), nullable=False, index=True
     )
@@ -86,3 +87,4 @@ class Organization(BaseModel):
         onupdate=datetime.now(timezone.utc),
         nullable=False,
     )
+    organization_created = Column(Boolean, nullable=False, default=False)

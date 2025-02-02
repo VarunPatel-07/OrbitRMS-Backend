@@ -7,8 +7,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/app/v1/auth/login")
 def verify_token(token: str = Depends(oauth2_scheme)):
     try:
         payload = verify_jwt_token(token)
-
-        return payload["sub"]
+        return payload
     
     except ValueError as error:
      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail=error , headers={"WWW-Authenticate":"Bearer"})
