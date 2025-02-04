@@ -83,8 +83,8 @@ class OnboardingOrganization(BaseModel):
     general_info: OrganizationGeneralInfo
     address: List[OrganizationAddress]
     contact_info: List[OrganizationContactInfo]
-    about_info: List[OrganizationAboutInfo]
-    organization_settings: List[OrganizationSettings]
+    about_info: OrganizationAboutInfo
+    organization_settings: OrganizationSettings
     status: bool
 
     class Config:

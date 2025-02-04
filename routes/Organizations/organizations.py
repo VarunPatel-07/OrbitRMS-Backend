@@ -4,13 +4,13 @@ from Database.Database import db_dependencies
 from SqlModels import Models
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import email_sender_function, EmailSchema
-from Helper.upsert_record import upsert_record
 from PydanticModels.Organizations.organizations import OnboardingOrganization
 from sqlalchemy.sql import func
 from Helper.helper import (
     model_to_filtered_dict,
     urlsafe_data_encoding_function,
     urlsafe_data_decoding_function,
+    update_model_data,
 )
 import json
 
@@ -52,6 +52,7 @@ async def create_organization(
                     "message": "The Provided Email Domain Is Already In Use",
                     "success": False,
                     "email": find_organization.primary_email,
+                    "tttsss": check_for_the_email_domain.organization_id,
                 },
             )
 
@@ -213,40 +214,96 @@ async def verify_organization(
 
 
 # todo working on this api
-# @orgRouter.post("/onboard-organization", status_code=status.HTTP_200_OK)
-# async def onboard_organization(
-#     db: db_dependencies,
-#     data: OnboardingOrganization,
-#     organization_id: str = Query(..., alias="organization-id"),
-# ):
-#     try:
-#         # first we will create the new model
+@orgRouter.post("/onboard-organization", status_code=status.HTTP_200_OK)
+async def onboard_organization(
+    db: db_dependencies,
+    data: OnboardingOrganization,
+    organization_id: str = Query(..., alias="organization-id"),
+):
+    try:
 
-#         for each_address in data.address:
-#             organization_address = cerate_model_instance(
-#                 model=Models.OrganizationAddress, data=each_address
-#             )
-#             organization_address.organization_id = organization_id
-#             db.add(organization_address)
-#             db.commit()
-#             db.refresh(organization_address)
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == organization_id)
+            .first()
+        )
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Organization Not Found",
+                    "success": False,
+                },
+            )
+        updated_general_info = update_model_data(
+            db=db,
+            model=Models.OrganizationGeneralInfo,
+            model_id=organization_id,
+            id_field="organization_id",
+            updated_data=data.general_info,
+        )
 
-#         for each_contact in data.contact_info:
-#             contact_info = cerate_model_instance(
-#                 model=Models.OrganizationContactInfo, data=each_contact
-#             )
-#             db.add(contact_info)
-#             db.commit()
-#             db.refresh(contact_info)
-#         for about    
+        address_arr = []
+        for each_address in data.address:
+            address = cerate_model_instance(
+                model=Models.OrganizationAddress, data=each_address
+            )
+            address.organization_id = organization.id
+            db.add(address)
+            db.commit()
 
-#     except HTTPException as http_exception:
-#         raise http_exception
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail={
-#                 "message": "error while onboarding the organization",
-#                 "error": str(e),
-#             },
-#         )
+            address_arr.append(address)
+
+        contact_info_arr = []
+
+        for each_contact in data.contact_info:
+            contact = cerate_model_instance(
+                data=each_contact, model=Models.OrganizationContactInfo
+            )
+            contact.organization_id = organization.id
+            db.add(contact)
+            db.commit()
+
+            contact_info_arr.append(contact)
+
+        about_info = cerate_model_instance(
+            model=Models.OrganizationAboutInfo, data=data.about_info
+        )
+        about_info.organization_id = organization.id
+        db.add(about_info)
+        db.commit()
+
+        organization_settings = cerate_model_instance(
+            model=Models.OrganizationSettings, data=data.organization_settings
+        )
+        organization_settings.organization_id = organization.id
+        db.add(organization_settings)
+        db.commit()
+
+        return {
+            "message": f"successfully onboarded {data.general_info.organization_name} organization",
+            "success": True,
+            "organization": {
+                "general_info": model_to_filtered_dict(updated_general_info),
+                "address": [
+                    model_to_filtered_dict(_address) for _address in address_arr
+                ],
+                "contact_info": [
+                    model_to_filtered_dict(_contact_info)
+                    for _contact_info in contact_info_arr
+                ],
+                "about_info": model_to_filtered_dict(about_info),
+                "organization_settings": model_to_filtered_dict(organization_settings),
+            },
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while onboarding the organization",
+                "error": str(e),
+            },
+        )

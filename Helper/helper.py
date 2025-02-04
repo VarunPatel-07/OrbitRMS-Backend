@@ -5,6 +5,7 @@ from sqlalchemy.ext.declarative import DeclarativeMeta
 from fastapi import HTTPException, status
 from dotenv import load_dotenv
 from Crypto.Cipher import AES
+from Database.Database import db_dependencies
 import base64
 
 load_dotenv(override=True)
@@ -16,10 +17,18 @@ def generate_full_name(first_name: str, last_name: str, middle_name: str = None)
     return f"{first_name} {middle_name} {last_name}"
 
 
+# * this is the function that will help to create random secret key
+
+
 def generate_random_secret_key() -> str:
     generated_secret_key = secrets.token_urlsafe(16)
     print(generated_secret_key)
     return generated_secret_key
+
+
+#  This function filters a specific field from the data.
+#  To exclude a field, prepend it with a "-" (e.g., ['-password'] will remove the 'password' field).
+#  If the "-" is not used (e.g., ['password']), the function will return the specified field.
 
 
 def filter_fields(
@@ -76,6 +85,11 @@ def filter_fields(
     return filter_data
 
 
+#  This function filters specific fields from the SQL model data.
+#  To exclude a field, prepend it with a "-" (e.g., ['-password'] will remove the 'password' field from the model).
+#  If the "-" is not used (e.g., ['password']), the function will include the specified field in the query result.
+
+
 def model_to_filtered_dict(data, fields: Optional[List[str]] = []) -> Dict[str, str]:
 
     if data is None:
@@ -107,6 +121,9 @@ def model_to_filtered_dict(data, fields: Optional[List[str]] = []) -> Dict[str, 
     return result
 
 
+# function to encode string | num  | dict into url-safe encoding
+
+
 def urlsafe_data_encoding_function(data: dict | str) -> str:
     if not data:
         raise HTTPException(
@@ -122,6 +139,9 @@ def urlsafe_data_encoding_function(data: dict | str) -> str:
     nonce = cipher.nonce
     ciphertext, tag = cipher.encrypt_and_digest(data.encode())
     return base64.urlsafe_b64encode(nonce + tag + ciphertext).decode()
+
+
+# to decode url-safe encoded value
 
 
 def urlsafe_data_decoding_function(encrypted_data: str) -> str:
@@ -164,3 +184,48 @@ def urlsafe_data_decoding_function(encrypted_data: str) -> str:
                 "success": False,
             },
         )
+
+
+# this is the function to update the sql model data
+def update_model_data(
+    db: db_dependencies,
+    model,
+    model_id: str,
+    updated_data: dict,
+    id_field: str = "id",
+    filter_fields: list = None,
+):
+    print(model_id)
+    print(updated_data)
+    print(id_field)
+    print(getattr(model, id_field))
+    record = db.query(model).filter(getattr(model, id_field) == model_id).first()
+
+    updated_data_dict = (
+        updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
+    )
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"{model.__name__} not found"
+        )
+    if filter_fields:
+        include_field = set()
+        exclude_field = set()
+
+        for field in filter_fields:
+            if field.startswith("-"):
+                exclude_field.add(field.strip("-"))
+            else:
+                include_field.add(field)
+        updated_data = {
+            field: value
+            for field, value in updated_data_dict.items()
+            if (field in include_field and field not in exclude_field)
+        }
+    for field, value in updated_data_dict.items():
+        if hasattr(record, field) and value is not None:
+            setattr(record, field, value)
+
+    db.commit()
+    db.refresh(record)
+    return record
