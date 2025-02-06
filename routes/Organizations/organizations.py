@@ -51,7 +51,7 @@ async def create_organization(
                 detail={
                     "message": "The Provided Email Domain Is Already In Use",
                     "success": False,
-                    "email": find_organization.primary_email,
+                    "owner_email": find_organization.primary_email,
                     "tttsss": check_for_the_email_domain.organization_id,
                 },
             )
@@ -62,7 +62,7 @@ async def create_organization(
                 detail={
                     "message": "The Provided Email Is Already In Use",
                     "success": False,
-                    "email": find_organization.primary_email,
+                    "owner_email": find_organization.primary_email,
                 },
             )
 
@@ -121,10 +121,12 @@ async def create_organization(
         send_mail = email_sender_function(email_instance, background_task)
 
         return {
+            "message": "organization Created SuccessFully",
+            "success": True,
             "organization": organization,
-            "email_status": send_mail,
-            "encrypted_url": f"http://127.0.0.1:8000/app/v1/organization/verify-organization?organization-id={encrypted_org_id}",
             "employee_info": model_to_filtered_dict(user_employee_info),
+            "encrypted_url": f"http://127.0.0.1:8000/app/v1/organization/verify-organization?organization-id={encrypted_org_id}",
+            "email_status": send_mail,
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -139,7 +141,7 @@ async def create_organization(
         )
 
 
-@orgRouter.post("/verify-organization", status_code=status.HTTP_200_OK)
+@orgRouter.get("/verify-organization", status_code=status.HTTP_200_OK)
 async def verify_organization(
     db: db_dependencies,
     organization_id: str = Query(..., alias="organization-id"),
