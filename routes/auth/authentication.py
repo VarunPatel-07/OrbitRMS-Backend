@@ -192,6 +192,7 @@ async def create_password(
 ):
     try:
         decrypted_user_id = urlsafe_data_decoding_function(user_id)
+        print(decrypted_user_id)
 
         user = db.query(Models.User).filter(Models.User.id == decrypted_user_id).first()
 
@@ -212,14 +213,12 @@ async def create_password(
             return {
                 "message": "the password is created successfully",
                 "success": True,
-                "user_info": model_to_filtered_dict(user, ["-password"]),
                 "password_already_created": False,
             }
         else:
             return {
                 "message": "the password is already created",
                 "success": True,
-                "user_info": model_to_filtered_dict(user, ["-password"]),
                 "password_already_created": True,
             }
 

@@ -62,13 +62,13 @@ class EmployeeInfo(BaseModel):
         CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True
     )
     status = Column(String(255), nullable=False)
-    organization_name = Column(CHAR(30), nullable=False)
-    employee_code = Column(CHAR(30), nullable=False)
-    department = Column(CHAR(30), nullable=False)
-    designation = Column(CHAR(30), nullable=False)
+    organization_name = Column(String(255), nullable=False)
+    employee_code = Column(String(255), nullable=False)
+    department = Column(String(255), nullable=False)
+    designation = Column(String(255), nullable=False)
     reporting_to = Column(JSON, nullable=True, default=None)
-    employee_role = Column(CHAR(30), nullable=False)
-    employee_email = Column(CHAR(30), nullable=False, default=None)
+    employee_role = Column(String(255), nullable=False)
+    employee_email = Column(String(255), nullable=False, default=None)
     user_id = Column(
         CHAR(36),
         ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),

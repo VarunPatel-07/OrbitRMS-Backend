@@ -7,6 +7,7 @@ class CountryInfo(BaseModel):
     country_name: str
     country_flag: str
     country_number_code: str
+    country_code: str
 
 
 class RegisterOrganizationInfo(BaseModel):
