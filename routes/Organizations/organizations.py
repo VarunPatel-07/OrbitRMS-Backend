@@ -122,10 +122,6 @@ async def create_organization(
 
         return {
             "message": "organization Created SuccessFully",
-            "success": True,
-            "organization": organization,
-            "employee_info": model_to_filtered_dict(user_employee_info),
-            "encrypted_url": f"http://127.0.0.1:8000/app/v1/organization/verify-organization?organization-id={encrypted_org_id}",
             "email_status": send_mail,
         }
     except HTTPException as http_exception:
@@ -176,10 +172,8 @@ async def verify_organization(
 
             return {
                 "message": "Organization Is Verified Successfully",
-                "data": model_to_filtered_dict(organization),
                 "success": True,
                 "alreadyVerified": False,
-                "user_info": model_to_filtered_dict(user_info),
             }
         else:
             user_info = (
@@ -191,7 +185,7 @@ async def verify_organization(
             )
 
             encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
-
+            # todo need to add email
             return {
                 "message": "Organization already Verified",
                 "data": model_to_filtered_dict(organization),

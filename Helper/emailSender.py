@@ -26,6 +26,7 @@ config = ConnectionConfig(
     MAIL_SSL_TLS=True,  # Enable SSL for port 465
     MAIL_STARTTLS=False,  # Disable STARTTLS for port 465
     USE_CREDENTIALS=True,
+    TIMEOUT=90,
 )
 
 
