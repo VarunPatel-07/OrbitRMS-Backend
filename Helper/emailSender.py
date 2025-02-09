@@ -1,8 +1,9 @@
 import os
 from typing import Optional
+
+from dotenv import load_dotenv
 from fastapi import BackgroundTasks, HTTPException, status
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
-from dotenv import load_dotenv
 from pydantic import BaseModel
 
 load_dotenv(override=True)

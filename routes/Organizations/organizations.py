@@ -1,21 +1,30 @@
-from fastapi import APIRouter, HTTPException, status, BackgroundTasks, Query
-from PydanticModels.Organizations.organizations import RegisterOrganizationInfo
-from Database.Database import db_dependencies
-from SqlModels import Models
-from Helper.createModelInstance import cerate_model_instance
-from Helper.emailSender import email_sender_function, EmailSchema
-from PydanticModels.Organizations.organizations import OnboardingOrganization
+import json, os
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from sqlalchemy.sql import func
+
+from Database.Database import db_dependencies
+from Helper.createModelInstance import cerate_model_instance
+from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
     model_to_filtered_dict,
-    urlsafe_data_encoding_function,
-    urlsafe_data_decoding_function,
     update_model_data,
+    urlsafe_data_decoding_function,
+    urlsafe_data_encoding_function,
 )
-import json
+from PydanticModels.Organizations.organizations import (
+    OnboardingOrganization,
+    RegisterOrganizationInfo,
+)
+from SqlModels import Models
+from dotenv import load_dotenv
 
+load_dotenv(override=True)
 
 orgRouter = APIRouter(prefix="/app/v1/organization", tags=["organization"])
+
+
+FRONTEND_URL = os.getenv("FRONTEND_URL").encode()
 
 
 @orgRouter.post("/sign-up", status_code=status.HTTP_201_CREATED)
@@ -28,18 +37,13 @@ async def create_organization(
         print(organization_info.primary_email.split("@"))
         find_organization = (
             db.query(Models.OrganizationGeneralInfo)
-            .filter(
-                Models.OrganizationGeneralInfo.primary_email
-                == organization_info.primary_email
-            )
+            .filter(Models.OrganizationGeneralInfo.primary_email == organization_info.primary_email)
             .first()
         )
         check_for_the_email_domain = (
             db.query(Models.OrganizationGeneralInfo)
             .filter(
-                func.substring_index(
-                    Models.OrganizationGeneralInfo.primary_email, "@", -1
-                )
+                func.substring_index(Models.OrganizationGeneralInfo.primary_email, "@", -1)
                 == organization_info.primary_email.split("@")[1]
             )
             .first()
@@ -113,7 +117,7 @@ async def create_organization(
         email_data = {
             "recever_email": organization_info.primary_email,
             "subject": "hello from the test mail",
-            "body": f"http://127.0.0.1:8000/app/v1/organization/verify-organization?organization-id={encrypted_org_id}",
+            "body": f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}",
         }
 
         email_instance = EmailSchema(**email_data)
@@ -140,6 +144,7 @@ async def create_organization(
 @orgRouter.get("/verify-organization", status_code=status.HTTP_200_OK)
 async def verify_organization(
     db: db_dependencies,
+    background_task: BackgroundTasks,
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
@@ -162,13 +167,21 @@ async def verify_organization(
 
             user_info = (
                 db.query(Models.EmployeeInfo)
-                .filter(
-                    Models.EmployeeInfo.employee_email == organization.primary_email
-                )
+                .filter(Models.EmployeeInfo.employee_email == organization.primary_email)
                 .first()
             )
 
             encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
+
+            email_data = {
+                "recever_email": user_info.employee_email,
+                "subject": "hello from the test mail",
+                "body": f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}",
+            }
+
+            email_instance = EmailSchema(**email_data)
+
+            email_sender_function(email_instance, background_task)
 
             return {
                 "message": "Organization Is Verified Successfully",
@@ -178,9 +191,7 @@ async def verify_organization(
         else:
             user_info = (
                 db.query(Models.EmployeeInfo)
-                .filter(
-                    Models.EmployeeInfo.employee_email == organization.primary_email
-                )
+                .filter(Models.EmployeeInfo.employee_email == organization.primary_email)
                 .first()
             )
 
@@ -188,12 +199,8 @@ async def verify_organization(
             # todo need to add email
             return {
                 "message": "Organization already Verified",
-                "data": model_to_filtered_dict(organization),
                 "success": True,
                 "alreadyVerified": True,
-                "encrypted_user_id": encrypted_user_id,
-                "user_info": model_to_filtered_dict(user_info),
-                "encrypted_url": f"http://127.0.0.1:8000/app/v1/auth/create-password?user-id={encrypted_user_id}",
             }
 
     except HTTPException as http_exception:
@@ -219,9 +226,7 @@ async def onboard_organization(
     try:
 
         organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == organization_id)
-            .first()
+            db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
         )
         if not organization:
             raise HTTPException(
@@ -241,9 +246,7 @@ async def onboard_organization(
 
         address_arr = []
         for each_address in data.address:
-            address = cerate_model_instance(
-                model=Models.OrganizationAddress, data=each_address
-            )
+            address = cerate_model_instance(model=Models.OrganizationAddress, data=each_address)
             address.organization_id = organization.id
             db.add(address)
             db.commit()
@@ -253,18 +256,14 @@ async def onboard_organization(
         contact_info_arr = []
 
         for each_contact in data.contact_info:
-            contact = cerate_model_instance(
-                data=each_contact, model=Models.OrganizationContactInfo
-            )
+            contact = cerate_model_instance(data=each_contact, model=Models.OrganizationContactInfo)
             contact.organization_id = organization.id
             db.add(contact)
             db.commit()
 
             contact_info_arr.append(contact)
 
-        about_info = cerate_model_instance(
-            model=Models.OrganizationAboutInfo, data=data.about_info
-        )
+        about_info = cerate_model_instance(model=Models.OrganizationAboutInfo, data=data.about_info)
         about_info.organization_id = organization.id
         db.add(about_info)
         db.commit()
@@ -281,12 +280,9 @@ async def onboard_organization(
             "success": True,
             "organization": {
                 "general_info": model_to_filtered_dict(updated_general_info),
-                "address": [
-                    model_to_filtered_dict(_address) for _address in address_arr
-                ],
+                "address": [model_to_filtered_dict(_address) for _address in address_arr],
                 "contact_info": [
-                    model_to_filtered_dict(_contact_info)
-                    for _contact_info in contact_info_arr
+                    model_to_filtered_dict(_contact_info) for _contact_info in contact_info_arr
                 ],
                 "about_info": model_to_filtered_dict(about_info),
                 "organization_settings": model_to_filtered_dict(organization_settings),

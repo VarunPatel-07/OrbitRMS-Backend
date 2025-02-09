@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Dict, Optional, List
 from datetime import datetime
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel
 
 
 class CountryInfo(BaseModel):

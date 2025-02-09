@@ -1,15 +1,13 @@
-from fastapi import APIRouter, HTTPException, status, Query, Depends
-from SqlModels import Models
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
 from Database.Database import db_dependencies
-from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
-from Helper.helper import (
-    model_to_filtered_dict,
-    urlsafe_data_decoding_function,
-)
-from PydanticModels.UserModels import User
 from Helper.createModelInstance import cerate_model_instance
-from PydanticModels.authentication.AuthenticationModels import CreatePassword, SignIn
+from Helper.helper import model_to_filtered_dict, urlsafe_data_decoding_function
+from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
 from Middleware.verifyToken import verify_token
+from PydanticModels.authentication.AuthenticationModels import CreatePassword, SignIn
+from PydanticModels.UserModels import User
+from SqlModels import Models
 
 authRoutes = APIRouter(prefix="/app/v1/auth", tags=["auth"])
 
@@ -19,9 +17,7 @@ async def add_employee(db: db_dependencies, user: User):
     try:
         find_user = (
             db.query(Models.EmployeeInfo)
-            .filter(
-                Models.EmployeeInfo.employee_email == user.employee_info.employee_email
-            )
+            .filter(Models.EmployeeInfo.employee_email == user.employee_info.employee_email)
             .first()
         )
 
@@ -40,9 +36,7 @@ async def add_employee(db: db_dependencies, user: User):
         db.add(created_user)
         db.commit()
 
-        personal_info = cerate_model_instance(
-            model=Models.PersonalInfo, data=user.personal_info
-        )
+        personal_info = cerate_model_instance(model=Models.PersonalInfo, data=user.personal_info)
         personal_info.user_id = created_user.id
 
         employee_info = cerate_model_instance(
@@ -92,9 +86,7 @@ async def add_employee(db: db_dependencies, user: User):
             db.add(family_info)
             db.commit()
 
-        address_info = cerate_model_instance(
-            model=Models.Address, data=user.address, fields=[]
-        )
+        address_info = cerate_model_instance(model=Models.Address, data=user.address, fields=[])
         address_info.user_id = created_user.id
 
         emergency_contact = [
@@ -129,8 +121,7 @@ async def add_employee(db: db_dependencies, user: User):
             for item in emergency_contact
         ]
         social_links = [
-            {"icon": item.icon, "name": item.name, "link": item.link}
-            for item in social_link
+            {"icon": item.icon, "name": item.name, "link": item.link} for item in social_link
         ]
 
         db.add(employee_info)
@@ -248,9 +239,11 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": "Invalid Email Or Password", "success": False},
             )
-        user = (
-            db.query(Models.User)
-            .filter(Models.User.id == employee_info.user_id)
+        user = db.query(Models.User).filter(Models.User.id == employee_info.user_id).first()
+
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
             .first()
         )
 
@@ -276,6 +269,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
             "message": "User Sign In Successfully",
             "success": True,
             "authenticationToken": token,
+            "organization": model_to_filtered_dict(organization),
         }
 
     except HTTPException as http_exception:
@@ -298,9 +292,7 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
         user = db.query(Models.User).filter(Models.User.id == user_id).first()
 
         employee_info = (
-            db.query(Models.EmployeeInfo)
-            .filter(Models.EmployeeInfo.user_id == user_id)
-            .first()
+            db.query(Models.EmployeeInfo).filter(Models.EmployeeInfo.user_id == user_id).first()
         )
         organization = (
             db.query(Models.Organization)
@@ -309,9 +301,7 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
         )
         organization_general_info = (
             db.query(Models.OrganizationGeneralInfo)
-            .filter(
-                Models.OrganizationGeneralInfo.organization_id == user.organization_id
-            )
+            .filter(Models.OrganizationGeneralInfo.organization_id == user.organization_id)
             .first()
         )
         organization_address = (
@@ -322,17 +312,13 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
 
         organization_contact_info = (
             db.query(Models.OrganizationContactInfo)
-            .filter(
-                Models.OrganizationContactInfo.organization_id == user.organization_id
-            )
+            .filter(Models.OrganizationContactInfo.organization_id == user.organization_id)
             .first()
         )
 
         organization_about_info = (
             db.query(Models.OrganizationAboutInfo)
-            .filter(
-                Models.OrganizationAboutInfo.organization_id == user.organization_id
-            )
+            .filter(Models.OrganizationAboutInfo.organization_id == user.organization_id)
             .first()
         )
 
@@ -354,9 +340,7 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
                     "address": model_to_filtered_dict(organization_address),
                     "contact_info": model_to_filtered_dict(organization_contact_info),
                     "about_info": model_to_filtered_dict(organization_about_info),
-                    "organization_settings": model_to_filtered_dict(
-                        organization_settings
-                    ),
+                    "organization_settings": model_to_filtered_dict(organization_settings),
                     "status": organization.status,
                     "organization_created": organization.organization_created,
                     "created_at": organization.created_at,
