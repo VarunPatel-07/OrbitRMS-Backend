@@ -1,10 +1,9 @@
-from typing import Type, Dict, Any, List
+from typing import Any, Dict, List, Type
+
 from pydantic import BaseModel
 
 
-def cerate_model_instance(
-    model: Type[BaseModel], data: Dict[str, Any], fields: List[str] = []
-):
+def cerate_model_instance(model: Type[BaseModel], data: Dict[str, Any], fields: List[str] = []):
 
     if not isinstance(data, dict):
         data = vars(data)
@@ -19,14 +18,10 @@ def cerate_model_instance(
 
     # now rendering the data
     if len(exclude_fields) >= 1:
-        filtered_data = {
-            key: value for key, value in data.items() if key not in exclude_fields
-        }
+        filtered_data = {key: value for key, value in data.items() if key not in exclude_fields}
         return model(**filtered_data)
     elif len(include_fields) >= 1:
-        filtered_data = {
-            key: value for key, value in data.items() if key in include_fields
-        }
+        filtered_data = {key: value for key, value in data.items() if key in include_fields}
         return model(**filtered_data)
     else:
         filtered_data = {key: value for key, value in data.items()}

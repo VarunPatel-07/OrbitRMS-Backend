@@ -1,12 +1,15 @@
-import secrets, os
-from typing import List, Optional, Dict, Union
-from sqlalchemy.orm import class_mapper
-from sqlalchemy.ext.declarative import DeclarativeMeta
-from fastapi import HTTPException, status
-from dotenv import load_dotenv
-from Crypto.Cipher import AES
-from Database.Database import db_dependencies
 import base64
+import os
+import secrets
+from typing import Dict, List, Optional, Union
+
+from Crypto.Cipher import AES
+from dotenv import load_dotenv
+from fastapi import HTTPException, status
+from sqlalchemy.ext.declarative import DeclarativeMeta
+from sqlalchemy.orm import class_mapper
+
+from Database.Database import db_dependencies
 
 load_dotenv(override=True)
 
@@ -31,14 +34,10 @@ def generate_random_secret_key() -> str:
 #  If the "-" is not used (e.g., ['password']), the function will return the specified field.
 
 
-def filter_fields(
-    module: Union[dict, object], fields: Optional[List[str]] = []
-) -> Dict[str, str]:
+def filter_fields(module: Union[dict, object], fields: Optional[List[str]] = []) -> Dict[str, str]:
     # Ensure module is a dictionary or an object with attributes
     if not isinstance(module, (dict, object)):
-        raise ValueError(
-            "The module must be a dictionary or an object with attributes."
-        )
+        raise ValueError("The module must be a dictionary or an object with attributes.")
 
     # If module is an object, convert it to a dictionary
     if not isinstance(module, dict):
@@ -65,19 +64,14 @@ def filter_fields(
         filter_data = {
             key: value
             for key, value in module.items()
-            if key not in exclude_fields
-            and (key in include_fields or not include_fields)
+            if key not in exclude_fields and (key in include_fields or not include_fields)
         }
     elif exclude_fields:
         # Only exclude specified fields
-        filter_data = {
-            key: value for key, value in module.items() if key not in exclude_fields
-        }
+        filter_data = {key: value for key, value in module.items() if key not in exclude_fields}
     elif include_fields:
         # Only include specified fields
-        filter_data = {
-            key: value for key, value in module.items() if key in include_fields
-        }
+        filter_data = {key: value for key, value in module.items() if key in include_fields}
     else:
         # No fields specified, return all data
         filter_data = {key: value for key, value in module.items()}
@@ -201,9 +195,7 @@ def update_model_data(
     print(getattr(model, id_field))
     record = db.query(model).filter(getattr(model, id_field) == model_id).first()
 
-    updated_data_dict = (
-        updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
-    )
+    updated_data_dict = updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"{model.__name__} not found"

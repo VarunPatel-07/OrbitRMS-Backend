@@ -1,7 +1,8 @@
 # Pydantic model for JSON payload
-from pydantic import BaseModel, EmailStr, HttpUrl
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
+
+from pydantic import BaseModel, EmailStr, HttpUrl
 
 
 class SocialLink(BaseModel):
