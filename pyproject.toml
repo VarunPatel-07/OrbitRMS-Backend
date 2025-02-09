@@ -1,0 +1,19 @@
+[tool.black]
+line-length = 100  # Set maximum line length to 100 characters for better readability
+target-version = ['py38', 'py39', 'py310']  # Specify supported Python versions
+include = '\.pyi?$'  # Format only Python files
+exclude = '''
+/(
+    \.git        # Ignore Git metadata
+  | \.mypy_cache # Ignore mypy cache
+  | \.tox        # Ignore tox environments
+  | \.venv       # Ignore virtual environments
+  | _build       # Ignore build directories
+  | buck-out     # Ignore Buck build files
+  | build        # Ignore build directories
+  | dist         # Ignore distribution directories
+)/
+'''
+
+[tool.isort]
+profile = "black"  # Ensure compatibility with Black for import sorting
