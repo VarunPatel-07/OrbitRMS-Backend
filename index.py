@@ -6,6 +6,7 @@ from Database.Database import DATABASE_ENGINE
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
 from routes.Organizations.organizations import orgRouter
+from routes.CountryInfo.CountryInfo import countryApiRouter
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
@@ -34,4 +35,5 @@ BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 # Include application routes
 app.include_router(authRoutes)
 app.include_router(orgRouter)
+app.include_router(countryApiRouter)
 # app.include_router(organization_router)

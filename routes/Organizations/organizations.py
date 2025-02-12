@@ -1,5 +1,7 @@
-import json, os
+import json
+import os
 
+from dotenv import load_dotenv
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from sqlalchemy.sql import func
 
@@ -17,7 +19,6 @@ from PydanticModels.Organizations.organizations import (
     RegisterOrganizationInfo,
 )
 from SqlModels import Models
-from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
