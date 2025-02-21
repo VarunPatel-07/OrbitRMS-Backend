@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from Database.Database import DATABASE_ENGINE
+from Database.Database import DATABASE_ENGINE, database
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -32,8 +32,49 @@ app.add_middleware(
 # Create database tables (consider using migrations instead)
 BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 
+
 # Include application routes
 app.include_router(authRoutes)
 app.include_router(orgRouter)
 app.include_router(countryApiRouter)
-# app.include_router(organization_router)
+
+
+# Basic health check route
+@app.get(path="/", status_code=status.HTTP_200_OK)
+async def root_health_check():
+    db_status = "healthy"
+
+    # Check database connection
+    try:
+        await database.connect()
+        await database.disconnect()
+    except Exception:
+        db_status = "unhealthy"
+
+    return {
+        "message": "Welcome To OrbitRMS. The app functionality is working fine.",
+        "database_status": db_status,
+        "status": (
+            "The app is healthy." if db_status == "healthy" else "Database connection issue."
+        ),
+    }
+
+
+@app.get("/health", status_code=status.HTTP_200_OK)
+async def health_status():
+    db_status = "healthy"
+
+    # Check database connection
+    try:
+        await database.connect()
+        await database.disconnect()
+    except Exception:
+        db_status = "unhealthy"
+
+    return {
+        "status": "ok" if db_status == "healthy" else "unhealthy",
+        "database": db_status,
+        "message": (
+            "The app is healthy." if db_status == "healthy" else "Database connection issue."
+        ),
+    }
