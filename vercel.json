@@ -6,10 +6,17 @@
       "dest": "index.py"
     }
   ],
-  "functions": {
-    "index.py": {
-      "runtime": "@vercel/python@3.9",
-      "maxDuration": 60
-    }
-  }
+  "includeFiles": [
+    "Database/**",
+    "Helper/**",
+    "Middleware/**",
+    "PydanticModels/**",
+    "routes/**",
+    "SqlModels/**",
+    "index.py",
+    "requirements.txt",
+    "pyproject.toml",
+    ".env"
+  ],
+  "maxDuration": 60
 }
