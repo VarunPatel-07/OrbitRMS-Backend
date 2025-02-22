@@ -1,3 +1,8 @@
+import asyncio
+import os
+from contextlib import asynccontextmanager
+
+import httpx
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,9 +10,35 @@ from Database.Database import DATABASE_ENGINE, database
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
-from routes.Organizations.organizations import orgRouter
 from routes.CountryInfo.CountryInfo import countryApiRouter
+from routes.Organizations.organizations import orgRouter
 from SqlModels.Models import BaseModel
+
+
+async def keep_alive():
+    if os.environ.get("VERCEL_ENV"):
+        async with httpx.AsyncClient() as client:
+            while True:
+                try:
+                    development_url = (
+                        os.environ.get("VERCEL_URL") or "beta-stagging-orbit.vercel.app"
+                    )
+                    await client.get(f"https://{development_url}/", timeout=10.0)
+                    await asyncio.sleep(240)
+                except:
+                    await asyncio.sleep(30)
+                    continue
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if os.environ.get("VERCEL_ENV"):
+        keep_alive_task = asyncio.create_task(keep_alive())
+        yield
+        keep_alive_task.cancel()
+    else:
+        yield
+
 
 app = FastAPI(
     title="Your API Title",
@@ -17,6 +48,7 @@ app = FastAPI(
         "name": "Your Name",
         "email": "your.email@example.com",
     },
+    lifespan=lifespan,
 )
 
 
