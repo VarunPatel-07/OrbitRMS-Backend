@@ -34,6 +34,8 @@ async def keep_alive():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("Running The Keep Alive function")
+    print(f"vercel Env == {os.environ.get("VERCEL_ENV")}")
     if os.environ.get("VERCEL_ENV"):
         keep_alive_task = asyncio.create_task(keep_alive())
         yield
