@@ -41,7 +41,7 @@ class OrganizationGeneralInfo(BaseModel):
     organization_profile_picture: str = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class OrganizationAddress(BaseModel):
@@ -51,7 +51,7 @@ class OrganizationAddress(BaseModel):
     zip_code: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class OrganizationContactInfo(BaseModel):
@@ -59,7 +59,7 @@ class OrganizationContactInfo(BaseModel):
     company_email: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class OrganizationAboutInfo(BaseModel):
@@ -68,7 +68,7 @@ class OrganizationAboutInfo(BaseModel):
     registration_number: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class OrganizationSettings(BaseModel):
@@ -78,7 +78,7 @@ class OrganizationSettings(BaseModel):
     default_timezone: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class OnboardingOrganization(BaseModel):
@@ -90,4 +90,4 @@ class OnboardingOrganization(BaseModel):
     status: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
