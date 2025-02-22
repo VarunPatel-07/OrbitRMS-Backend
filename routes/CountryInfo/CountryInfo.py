@@ -1,8 +1,9 @@
-import os, time
+import os
+import time
 
 import requests
 from dotenv import load_dotenv
-from fastapi import APIRouter, status, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, status
 
 load_dotenv(override=True)
 
