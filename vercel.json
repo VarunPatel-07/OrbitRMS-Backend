@@ -1,22 +1,18 @@
 {
   "version": 2,
+  "builds": [
+    {
+      "src": "index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 60
+      }
+    }
+  ],
   "routes": [
     {
       "src": "/(.*)",
       "dest": "index.py"
     }
-  ],
-  "includeFiles": [
-    "Database/**",
-    "Helper/**",
-    "Middleware/**",
-    "PydanticModels/**",
-    "routes/**",
-    "SqlModels/**",
-    "index.py",
-    "requirements.txt",
-    "pyproject.toml",
-    ".env"
-  ],
-  "maxDuration": 60
+  ]
 }
