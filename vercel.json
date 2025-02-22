@@ -8,7 +8,7 @@
   ],
   "functions": {
     "index.py": {
-      "runtime": "@vercel/python",
+      "runtime": "@vercel/python@3.9",
       "maxDuration": 60
     }
   }
