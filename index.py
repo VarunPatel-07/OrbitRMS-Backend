@@ -16,6 +16,8 @@ from SqlModels.Models import BaseModel
 
 
 async def keep_alive():
+    print("Running The Keep Alive function")
+    print(f"vercel Env == {os.environ.get("VERCEL_ENV")}")
     if os.environ.get("VERCEL_ENV"):
         print("Keep-alive task started on Vercel environment")  # Print only once at start
         async with httpx.AsyncClient() as client:
