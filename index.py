@@ -17,15 +17,15 @@ from SqlModels.Models import BaseModel
 
 async def keep_alive():
     if os.environ.get("VERCEL_ENV"):
+        print("Keep-alive task started on Vercel environment")  # Print only once at start
         async with httpx.AsyncClient() as client:
             while True:
                 try:
-                    development_url = (
-                        os.environ.get("VERCEL_URL") or "beta-stagging-orbit.vercel.app"
-                    )
+                    development_url = "beta-stagging-orbit.vercel.app"
                     await client.get(f"https://{development_url}/", timeout=10.0)
-                    await asyncio.sleep(240)
-                except:
+                    await asyncio.sleep(180)  # 3 minutes
+                except Exception as e:
+                    print(f"Keep-alive ping failed: {str(e)}")  # Print only on error
                     await asyncio.sleep(30)
                     continue
 
