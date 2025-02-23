@@ -91,3 +91,9 @@ class OnboardingOrganization(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class VerifyMetaTag(BaseModel):
+    website_url: str
+    meta_name: str
+    meta_value: str

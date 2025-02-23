@@ -1,11 +1,34 @@
 import os
 import time
+import httpx
 
 import requests
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, status
 
 load_dotenv(override=True)
+
+
+async def fetch_data(url, retries=3, timeout=20):
+    async with httpx.AsyncClient() as client:
+        for attempt in range(retries):
+            try:
+                response = await client.get(url, timeout=timeout)
+                response.raise_for_status()
+                return response.json()
+            except (httpx.RequestError, httpx.TimeoutException) as e:
+                if attempt < retries - 1:
+                    time.sleep(2)
+                    continue
+
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "message": "Error Fetching Data",
+                        "success": False,
+                        "error": str(e),
+                    },
+                )
 
 
 countryApiRouter = APIRouter(prefix="/app/v1/country-info", tags=["country"])
@@ -61,61 +84,74 @@ def FetchAllTheCountry(order: str = Query("asc", alias="order")):
 
 
 @countryApiRouter.get("/getCountryInfo", status_code=status.HTTP_200_OK)
-def GetCountryInfo(country: str = Query(..., alias="country")):
+async def GetCountryInfo(country: str = Query(..., alias="country")):
 
-    username = "emilys"
+    try:
+        username = "emilys"
 
-    def fetch_data(url, retries=3, timeout=20):
-        for attempt in range(retries):
-            try:
-                response = requests.get(url, timeout=timeout)
-                response.raise_for_status()
-                return response.json()
-            except requests.exceptions.Timeout:
-                if attempt < retries - 1:
-                    time.sleep(2)
-                    continue
+        country_url = f"http://api.geonames.org/searchJSON?country={country}&featureCode=ADM1&username={username}"
 
-                raise HTTPException(
-                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                    detail={
-                        "message": "GeoNames API timeout. Please try again later.",
-                        "success": False,
-                    },
-                )
-            except requests.exceptions.RequestException as e:
-                if attempt < retries - 1:
-                    time.sleep(2)
-                    continue
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail={"message": "Error Fetching Data", "success": False, "error": str(e)},
-                )
+        states_data = await fetch_data(country_url)
 
-    country_url = (
-        f"http://api.geonames.org/searchJSON?country={country}&featureCode=ADM1&username={username}"
-    )
+        if "geonames" not in states_data or not states_data["geonames"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "No states found for this country", "success": False},
+            )
 
-    states_data = fetch_data(country_url)
+        states = states_data["geonames"]
 
-    if "geonames" not in states_data or not states_data["geonames"]:
+        state_array = []
+        for state in states:
+            state_name = state["name"]
+            state_code = state.get("adminCode1", "")
+            state_array.append({"state_name": state_name, "state_code": state_code})
+
+        return {"success": True, "country": country, "states": state_array}
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"message": "No states found for this country", "success": False},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while fetching the state date of the country",
+                "success": False,
+                "error": str(e),
+            },
         )
 
-    states = states_data["geonames"]
 
-    result = {"country": country, "states": []}
-
-    for state in states:
-        state_name = state["name"]
-        state_code = state.get("adminCode1", "")
-
+@countryApiRouter.get("/getStateInfo", status_code=status.HTTP_200_OK)
+async def GetStateInfo(
+    country: str = Query(..., alias="country"), state_code: str = Query(..., alias="state_code")
+):
+    try:
+        username = "emilys"
         cities_url = f"http://api.geonames.org/searchJSON?adminCode1={state_code}&country={country}&featureClass=P&username={username}"
 
-        cities_data = fetch_data(cities_url)
+        cities_data = await fetch_data(cities_url)
 
-        cities = [city["name"] for city in cities_data.get("geonames", [])]
-        result["states"].append({"state": state_name, "cities": cities})
-    return result
+        if "geonames" not in cities_data or not cities_data["geonames"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "No city found for this state", "success": False},
+            )
+        cities = cities_data["geonames"]
+
+        cities_array = []
+        for city in cities:
+            cities_array.append(city["name"])
+        return {
+            "success": True,
+            "country": country,
+            "states": state_code,
+            "cities_array": cities_array,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while fetching the state date of the country",
+                "success": False,
+                "error": str(e),
+            },
+        )
