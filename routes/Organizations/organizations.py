@@ -17,8 +17,11 @@ from Helper.helper import (
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
     RegisterOrganizationInfo,
+    VerifyMetaTag,
 )
 from SqlModels import Models
+import httpx
+from bs4 import BeautifulSoup
 
 load_dotenv(override=True)
 
@@ -136,6 +139,52 @@ async def create_organization(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Error Accrued While Adding Employee",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@orgRouter.post("/verify-meta-tag", status_code=status.HTTP_200_OK)
+async def verify_meta_tag(data: VerifyMetaTag):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(data.website_url)
+            response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        meta_tag = soup.find("meta", attrs={"name": data.meta_name})
+
+        if not meta_tag:
+            return {
+                "meta_found": False,
+                "expected_value": data.meta_value,
+                "actual_value": "",
+                "match": False,
+                "success": False,
+            }
+
+        if meta_tag and "content" in meta_tag.attrs:
+            actual_value = meta_tag.get("content", "")
+
+            verified = actual_value == data.meta_value
+
+            return {
+                "meta_found": True,
+                "expected_value": data.meta_value,
+                "actual_value": actual_value,
+                "match": verified,
+                "success": True,
+            }
+        return {"error": "Meta tag not found"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error Accrued While Verifying The Meta Tag",
                 "success": False,
                 "error": str(e),
             },
