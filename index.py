@@ -3,6 +3,7 @@ import os
 from contextlib import asynccontextmanager
 
 import httpx
+import uvicorn
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -110,3 +111,7 @@ async def health_status():
             "The app is healthy." if db_status == "healthy" else "Database connection issue."
         ),
     }
+
+
+if __name__ == "__main__":
+    uvicorn.run("index:app", port=8000)
