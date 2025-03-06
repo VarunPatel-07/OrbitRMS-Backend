@@ -1,10 +1,6 @@
-import asyncio
-import os
-from contextlib import asynccontextmanager
-
-import httpx
-from fastapi import FastAPI, status
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from Database.Database import DATABASE_ENGINE, database
 
@@ -14,36 +10,6 @@ from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.Organizations.organizations import orgRouter
 from SqlModels.Models import BaseModel
 
-
-async def keep_alive():
-    print("Running The Keep Alive function")
-    print(f"vercel Env == {os.environ.get("VERCEL_ENV")}")
-    if os.environ.get("VERCEL_ENV"):
-        print("Keep-alive task started on Vercel environment")  # Print only once at start
-        async with httpx.AsyncClient() as client:
-            while True:
-                try:
-                    development_url = "beta-stagging-orbit.vercel.app"
-                    await client.get(f"https://{development_url}/", timeout=10.0)
-                    await asyncio.sleep(180)  # 3 minutes
-                except Exception as e:
-                    print(f"Keep-alive ping failed: {str(e)}")  # Print only on error
-                    await asyncio.sleep(30)
-                    continue
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Running The Keep Alive function")
-    print(f"vercel Env == {os.environ.get("VERCEL_ENV")}")
-    if os.environ.get("VERCEL_ENV"):
-        keep_alive_task = asyncio.create_task(keep_alive())
-        yield
-        keep_alive_task.cancel()
-    else:
-        yield
-
-
 app = FastAPI(
     title="Your API Title",
     description="Detailed API description.",
@@ -52,7 +18,6 @@ app = FastAPI(
         "name": "Your Name",
         "email": "your.email@example.com",
     },
-    lifespan=lifespan,
 )
 
 
@@ -76,8 +41,8 @@ app.include_router(countryApiRouter)
 
 
 # Basic health check route
-@app.get(path="/", status_code=status.HTTP_200_OK)
-async def root_health_check():
+@app.api_route(path="/", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
+async def root_health_check(request: Request):
     db_status = "healthy"
 
     # Check database connection
@@ -87,17 +52,26 @@ async def root_health_check():
     except Exception:
         db_status = "unhealthy"
 
-    return {
-        "message": "Welcome To OrbitRMS. The app functionality is working fine.",
-        "database_status": db_status,
-        "status": (
-            "The app is healthy." if db_status == "healthy" else "Database connection issue."
-        ),
-    }
+    if request.method == "GET":
+        return {
+            "message": "Welcome To OrbitRMS. The app functionality is working fine.",
+            "database_status": db_status,
+            "status": (
+                "The app is healthy." if db_status == "healthy" else "Database connection issue."
+            ),
+        }
+    else:
+        return Response(
+            status_code=(
+                status.HTTP_200_OK
+                if db_status == "healthy"
+                else status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        )
 
 
-@app.get("/health", status_code=status.HTTP_200_OK)
-async def health_status():
+@app.api_route("/health", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
+async def health_status(request: Request):
     db_status = "healthy"
 
     # Check database connection
@@ -107,10 +81,19 @@ async def health_status():
     except Exception:
         db_status = "unhealthy"
 
-    return {
-        "status": "ok" if db_status == "healthy" else "unhealthy",
-        "database": db_status,
-        "message": (
-            "The app is healthy." if db_status == "healthy" else "Database connection issue."
-        ),
-    }
+    if request.method == "GET":
+        return {
+            "status": "ok" if db_status == "healthy" else "unhealthy",
+            "database": db_status,
+            "message": (
+                "The app is healthy." if db_status == "healthy" else "Database connection issue."
+            ),
+        }
+    else:
+        return Response(
+            status_code=(
+                status.HTTP_200_OK
+                if db_status == "healthy"
+                else status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        )

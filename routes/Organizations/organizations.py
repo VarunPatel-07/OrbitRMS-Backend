@@ -1,6 +1,8 @@
 import json
 import os
 
+import httpx
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from sqlalchemy.sql import func
@@ -20,8 +22,6 @@ from PydanticModels.Organizations.organizations import (
     VerifyMetaTag,
 )
 from SqlModels import Models
-import httpx
-from bs4 import BeautifulSoup
 
 load_dotenv(override=True)
 
@@ -266,7 +266,6 @@ async def verify_organization(
         )
 
 
-# todo working on this api
 @orgRouter.post("/onboard-organization", status_code=status.HTTP_200_OK)
 async def onboard_organization(
     db: db_dependencies,
@@ -347,5 +346,71 @@ async def onboard_organization(
             detail={
                 "message": "error while onboarding the organization",
                 "error": str(e),
+            },
+        )
+
+
+@orgRouter.get("/fetch-organization-info", status_code=status.HTTP_200_OK)
+async def fetch_organization_info(
+    db: db_dependencies, organization_id: str = Query(..., alias="organization_id")
+):
+    try:
+        organization = (
+            db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
+        )
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Unable To Find Organization With This Organization Id",
+                    "success": False,
+                },
+            )
+
+        organization_general_info = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(Models.OrganizationGeneralInfo.organization_id == organization.id)
+            .first()
+        )
+        organization_address = db.query(Models.OrganizationAddress).filter(
+            Models.OrganizationAddress.organization_id == organization.id
+        )
+        contact_info = db.query(Models.OrganizationContactInfo).filter(
+            Models.OrganizationContactInfo.organization_id == organization.id
+        )
+        about_info = db.query(Models.OrganizationAboutInfo).filter(
+            Models.OrganizationAboutInfo.organization_id == organization.id
+        )
+        organization_settings = db.query(Models.OrganizationSettings).filter(
+            Models.OrganizationSettings.organization_id == organization.id
+        )
+
+        return {
+            "success": True,
+            "data": {
+                "general_info": model_to_filtered_dict(
+                    organization_general_info, ["-id", "-organization_id"]
+                ),
+                "address": model_to_filtered_dict(
+                    organization_address, ["-id", "-organization_id"]
+                ),
+                "contact_info": model_to_filtered_dict(contact_info, ["-id", "-organization_id"]),
+                "about_info": model_to_filtered_dict(about_info, ["-id", "-organization_id"]),
+                "organization_settings": model_to_filtered_dict(
+                    organization_settings, ["-id", "-organization_id"]
+                ),
+            },
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while fetching the organization info",
+                "error": str(e),
+                "success": False,
             },
         )
