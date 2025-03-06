@@ -1,11 +1,6 @@
-import asyncio
-import os
-from contextlib import asynccontextmanager
-
-import httpx
-import uvicorn
-from fastapi import FastAPI, status
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from Database.Database import DATABASE_ENGINE, database
 
@@ -15,32 +10,6 @@ from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.Organizations.organizations import orgRouter
 from SqlModels.Models import BaseModel
 
-
-async def keep_alive():
-    if os.environ.get("VERCEL_ENV"):
-        async with httpx.AsyncClient() as client:
-            while True:
-                try:
-                    development_url = (
-                        os.environ.get("VERCEL_URL") or "beta-stagging-orbit.vercel.app"
-                    )
-                    await client.get(f"https://{development_url}/", timeout=10.0)
-                    await asyncio.sleep(240)
-                except:
-                    await asyncio.sleep(30)
-                    continue
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    if os.environ.get("VERCEL_ENV"):
-        keep_alive_task = asyncio.create_task(keep_alive())
-        yield
-        keep_alive_task.cancel()
-    else:
-        yield
-
-
 app = FastAPI(
     title="Your API Title",
     description="Detailed API description.",
@@ -49,7 +18,6 @@ app = FastAPI(
         "name": "Your Name",
         "email": "your.email@example.com",
     },
-    lifespan=lifespan,
 )
 
 
@@ -73,8 +41,8 @@ app.include_router(countryApiRouter)
 
 
 # Basic health check route
-@app.get(path="/", status_code=status.HTTP_200_OK)
-async def root_health_check():
+@app.api_route(path="/", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
+async def root_health_check(request: Request):
     db_status = "healthy"
 
     # Check database connection
@@ -84,17 +52,26 @@ async def root_health_check():
     except Exception:
         db_status = "unhealthy"
 
-    return {
-        "message": "Welcome To OrbitRMS. The app functionality is working fine.",
-        "database_status": db_status,
-        "status": (
-            "The app is healthy." if db_status == "healthy" else "Database connection issue."
-        ),
-    }
+    if request.method == "GET":
+        return {
+            "message": "Welcome To OrbitRMS. The app functionality is working fine.",
+            "database_status": db_status,
+            "status": (
+                "The app is healthy." if db_status == "healthy" else "Database connection issue."
+            ),
+        }
+    else:
+        return Response(
+            status_code=(
+                status.HTTP_200_OK
+                if db_status == "healthy"
+                else status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        )
 
 
-@app.get("/health", status_code=status.HTTP_200_OK)
-async def health_status():
+@app.api_route("/health", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
+async def health_status(request: Request):
     db_status = "healthy"
 
     # Check database connection
@@ -104,14 +81,19 @@ async def health_status():
     except Exception:
         db_status = "unhealthy"
 
-    return {
-        "status": "ok" if db_status == "healthy" else "unhealthy",
-        "database": db_status,
-        "message": (
-            "The app is healthy." if db_status == "healthy" else "Database connection issue."
-        ),
-    }
-
-
-if __name__ == "__main__":
-    uvicorn.run("index:app", port=8000)
+    if request.method == "GET":
+        return {
+            "status": "ok" if db_status == "healthy" else "unhealthy",
+            "database": db_status,
+            "message": (
+                "The app is healthy." if db_status == "healthy" else "Database connection issue."
+            ),
+        }
+    else:
+        return Response(
+            status_code=(
+                status.HTTP_200_OK
+                if db_status == "healthy"
+                else status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        )

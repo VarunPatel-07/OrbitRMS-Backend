@@ -4,6 +4,7 @@ alembic==1.14.0
 annotated-types==0.7.0
 anyio==4.8.0
 arrow==1.2.3
+babel==2.17.0
 bcrypt==4.2.1
 beautifulsoup4==4.12.3
 black==25.1.0
@@ -45,6 +46,7 @@ pathspec==0.12.1
 platformdirs==4.3.6
 pre_commit==4.1.0
 pycodestyle==2.12.1
+pycountry==24.6.1
 pycparser==2.22
 pycryptodome==3.21.0
 pydantic==2.10.4
