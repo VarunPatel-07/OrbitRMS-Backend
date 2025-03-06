@@ -209,7 +209,7 @@ async def getCountryFormats(country_name: str = Query(..., alias="country_code")
         country_date_formate = await formateDateOnTheBaseOfTheCountry(country_code)
 
         return {
-            "success":True,
+            "success": True,
             "postal_code_formate": postalCode,
             "timeZones": timeZones,
             "country_date_formate": (
