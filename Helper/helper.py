@@ -162,12 +162,13 @@ def urlsafe_data_decoding_function(encrypted_data: str) -> str:
         else:
             raise ValueError("Decrypted data is not in bytes format.")
 
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "message": "Decryption failed: Data may have been altered or corrupted!",
                 "success": False,
+                "error": str(e),
             },
         )
     except Exception as e:

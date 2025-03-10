@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from Database.Database import db_dependencies
 from Helper.createModelInstance import cerate_model_instance
-from Helper.helper import model_to_filtered_dict, urlsafe_data_decoding_function
+from Helper.helper import (
+    model_to_filtered_dict,
+    urlsafe_data_decoding_function,
+    urlsafe_data_encoding_function,
+)
 from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
 from Middleware.verifyToken import verify_token
 from PydanticModels.authentication.AuthenticationModels import CreatePassword, SignIn
@@ -183,7 +187,6 @@ async def create_password(
 ):
     try:
         decrypted_user_id = urlsafe_data_decoding_function(user_id)
-        print(decrypted_user_id)
 
         user = db.query(Models.User).filter(Models.User.id == decrypted_user_id).first()
 
@@ -265,11 +268,14 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
         sub = {"user_id": user.id}
         token = create_jwt_token(data=sub)
 
+        encrypted_org_id = urlsafe_data_encoding_function(organization.id)
+
         return {
             "message": "User Sign In Successfully",
             "success": True,
             "authenticationToken": token,
-            "organization": model_to_filtered_dict(organization),
+            "organization_created": organization.organization_created,
+            "organization_id": encrypted_org_id,
         }
 
     except HTTPException as http_exception:

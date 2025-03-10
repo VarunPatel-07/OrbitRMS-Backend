@@ -355,6 +355,9 @@ async def fetch_organization_info(
     db: db_dependencies, organization_id: str = Query(..., alias="organization_id")
 ):
     try:
+
+        organization_id = urlsafe_data_decoding_function(organization_id)
+
         organization = (
             db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
         )
@@ -373,32 +376,55 @@ async def fetch_organization_info(
             .filter(Models.OrganizationGeneralInfo.organization_id == organization.id)
             .first()
         )
-        organization_address = db.query(Models.OrganizationAddress).filter(
-            Models.OrganizationAddress.organization_id == organization.id
+        organization_address = (
+            db.query(Models.OrganizationAddress)
+            .filter(Models.OrganizationAddress.organization_id == organization.id)
+            .first()
         )
-        contact_info = db.query(Models.OrganizationContactInfo).filter(
-            Models.OrganizationContactInfo.organization_id == organization.id
+
+        contact_info = (
+            db.query(Models.OrganizationContactInfo)
+            .filter(Models.OrganizationContactInfo.organization_id == organization.id)
+            .first()
         )
-        about_info = db.query(Models.OrganizationAboutInfo).filter(
-            Models.OrganizationAboutInfo.organization_id == organization.id
+        about_info = (
+            db.query(Models.OrganizationAboutInfo)
+            .filter(Models.OrganizationAboutInfo.organization_id == organization.id)
+            .first()
         )
-        organization_settings = db.query(Models.OrganizationSettings).filter(
-            Models.OrganizationSettings.organization_id == organization.id
+        organization_settings = (
+            db.query(Models.OrganizationSettings)
+            .filter(Models.OrganizationSettings.organization_id == organization.id)
+            .first()
         )
 
         return {
             "success": True,
             "data": {
-                "general_info": model_to_filtered_dict(
-                    organization_general_info, ["-id", "-organization_id"]
+                "general_info": (
+                    model_to_filtered_dict(organization_general_info, ["-id", "-organization_id"])
+                    if organization_general_info
+                    else ""
                 ),
-                "address": model_to_filtered_dict(
-                    organization_address, ["-id", "-organization_id"]
+                "address": (
+                    model_to_filtered_dict(organization_address, ["-id", "-organization_id"])
+                    if organization_address
+                    else ""
                 ),
-                "contact_info": model_to_filtered_dict(contact_info, ["-id", "-organization_id"]),
-                "about_info": model_to_filtered_dict(about_info, ["-id", "-organization_id"]),
-                "organization_settings": model_to_filtered_dict(
-                    organization_settings, ["-id", "-organization_id"]
+                "contact_info": (
+                    model_to_filtered_dict(contact_info, ["-id", "-organization_id"])
+                    if contact_info
+                    else ""
+                ),
+                "about_info": (
+                    model_to_filtered_dict(about_info, ["-id", "-organization_id"])
+                    if about_info
+                    else ""
+                ),
+                "organization_settings": (
+                    model_to_filtered_dict(organization_settings, ["-id", "-organization_id"])
+                    if organization_settings
+                    else ""
                 ),
             },
         }
