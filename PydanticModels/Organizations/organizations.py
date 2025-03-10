@@ -57,6 +57,7 @@ class OrganizationAddress(BaseModel):
 class OrganizationContactInfo(BaseModel):
     phone_number: Optional[str] = None
     company_email: Optional[str] = None
+    country_info: CountryInfo
 
     class Config:
         from_attributes = True
@@ -64,7 +65,7 @@ class OrganizationContactInfo(BaseModel):
 
 class OrganizationAboutInfo(BaseModel):
     about: Optional[str] = None
-    established_science: Optional[str] = None
+    established_science: Optional[datetime] = None
     registration_number: Optional[str] = None
 
     class Config:
@@ -76,6 +77,7 @@ class OrganizationSettings(BaseModel):
     employee_code_prefix: Optional[str] = None
     inter_code_prefix: Optional[str] = None
     default_timezone: Optional[str] = None
+    default_dateformat: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -83,7 +85,7 @@ class OrganizationSettings(BaseModel):
 
 class OnboardingOrganization(BaseModel):
     general_info: OrganizationGeneralInfo
-    address: List[OrganizationAddress]
+    address: OrganizationAddress
     contact_info: List[OrganizationContactInfo]
     about_info: OrganizationAboutInfo
     organization_settings: OrganizationSettings
