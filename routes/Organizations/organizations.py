@@ -16,6 +16,7 @@ from Helper.helper import (
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
 )
+from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
     RegisterOrganizationInfo,
@@ -121,7 +122,9 @@ async def create_organization(
         email_data = {
             "recever_email": organization_info.primary_email,
             "subject": "hello from the test mail",
-            "body": f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}",
+            "body": VerifyEmailHtmlBody(
+                f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}"
+            ),
         }
 
         email_instance = EmailSchema(**email_data)
@@ -226,7 +229,9 @@ async def verify_organization(
             email_data = {
                 "recever_email": user_info.employee_email,
                 "subject": "hello from the test mail",
-                "body": f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}",
+                "body": VerifyEmailHtmlBody(
+                    f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}"
+                ),
             }
 
             email_instance = EmailSchema(**email_data)
@@ -273,7 +278,8 @@ async def onboard_organization(
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
-
+        organization_id = urlsafe_data_decoding_function(organization_id)
+        print(organization_id)
         organization = (
             db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
         )
@@ -285,6 +291,13 @@ async def onboard_organization(
                     "success": False,
                 },
             )
+
+        organization.status = data.status
+        organization.organization_created = True
+
+        db.commit()
+        db.refresh(organization)
+
         updated_general_info = update_model_data(
             db=db,
             model=Models.OrganizationGeneralInfo,
@@ -293,14 +306,25 @@ async def onboard_organization(
             updated_data=data.general_info,
         )
 
-        address_arr = []
-        for each_address in data.address:
-            address = cerate_model_instance(model=Models.OrganizationAddress, data=each_address)
-            address.organization_id = organization.id
-            db.add(address)
-            db.commit()
+        user_info = (
+            db.query(Models.EmployeeInfo)
+            .filter(Models.EmployeeInfo.employee_email == data.general_info.primary_email)
+            .first()
+        )
 
-            address_arr.append(address)
+        updated_user_info = cerate_model_instance(
+            model=Models.PersonalInfo,
+            data=data.employee_profile_info,
+        )
+
+        updated_user_info.user_id = user_info.user_id
+        db.add(updated_user_info)
+        db.commit()
+
+        address = cerate_model_instance(model=Models.OrganizationAddress, data=data.address)
+        address.organization_id = organization.id
+        db.add(address)
+        db.commit()
 
         contact_info_arr = []
 
@@ -328,14 +352,24 @@ async def onboard_organization(
             "message": f"successfully onboarded {data.general_info.organization_name} organization",
             "success": True,
             "organization": {
-                "general_info": model_to_filtered_dict(updated_general_info),
-                "address": [model_to_filtered_dict(_address) for _address in address_arr],
+                "status": organization.status,
+                "organization_created": organization.organization_created,
+                "general_info": model_to_filtered_dict(
+                    updated_general_info, ["-id", "-organization_id"]
+                ),
+                "address": model_to_filtered_dict(address, ["-id", "-organization_id"]),
                 "contact_info": [
-                    model_to_filtered_dict(_contact_info) for _contact_info in contact_info_arr
+                    model_to_filtered_dict(_contact_info, ["-id", "-organization_id"])
+                    for _contact_info in contact_info_arr
                 ],
-                "about_info": model_to_filtered_dict(about_info),
-                "organization_settings": model_to_filtered_dict(organization_settings),
+                "about_info": model_to_filtered_dict(about_info, ["-id", "-organization_id"]),
+                "organization_settings": model_to_filtered_dict(
+                    organization_settings, ["-id", "-organization_id"]
+                ),
             },
+            "updated_user_info": model_to_filtered_dict(
+                updated_user_info, ["-id", "-organization_id"]
+            ),
         }
 
     except HTTPException as http_exception:
