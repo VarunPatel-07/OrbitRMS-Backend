@@ -22,7 +22,7 @@ class Children(BaseModel):
 
 class EmergencyContact(BaseModel):
     __tablename__ = "emergency_contact"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     full_name = Column(String(255), nullable=False)
     contact_number = Column(String(255), nullable=False)
     user_id = Column(

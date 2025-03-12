@@ -8,6 +8,7 @@ from Database.Database import DATABASE_ENGINE, database
 from routes.auth.authentication import authRoutes
 from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.Organizations.organizations import orgRouter
+from routes.ImageUploadation.ImageUploadation import imgRoute
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
@@ -38,6 +39,7 @@ BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 app.include_router(authRoutes)
 app.include_router(orgRouter)
 app.include_router(countryApiRouter)
+app.include_router(imgRoute)
 
 
 # Basic health check route

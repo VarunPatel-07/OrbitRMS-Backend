@@ -84,7 +84,7 @@ class OrganizationSettings(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     email_domain_slug = Column(String(255), nullable=True, default=None)
     employee_code_prefix = Column(String(255), nullable=True, default=None)
-    inter_code_prefix = Column(String(255), nullable=True, default=None)
+    intern_code_prefix = Column(String(255), nullable=True, default=None)
     default_timezone = Column(String(255), nullable=True, default=None)
     default_dateformat = Column(String(255), nullable=True, default=None)
 
