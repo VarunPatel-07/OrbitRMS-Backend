@@ -1,8 +1,9 @@
 import cloudinary.uploader
-from fastapi import APIRouter, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, HTTPException, status, File, UploadFile, Depends
 from dotenv import load_dotenv
 import cloudinary
 import os
+from Middleware.verifyToken import verify_token
 
 load_dotenv(override=True)
 
@@ -20,13 +21,23 @@ imgRoute = APIRouter(prefix="/app/v1/uploadation", tags=["uploadation"])
 
 
 @imgRoute.post("/single-upload", status_code=status.HTTP_200_OK)
-async def ImageUploadation(file: UploadFile = File(...)):
+async def ImageUploadation(file: UploadFile = File(...), token: str = Depends(verify_token)):
     try:
+
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
         file_bytes = await file.read()
 
         result = cloudinary.uploader.upload(file_bytes, resource_type="image")
 
-        return {"url": result["secure_url"]}
+        return {"url": result["secure_url"], "success": True}
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:
