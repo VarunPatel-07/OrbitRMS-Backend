@@ -42,10 +42,12 @@ def create_jwt_token(data: dict, expires_date: timedelta = None) -> str:
 
 
 def verify_jwt_token(jwt_token: str) -> dict:
-    try:
-        request_payload = jwt.decode(jwt_token, JWT_SECRET, algorithms=[ALGORITHM])
-        return request_payload
-    except jwt.ExpiredSignatureError:
-        raise ValueError("Token has expired")
-    except jwt.InvalidTokenError:
-        raise ValueError("Invalid token")
+    # try:
+    request_payload = jwt.decode(jwt_token, JWT_SECRET, algorithms=[ALGORITHM])
+    return request_payload
+
+
+# except jwt.ExpiredSignatureError:
+#     raise ValueError("Token has expired")
+# except jwt.InvalidTokenError:
+#     raise ValueError("Invalid token")
