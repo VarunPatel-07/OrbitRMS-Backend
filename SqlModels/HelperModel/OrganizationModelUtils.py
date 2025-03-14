@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Date
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
@@ -38,6 +38,8 @@ class OrganizationAddress(BaseModel):
     city = Column(String(255), nullable=True, default=None)
     state = Column(String(255), nullable=True, default=None)
     zip_code = Column(String(255), nullable=True, default=None)
+    country = Column(String(255), nullable=True, default=None)
+    country_code = Column(String(255), nullable=True, default=None)
     organization_id = Column(
         CHAR(36),
         ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
@@ -51,6 +53,7 @@ class OrganizationContactInfo(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     phone_number = Column(String(255), nullable=True, default=None)
     company_email = Column(String(255), nullable=True, default=None)
+    country_info = Column(JSON, nullable=True)
 
     organization_id = Column(
         CHAR(36),
@@ -64,7 +67,7 @@ class OrganizationAboutInfo(BaseModel):
     __tablename__ = "organization_about_info"
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     about = Column(String(255), nullable=True, default=None)
-    established_science = Column(String(255), nullable=True, default=None)
+    established_science = Column(DateTime, nullable=True)
     registration_number = Column(String(255), nullable=True, default=None)
 
     organization_id = Column(
@@ -81,8 +84,9 @@ class OrganizationSettings(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     email_domain_slug = Column(String(255), nullable=True, default=None)
     employee_code_prefix = Column(String(255), nullable=True, default=None)
-    inter_code_prefix = Column(String(255), nullable=True, default=None)
+    intern_code_prefix = Column(String(255), nullable=True, default=None)
     default_timezone = Column(String(255), nullable=True, default=None)
+    default_dateformat = Column(String(255), nullable=True, default=None)
 
     organization_id = Column(
         CHAR(36),

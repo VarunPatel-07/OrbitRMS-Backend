@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from Database.Database import db_dependencies
 from Helper.createModelInstance import cerate_model_instance
-from Helper.helper import model_to_filtered_dict, urlsafe_data_decoding_function
+from Helper.helper import (
+    model_to_filtered_dict,
+    urlsafe_data_decoding_function,
+    urlsafe_data_encoding_function,
+)
 from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
 from Middleware.verifyToken import verify_token
 from PydanticModels.authentication.AuthenticationModels import CreatePassword, SignIn
@@ -183,7 +187,6 @@ async def create_password(
 ):
     try:
         decrypted_user_id = urlsafe_data_decoding_function(user_id)
-        print(decrypted_user_id)
 
         user = db.query(Models.User).filter(Models.User.id == decrypted_user_id).first()
 
@@ -265,11 +268,14 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
         sub = {"user_id": user.id}
         token = create_jwt_token(data=sub)
 
+        encrypted_org_id = urlsafe_data_encoding_function(organization.id)
+
         return {
             "message": "User Sign In Successfully",
             "success": True,
             "authenticationToken": token,
-            "organization": model_to_filtered_dict(organization),
+            "organization_created": organization.organization_created,
+            "organization_id": encrypted_org_id,
         }
 
     except HTTPException as http_exception:
@@ -287,9 +293,27 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
 @authRoutes.get(path="/verify-user", status_code=status.HTTP_200_OK)
 async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
     try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
         user_id = token["user_id"]
 
         user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Unable To Find User With This ID",
+                    "success": False,
+                },
+            )
 
         employee_info = (
             db.query(Models.EmployeeInfo).filter(Models.EmployeeInfo.user_id == user_id).first()
@@ -348,6 +372,8 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
                 },
             },
         }
+    except HTTPException as http_exception:
+        raise http_exception
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -62,8 +62,8 @@ class PersonalInfo(BaseModel):
     middle_name: Optional[str]
     last_name: str
     full_name: str
-    profile_picture: Optional[HttpUrl]
-    profile_picture_bg: Optional[HttpUrl]
+    profile_picture: Optional[str]
+    profile_picture_bg: Optional[str]
     gender: str
     date_of_birth: datetime
     blood_group: str

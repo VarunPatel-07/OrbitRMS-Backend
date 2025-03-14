@@ -38,7 +38,7 @@ def email_sender_function(email_data: EmailSchema, background_task: BackgroundTa
             subject=email_data.subject,
             recipients=[email_data.recever_email],
             body=email_data.body,
-            subtype="plain",
+            subtype="html",
         )
 
         # create fast mail instance
