@@ -9,6 +9,7 @@ from routes.auth.authentication import authRoutes
 from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.Organizations.organizations import orgRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
+from routes.ConfigModule.ConfigModule import configRoute
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
@@ -40,6 +41,7 @@ app.include_router(authRoutes)
 app.include_router(orgRouter)
 app.include_router(countryApiRouter)
 app.include_router(imgRoute)
+app.include_router(configRoute)
 
 
 # Basic health check route
