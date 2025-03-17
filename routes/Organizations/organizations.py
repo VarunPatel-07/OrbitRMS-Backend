@@ -117,6 +117,12 @@ async def create_organization(
         db.commit()
         db.refresh(organization)
 
+        config_module = Models.ConfigModule()
+        config_module.organization_id = create_org.id
+        db.add(config_module)
+        db.commit()
+        db.refresh(config_module)
+
         encrypted_org_id = urlsafe_data_encoding_function(create_org.id)
 
         email_data = {
