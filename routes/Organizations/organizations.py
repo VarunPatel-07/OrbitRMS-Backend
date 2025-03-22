@@ -39,7 +39,6 @@ async def create_organization(
     background_task: BackgroundTasks,
 ):
     try:
-        print(organization_info.primary_email.split("@"))
         find_organization = (
             db.query(Models.OrganizationGeneralInfo)
             .filter(Models.OrganizationGeneralInfo.primary_email == organization_info.primary_email)
@@ -138,7 +137,9 @@ async def create_organization(
         send_mail = email_sender_function(email_instance, background_task)
 
         return {
-            "message": "organization Created SuccessFully",
+            "success": True,
+            "title": "Organization Created",
+            "message": f"Your organization has been successfully created. A confirmation email with further details has been sent to {user_employee_info.employee_email}. Please check your inbox and follow the instructions to complete the setup.",
             "email_status": send_mail,
         }
     except HTTPException as http_exception:

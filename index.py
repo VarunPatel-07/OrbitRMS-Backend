@@ -13,12 +13,12 @@ from routes.ConfigModule.ConfigModule import configRoute
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
-    title="Your API Title",
+    title="OrbitRMS",
     description="Detailed API description.",
     version="1.0.0",
     contact={
-        "name": "Your Name",
-        "email": "your.email@example.com",
+        "name": "Varun Patel",
+        "email": "varunspatelo7@gmail.com",
     },
 )
 
