@@ -8,3 +8,7 @@ class ProjectStatus(BaseModel):
 
 class AttachmentType(BaseModel):
     attachment_name: str
+
+
+class Designations(BaseModel):
+    designations_name: str

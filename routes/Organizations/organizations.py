@@ -8,6 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from sqlalchemy.sql import func
 
 from Database.Database import db_dependencies
+from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
@@ -16,7 +17,6 @@ from Helper.helper import (
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
 )
-from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
     RegisterOrganizationInfo,

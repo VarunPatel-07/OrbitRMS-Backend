@@ -1,8 +1,10 @@
-import cloudinary.uploader
-from fastapi import APIRouter, HTTPException, status, File, UploadFile, Depends
-from dotenv import load_dotenv
-import cloudinary
 import os
+
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+
 from Middleware.verifyToken import verify_token
 
 load_dotenv(override=True)

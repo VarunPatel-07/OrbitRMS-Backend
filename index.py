@@ -6,10 +6,10 @@ from Database.Database import DATABASE_ENGINE, database
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
-from routes.CountryInfo.CountryInfo import countryApiRouter
-from routes.Organizations.organizations import orgRouter
-from routes.ImageUploadation.ImageUploadation import imgRoute
 from routes.ConfigModule.ConfigModule import configRoute
+from routes.CountryInfo.CountryInfo import countryApiRouter
+from routes.ImageUploadation.ImageUploadation import imgRoute
+from routes.Organizations.organizations import orgRouter
 from SqlModels.Models import BaseModel
 
 app = FastAPI(

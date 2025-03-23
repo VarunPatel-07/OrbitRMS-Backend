@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jwt import ExpiredSignatureError, InvalidTokenError
 
 from Helper.jwtHelper import verify_jwt_token
-from jwt import ExpiredSignatureError, InvalidTokenError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/app/v1/auth/login")
 

@@ -1,14 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
 import json
 from typing import Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
+
 from Database.Database import db_dependencies
-from PydanticModels.ConfigModule.ConfigModule import ProjectStatus, AttachmentType
-from Middleware.verifyToken import verify_token
-from SqlModels import Models
 from Helper.createModelInstance import cerate_model_instance
 from Helper.helper import model_to_filtered_dict
-
+from Middleware.verifyToken import verify_token
+from PydanticModels.ConfigModule.ConfigModule import (
+    AttachmentType,
+    Designations,
+    ProjectStatus,
+)
+from SqlModels import Models
 
 configRoute = APIRouter(prefix="/app/v1/config", tags=["config"])
 
@@ -35,7 +40,7 @@ async def project_status_function(
 
         if type not in ["add", "edit"]:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
                     "message": "Invalid type. Must be 'add' or 'edit'",
                     "success": False,
@@ -74,6 +79,23 @@ async def project_status_function(
                     },
                 )
 
+            existing_status = (
+                db.query(Models.ProjectStatus)
+                .filter(
+                    func.lower(Models.ProjectStatus.status_name) == func.lower(data.status_name)
+                )
+                .first()
+            )
+
+            if existing_status:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Project Status With This Name Is Already Exist",
+                        "success": False,
+                    },
+                )
+
             created_by_user = model_to_filtered_dict(
                 personal_info, ["id", "first_name", "last_name"]
             )
@@ -102,6 +124,24 @@ async def project_status_function(
                     },
                 )
 
+            existing_status = (
+                db.query(Models.ProjectStatus)
+                .filter(
+                    func.lower(Models.ProjectStatus.status_name) == func.lower(data.status_name),
+                    Models.ProjectStatus.id != id,
+                )
+                .first()
+            )
+
+            if existing_status:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Project Status With This Name Is Already Exist",
+                        "success": False,
+                    },
+                )
+
             project_status = (
                 db.query(Models.ProjectStatus).filter(Models.ProjectStatus.id == id).first()
             )
@@ -114,6 +154,7 @@ async def project_status_function(
                         "success": False,
                     },
                 )
+
             updated_by_user = model_to_filtered_dict(
                 personal_info, ["id", "first_name", "last_name"]
             )
@@ -185,7 +226,10 @@ async def fetch_project_status(db: db_dependencies, token: str = Depends(verify_
         return {
             "success": True,
             "message": "Project Status Fetched Successfully",
-            "data": [each_project_status for each_project_status in project_status],
+            "data": [
+                model_to_filtered_dict(each_project_status)
+                for each_project_status in project_status
+            ],
         }
 
     except HTTPException as http_exception:
@@ -276,7 +320,7 @@ async def add_edit_attachment_type(
 
         if type not in ["add", "edit"]:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
                     "message": "Invalid type. Must be 'add' or 'edit'",
                     "success": False,
@@ -315,6 +359,24 @@ async def add_edit_attachment_type(
                     },
                 )
 
+            existing_attachment_type = (
+                db.query(Models.AttachmentType)
+                .filter(
+                    func.lower(Models.AttachmentType.attachment_name)
+                    == func.lower(data.attachment_name)
+                )
+                .first()
+            )
+
+            if existing_attachment_type:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Attachment With This Name Is Already Exist",
+                        "success": False,
+                    },
+                )
+
             created_by_user = model_to_filtered_dict(
                 personal_info, ["id", "first_name", "last_name"]
             )
@@ -339,6 +401,25 @@ async def add_edit_attachment_type(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "message": "ID is required for edit operation",
+                        "success": False,
+                    },
+                )
+
+            existing_attachment_type = (
+                db.query(Models.AttachmentType)
+                .filter(
+                    func.lower(Models.AttachmentType.attachment_name)
+                    == func.lower(data.attachment_name),
+                    Models.AttachmentType.id != id,
+                )
+                .first()
+            )
+
+            if existing_attachment_type:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Attachment With This Name Is Already Exist",
                         "success": False,
                     },
                 )
@@ -422,7 +503,10 @@ async def fetch_all_attachment_type(db: db_dependencies, token: str = Depends(ve
         return {
             "success": True,
             "message": "Attachment Type Fetched Successfully",
-            "data": [each_attachment_type for each_attachment_type in attachment_type],
+            "data": [
+                model_to_filtered_dict(each_attachment_type)
+                for each_attachment_type in attachment_type
+            ],
         }
 
     except HTTPException as http_exception:
@@ -480,10 +564,278 @@ async def delete_attachment_type(
                 },
             )
 
+        db.delete(attachment_type)
         db.commit()
-        db.refresh(attachment_type)
 
         return {"success": True, "message": "Attachment Deleted Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Delete Status Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.post(path="/designations/add-edit", status_code=status.HTTP_200_OK)
+async def add_edit_designations(
+    db: db_dependencies,
+    data: Designations,
+    token: str = Depends(verify_token),
+    type: str = Query(..., description="type Should be 'add' , 'edit'"),
+    id: Optional[str] = Query(None, description="ID for edit operation"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        if type not in ["add", "edit"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={
+                    "message": "Invalid type. Must be 'add' or 'edit'",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "User Not Found", "success": False},
+            )
+
+        personal_info = (
+            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
+
+        if type == "add":
+
+            config_module = (
+                db.query(Models.ConfigModule)
+                .filter(Models.ConfigModule.organization_id == user.organization_id)
+                .first()
+            )
+
+            if not config_module:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"message": "Config Module Not Found", "success": False},
+                )
+
+            existing_designations = (
+                db.query(Models.Designations)
+                .filter(
+                    func.lower(Models.Designations.designations_name)
+                    == func.lower(data.designations_name)
+                )
+                .first()
+            )
+
+            if existing_designations:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Designations Is Already Exist",
+                        "success": False,
+                    },
+                )
+
+            created_by_user = model_to_filtered_dict(
+                personal_info, ["id", "first_name", "last_name"]
+            )
+
+            designations = Models.Designations(
+                designations_name=data.designations_name,
+                source_type="user_created",
+                config_module_id=config_module.id,
+                created_by=json.dumps(created_by_user),
+                updated_by=None,
+            )
+
+            db.add(designations)
+            db.commit()
+            db.refresh(designations)
+
+            return {"success": True, "message": "Designation Added Successfully"}
+
+        else:
+            if type == "edit" and not id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "ID is required for edit operation",
+                        "success": False,
+                    },
+                )
+
+            existing_designations = (
+                db.query(Models.Designations)
+                .filter(
+                    func.lower(Models.Designations.designations_name)
+                    == func.lower(data.designations_name)
+                )
+                .first()
+            )
+
+            if existing_designations:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Attachment With This Name Is Already Exist",
+                        "success": False,
+                    },
+                )
+
+            designations = (
+                db.query(Models.Designations).filter(Models.Designations.id == id).first()
+            )
+
+            if not designations:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"message": "Designation Not Found", "success": False},
+                )
+
+            updated_by_user = model_to_filtered_dict(
+                personal_info, ["id", "first_name", "last_name"]
+            )
+
+            designations.designations_name = data.designations_name
+            designations.updated_by = json.dumps(updated_by_user)
+
+            db.commit()
+            db.refresh(designations)
+
+            return {"success": True, "message": "Designation Updated Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Add , Edit Designation Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.get(path="/designations/fetch", status_code=status.HTTP_200_OK)
+async def fetch_all_designations(db: db_dependencies, token: str = Depends(verify_token)):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "User Not Found", "success": False},
+            )
+
+        config_module = (
+            db.query(Models.ConfigModule)
+            .filter(Models.ConfigModule.organization_id == user.organization_id)
+            .first()
+        )
+
+        if not config_module:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Config Module Not Found",
+                    "success": False,
+                },
+            )
+
+        designations = db.query(Models.Designations).filter(
+            Models.Designations.config_module_id == config_module.id
+        )
+
+        return {
+            "message": "Designation Fetched Successfully",
+            "success": True,
+            "data": [model_to_filtered_dict(each_designation) for each_designation in designations],
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Fetch Designation Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.delete(path="/designations/delete", status_code=status.HTTP_200_OK)
+async def delete_designation(
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    id: str = Query(..., description="ID for delete operation"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "User Not Found",
+                    "success": False,
+                },
+            )
+        designations = db.query(Models.Designations).filter(Models.Designations.id == id).first()
+
+        if not designations:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Designation Not Found", "success": False},
+            )
+
+        db.delete(designations)
+        db.commit()
+
+        return {"success": True, "message": "Designation Deleted Successfully"}
 
     except HTTPException as http_exception:
         raise http_exception
