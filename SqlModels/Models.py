@@ -6,6 +6,11 @@ from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
 from Database.Database import BaseModel
+from SqlModels.HelperModel.ConfigModelUtils import (
+    AttachmentType,
+    Designations,
+    ProjectStatus,
+)
 from SqlModels.HelperModel.OrganizationModelUtils import (
     OrganizationAboutInfo,
     OrganizationAddress,
@@ -23,7 +28,6 @@ from SqlModels.HelperModel.UserModelUtils import (
     PersonalInfo,
     SocialLinks,
 )
-from SqlModels.HelperModel.ConfigModelUtils import ProjectStatus, AttachmentType, Designations
 
 
 class User(BaseModel):

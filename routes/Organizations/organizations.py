@@ -8,6 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from sqlalchemy.sql import func
 
 from Database.Database import db_dependencies
+from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
@@ -16,7 +17,6 @@ from Helper.helper import (
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
 )
-from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
     RegisterOrganizationInfo,
@@ -39,7 +39,6 @@ async def create_organization(
     background_task: BackgroundTasks,
 ):
     try:
-        print(organization_info.primary_email.split("@"))
         find_organization = (
             db.query(Models.OrganizationGeneralInfo)
             .filter(Models.OrganizationGeneralInfo.primary_email == organization_info.primary_email)
@@ -138,7 +137,9 @@ async def create_organization(
         send_mail = email_sender_function(email_instance, background_task)
 
         return {
-            "message": "organization Created SuccessFully",
+            "success": True,
+            "title": "Organization Created",
+            "message": f"Your organization has been successfully created. A confirmation email with further details has been sent to {user_employee_info.employee_email}. Please check your inbox and follow the instructions to complete the setup.",
             "email_status": send_mail,
         }
     except HTTPException as http_exception:

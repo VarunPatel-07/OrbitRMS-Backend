@@ -1,12 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, Enum
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, String
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
 from SqlModels.Models import BaseModel
-
 
 
 class ProjectStatus(BaseModel):
@@ -15,6 +14,9 @@ class ProjectStatus(BaseModel):
 
     status_name = Column(String(255), nullable=False)
     source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
+    status_color = Column(String(255), nullable=False)
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
     config_module_id = Column(
         CHAR(36),
         ForeignKey("config_module.id", ondelete="CASCADE", onupdate="CASCADE"),
@@ -24,9 +26,9 @@ class ProjectStatus(BaseModel):
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
+        default=None,
         onupdate=datetime.now(timezone.utc),
-        nullable=False,
+        nullable=True,
     )
 
 
@@ -42,12 +44,14 @@ class AttachmentType(BaseModel):
         nullable=False,
     )
     config_module = relationship("ConfigModule", back_populates="attachment_type")
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
+        default=None,
         onupdate=datetime.now(timezone.utc),
-        nullable=False,
+        nullable=True,
     )
 
 
@@ -63,10 +67,12 @@ class Designations(BaseModel):
         nullable=False,
     )
     config_module = relationship("ConfigModule", back_populates="designations")
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
+        default=None,
         onupdate=datetime.now(timezone.utc),
-        nullable=False,
+        nullable=True,
     )
