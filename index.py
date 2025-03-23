@@ -6,18 +6,19 @@ from Database.Database import DATABASE_ENGINE, database
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
+from routes.ConfigModule.ConfigModule import configRoute
 from routes.CountryInfo.CountryInfo import countryApiRouter
-from routes.Organizations.organizations import orgRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
+from routes.Organizations.organizations import orgRouter
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
-    title="Your API Title",
+    title="OrbitRMS",
     description="Detailed API description.",
     version="1.0.0",
     contact={
-        "name": "Your Name",
-        "email": "your.email@example.com",
+        "name": "Varun Patel",
+        "email": "varunspatelo7@gmail.com",
     },
 )
 
@@ -40,6 +41,7 @@ app.include_router(authRoutes)
 app.include_router(orgRouter)
 app.include_router(countryApiRouter)
 app.include_router(imgRoute)
+app.include_router(configRoute)
 
 
 # Basic health check route
