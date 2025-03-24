@@ -59,8 +59,7 @@ async def create_organization(
                 detail={
                     "message": "The Provided Email Domain Is Already In Use",
                     "success": False,
-                    "owner_email": find_organization.primary_email,
-                    "tttsss": check_for_the_email_domain.organization_id,
+                    "owner_email": find_organization.primary_email if find_organization else None,
                 },
             )
 
