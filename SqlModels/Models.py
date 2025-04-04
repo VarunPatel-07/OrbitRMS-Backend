@@ -10,6 +10,9 @@ from SqlModels.HelperModel.ConfigModelUtils import (
     AttachmentType,
     Designations,
     ProjectStatus,
+    ConfigRoleModule,
+    RoleAssociatedPermissionModule,
+    PermissionModule,
 )
 from SqlModels.HelperModel.OrganizationModelUtils import (
     OrganizationAboutInfo,
@@ -102,6 +105,10 @@ class ConfigModule(BaseModel):
     )
     designations = relationship(
         "Designations", back_populates="config_module", cascade="all, delete"
+    )
+
+    roles_and_permissions = relationship(
+        "ConfigRoleModule", back_populates="config_module", cascade="all, delete"
     )
 
     organization_id = Column(

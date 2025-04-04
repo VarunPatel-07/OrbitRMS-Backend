@@ -1,0 +1,147 @@
+{
+  "message": "Role fetched successfully",
+  "success": true,
+  "data": {
+    "id": "8951bed1-ad41-4659-bb7b-3e6005659574",
+    "role_name": "test_role_developer",
+    "description": "Test role with full permissions",
+    "source_type": "default",
+    "modules": [
+      {
+        "id": "0e0284b9-dafc-4926-9dd8-68f46be217a9",
+        "module_label": "test_reports",
+        "module_title": "Test Reports",
+        "is_active": true,
+        "permissions": [
+          {
+            "id": "9b94639a-79ac-4ac2-b906-0cd0fcbc0218",
+            "label": "view",
+            "is_allowed": true,
+            "show_input": true
+          },
+          {
+            "id": "cad15561-ce53-4a53-93f7-b5d4999541f5",
+            "label": "generate",
+            "is_allowed": true,
+            "show_input": true
+          }
+        ],
+        "sub_modules": []
+      },
+      {
+        "id": "da3c11d7-ea62-4dc9-a482-6d6f4aa5cb87",
+        "module_label": "test_config",
+        "module_title": "Test Configuration",
+        "is_active": true,
+        "permissions": [
+          {
+            "id": "5aaba1c6-996d-4f4f-9d49-ef448bf0b08b",
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "id": "92b52b63-2732-410e-8725-51f15a0612c2",
+            "label": "delete",
+            "is_allowed": false,
+            "show_input": false
+          },
+          {
+            "id": "c5b84fd3-197c-495c-827c-e8821c7053e6",
+            "label": "view",
+            "is_allowed": true,
+            "show_input": true
+          }
+        ],
+        "sub_modules": [
+          {
+            "id": "df12c316-914c-4885-be89-e5e6f990e592",
+            "module_label": "test_user_management",
+            "module_title": "Test User Management",
+            "is_active": true,
+            "permissions": [
+              {
+                "id": "78108d53-fa5c-4d3b-ac22-faf758793d30",
+                "label": "create",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "id": "b43c0c52-30bc-4c28-9439-e40977daabde",
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "id": "e85ebf18-2faf-4c1c-95df-7aa0a74b2ac3",
+                "label": "edit",
+                "is_allowed": false,
+                "show_input": false
+              }
+            ],
+            "sub_modules": [
+              {
+                "id": "49cbbadb-27a5-4f93-997e-719034a0900d",
+                "module_label": "test_roles",
+                "module_title": "Test Roles",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "id": "60786d14-daa9-4307-95b5-616c2f2d2b05",
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  }
+                ],
+                "sub_modules": []
+              }
+            ]
+          },
+          {
+            "id": "ff80e271-d7ef-4bac-b292-6a9b4e443e34",
+            "module_label": "test_project_status",
+            "module_title": "Test Project Status",
+            "is_active": true,
+            "permissions": [
+              {
+                "id": "6ca2848a-026e-4800-ad82-9688d81174b6",
+                "label": "update",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "id": "83ddd949-0226-42e8-8b39-5fae2e3ab6c7",
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": [
+              {
+                "id": "ddbfe212-57c8-4a4d-b58e-49e455f26b40",
+                "module_label": "test_settings",
+                "module_title": "Test Settings",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "id": "52a0010b-ea1a-4e5c-9931-5d83e3656cb2",
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "id": "68c0c4db-9751-4b43-9660-c1d273cc93dd",
+                    "label": "configure",
+                    "is_allowed": true,
+                    "show_input": true
+                  }
+                ],
+                "sub_modules": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

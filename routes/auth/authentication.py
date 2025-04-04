@@ -12,171 +12,173 @@ from Middleware.verifyToken import verify_token
 from PydanticModels.authentication.AuthenticationModels import CreatePassword, SignIn
 from PydanticModels.UserModels import User
 from SqlModels import Models
+from sqlalchemy.orm import joinedload
 
 authRoutes = APIRouter(prefix="/app/v1/auth", tags=["auth"])
 
 
-@authRoutes.post(path="/add-employee", status_code=status.HTTP_201_CREATED)
-async def add_employee(db: db_dependencies, user: User):
-    try:
-        find_user = (
-            db.query(Models.EmployeeInfo)
-            .filter(Models.EmployeeInfo.employee_email == user.employee_info.employee_email)
-            .first()
-        )
+# todo : we have to complete it
+# @authRoutes.post(path="/add-employee", status_code=status.HTTP_201_CREATED)
+# async def add_employee(db: db_dependencies, user: User):
+#     try:
+#         find_user = (
+#             db.query(Models.EmployeeInfo)
+#             .filter(Models.EmployeeInfo.employee_email == user.employee_info.employee_email)
+#             .first()
+#         )
 
-        if find_user:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "message": "User With This Mail Already Exists",
-                    "success": False,
-                },
-            )
+#         if find_user:
+#             raise HTTPException(
+#                 status_code=status.HTTP_403_FORBIDDEN,
+#                 detail={
+#                     "message": "User With This Mail Already Exists",
+#                     "success": False,
+#                 },
+#             )
 
-        hashed_password = hash_passwords("Orbit@1234")
+#         hashed_password = hash_passwords("Orbit@1234")
 
-        created_user = Models.User(password=hashed_password)
-        db.add(created_user)
-        db.commit()
+#         created_user = Models.User(password=hashed_password)
+#         db.add(created_user)
+#         db.commit()
 
-        personal_info = cerate_model_instance(model=Models.PersonalInfo, data=user.personal_info)
-        personal_info.user_id = created_user.id
+#         personal_info = cerate_model_instance(model=Models.PersonalInfo, data=user.personal_info)
+#         personal_info.user_id = created_user.id
 
-        employee_info = cerate_model_instance(
-            model=Models.EmployeeInfo,
-            data=user.employee_info,
-        )
-        employee_info.user_id = created_user.id
+#         employee_info = cerate_model_instance(
+#             model=Models.EmployeeInfo,
+#             data=user.employee_info,
+#         )
+#         employee_info.user_id = created_user.id
 
-        personal_contact_info = cerate_model_instance(
-            model=Models.PersonalContactInfo,
-            data=user.personal_contact_info,
-        )
-        personal_contact_info.user_id = created_user.id
+#         personal_contact_info = cerate_model_instance(
+#             model=Models.PersonalContactInfo,
+#             data=user.personal_contact_info,
+#         )
+#         personal_contact_info.user_id = created_user.id
 
-        family_info = None
+#         family_info = None
 
-        children_arr = []
-        if user.family_info.children:
-            family_info = Models.FamilyInfo(
-                father_name=user.family_info.father_name,
-                mother_name=user.family_info.mother_name,
-                marital_status=user.family_info.marital_status,
-                children=children_arr,  # Initial empty children list
-            )
-            family_info.user_id = created_user.id
+#         children_arr = []
+#         if user.family_info.children:
+#             family_info = Models.FamilyInfo(
+#                 father_name=user.family_info.father_name,
+#                 mother_name=user.family_info.mother_name,
+#                 marital_status=user.family_info.marital_status,
+#                 children=children_arr,  # Initial empty children list
+#             )
+#             family_info.user_id = created_user.id
 
-            db.add(family_info)
-            db.commit()
-            children_arr = [
-                Models.Children(
-                    name=child.name,
-                    gender=child.gender,
-                    date_of_birth=child.date_of_birth,
-                    family_id=family_info.id,  # Set the family_id for each child
-                )
-                for child in user.family_info.children
-            ]
-        else:
-            family_info = Models.FamilyInfo(
-                father_name=user.family_info.father_name,
-                mother_name=user.family_info.mother_name,
-                marital_status=user.family_info.marital_status,
-                children=children_arr,  # Initial empty children list
-            )
-            family_info.user_id = created_user.id
+#             db.add(family_info)
+#             db.commit()
+#             children_arr = [
+#                 Models.Children(
+#                     name=child.name,
+#                     gender=child.gender,
+#                     date_of_birth=child.date_of_birth,
+#                     family_id=family_info.id,  # Set the family_id for each child
+#                 )
+#                 for child in user.family_info.children
+#             ]
+#         else:
+#             family_info = Models.FamilyInfo(
+#                 father_name=user.family_info.father_name,
+#                 mother_name=user.family_info.mother_name,
+#                 marital_status=user.family_info.marital_status,
+#                 children=children_arr,  # Initial empty children list
+#             )
+#             family_info.user_id = created_user.id
 
-            db.add(family_info)
-            db.commit()
+#             db.add(family_info)
+#             db.commit()
 
-        address_info = cerate_model_instance(model=Models.Address, data=user.address, fields=[])
-        address_info.user_id = created_user.id
+#         address_info = cerate_model_instance(model=Models.Address, data=user.address, fields=[])
+#         address_info.user_id = created_user.id
 
-        emergency_contact = [
-            Models.EmergencyContact(
-                full_name=contact.full_name,
-                contact_number=contact.contact_number,
-                user_id=created_user.id,
-            )
-            for contact in user.emergency_contact
-        ]
+#         emergency_contact = [
+#             Models.EmergencyContact(
+#                 full_name=contact.full_name,
+#                 contact_number=contact.contact_number,
+#                 user_id=created_user.id,
+#             )
+#             for contact in user.emergency_contact
+#         ]
 
-        social_link = [
-            Models.SocialLinks(
-                icon=link.icon, name=link.name, link=link.link, user_id=created_user.id
-            )
-            for link in user.social_link
-        ]
+#         social_link = [
+#             Models.SocialLinks(
+#                 icon=link.icon, name=link.name, link=link.link, user_id=created_user.id
+#             )
+#             for link in user.social_link
+#         ]
 
-        children = []
-        if user.family_info.children:
-            children = [
-                {
-                    "name": child.name,
-                    "gender": child.gender,
-                    "date_of_birth": child.date_of_birth,
-                }
-                for child in children_arr
-            ]
+#         children = []
+#         if user.family_info.children:
+#             children = [
+#                 {
+#                     "name": child.name,
+#                     "gender": child.gender,
+#                     "date_of_birth": child.date_of_birth,
+#                 }
+#                 for child in children_arr
+#             ]
 
-        emergency_contacts = [
-            {"full_name": item.full_name, "contact_number": item.contact_number}
-            for item in emergency_contact
-        ]
-        social_links = [
-            {"icon": item.icon, "name": item.name, "link": item.link} for item in social_link
-        ]
+#         emergency_contacts = [
+#             {"full_name": item.full_name, "contact_number": item.contact_number}
+#             for item in emergency_contact
+#         ]
+#         social_links = [
+#             {"icon": item.icon, "name": item.name, "link": item.link} for item in social_link
+#         ]
 
-        db.add(employee_info)
-        db.add(personal_info)
-        db.add(personal_contact_info)
-        db.add(address_info)
-        for child in children_arr:
-            db.add()(child)
-        for contact in emergency_contact:
-            db.add(contact)
-        for link in social_link:
-            db.add(link)
-        db.commit()
+#         db.add(employee_info)
+#         db.add(personal_info)
+#         db.add(personal_contact_info)
+#         db.add(address_info)
+#         for child in children_arr:
+#             db.add()(child)
+#         for contact in emergency_contact:
+#             db.add(contact)
+#         for link in social_link:
+#             db.add(link)
+#         db.commit()
 
-        user_info = {
-            "password": created_user.password,
-            "personal_info": model_to_filtered_dict(personal_info),
-            "employee_info": model_to_filtered_dict(employee_info),
-            "personal_contact_info": model_to_filtered_dict(personal_contact_info),
-            "family_info": {
-                "father_name": family_info.father_name,
-                "mother_name": family_info.mother_name,
-                "marital_status": family_info.marital_status,
-                "children": children,
-            },
-            "address_info": model_to_filtered_dict(address_info),
-            "emergency_contact": emergency_contacts,
-            "social_link": social_links,
-        }
+#         user_info = {
+#             "password": created_user.password,
+#             "personal_info": model_to_filtered_dict(personal_info),
+#             "employee_info": model_to_filtered_dict(employee_info),
+#             "personal_contact_info": model_to_filtered_dict(personal_contact_info),
+#             "family_info": {
+#                 "father_name": family_info.father_name,
+#                 "mother_name": family_info.mother_name,
+#                 "marital_status": family_info.marital_status,
+#                 "children": children,
+#             },
+#             "address_info": model_to_filtered_dict(address_info),
+#             "emergency_contact": emergency_contacts,
+#             "social_link": social_links,
+#         }
 
-        # JWT token creation
-        token_data = {"sub": created_user.id}
-        token = create_jwt_token(data=token_data)
+#         # JWT token creation
+#         token_data = {"sub": created_user.id}
+#         token = create_jwt_token(data=token_data)
 
-        return {
-            "message": "The User Is Registered Successfully",
-            "token": token,
-            "success": True,
-            "user_info": user_info,
-        }
-    except HTTPException as http_exception:
-        raise http_exception
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Error Accrued While Adding Employee",
-                "success": False,
-                "error": str(e),
-            },
-        )
+#         return {
+#             "message": "The User Is Registered Successfully",
+#             "token": token,
+#             "success": True,
+#             "user_info": user_info,
+#         }
+#     except HTTPException as http_exception:
+#         raise http_exception
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail={
+#                 "message": "Error Accrued While Adding Employee",
+#                 "success": False,
+#                 "error": str(e),
+#             },
+#         )
 
 
 @authRoutes.post(path="/create-password", status_code=status.HTTP_201_CREATED)
@@ -304,7 +306,21 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        user = (
+            db.query(Models.User)
+            .options(
+                joinedload(Models.User.employee_info),
+                joinedload(Models.User.organization).joinedload(Models.Organization.general_info),
+                joinedload(Models.User.organization).joinedload(Models.Organization.address),
+                joinedload(Models.User.organization).joinedload(Models.Organization.contact_info),
+                joinedload(Models.User.organization).joinedload(Models.Organization.about_info),
+                joinedload(Models.User.organization).joinedload(
+                    Models.Organization.organization_settings
+                ),
+            )
+            .filter(Models.User.id == user_id)
+            .first()
+        )
 
         if not user:
             raise HTTPException(
@@ -315,56 +331,24 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
                 },
             )
 
-        employee_info = (
-            db.query(Models.EmployeeInfo).filter(Models.EmployeeInfo.user_id == user_id).first()
-        )
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
-        organization_general_info = (
-            db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.organization_id == user.organization_id)
-            .first()
-        )
-        organization_address = (
-            db.query(Models.OrganizationAddress)
-            .filter(Models.OrganizationAddress.organization_id == user.organization_id)
-            .first()
-        )
+        organization = user.organization
 
-        organization_contact_info = (
-            db.query(Models.OrganizationContactInfo)
-            .filter(Models.OrganizationContactInfo.organization_id == user.organization_id)
-            .first()
-        )
-
-        organization_about_info = (
-            db.query(Models.OrganizationAboutInfo)
-            .filter(Models.OrganizationAboutInfo.organization_id == user.organization_id)
-            .first()
-        )
-
-        organization_settings = (
-            db.query(Models.OrganizationSettings)
-            .filter(Models.OrganizationSettings.organization_id == user.organization_id)
-            .first()
-        )
         return {
             "message": "user verified successfully",
             "success": True,
             "data": {
                 "user": {
-                    "employee_info": model_to_filtered_dict(employee_info),
+                    "employee_info": model_to_filtered_dict(user.employee_info[0]),
                 },
                 "organization": {
                     "id": organization.id,
-                    "general_info": model_to_filtered_dict(organization_general_info),
-                    "address": model_to_filtered_dict(organization_address),
-                    "contact_info": model_to_filtered_dict(organization_contact_info),
-                    "about_info": model_to_filtered_dict(organization_about_info),
-                    "organization_settings": model_to_filtered_dict(organization_settings),
+                    "general_info": model_to_filtered_dict(organization.general_info),
+                    "address": model_to_filtered_dict(organization.address[0]),
+                    "contact_info": organization.contact_info,
+                    "about_info": model_to_filtered_dict(organization.about_info[0]),
+                    "organization_settings": model_to_filtered_dict(
+                        organization.organization_settings[0]
+                    ),
                     "status": organization.status,
                     "organization_created": organization.organization_created,
                     "created_at": organization.created_at,
