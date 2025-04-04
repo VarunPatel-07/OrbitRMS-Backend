@@ -24,12 +24,20 @@ from PydanticModels.Organizations.organizations import (
 )
 from SqlModels import Models
 
+
+from BackgroundDataHandler.initialDataSeeder import (
+    roles_permission_initial_data_seeder_function,
+    designation_initial_data_seeder,
+    project_status_initial_data_seeder,
+    attachment_type_initial_data_seeder,
+)
+
 load_dotenv(override=True)
 
 orgRouter = APIRouter(prefix="/app/v1/organization", tags=["organization"])
 
 
-FRONTEND_URL = os.getenv("FRONTEND_URL").encode()
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
 
 
 @orgRouter.post("/sign-up", status_code=status.HTTP_201_CREATED)
@@ -114,12 +122,6 @@ async def create_organization(
         db.add(organization)
         db.commit()
         db.refresh(organization)
-
-        config_module = Models.ConfigModule()
-        config_module.organization_id = create_org.id
-        db.add(config_module)
-        db.commit()
-        db.refresh(config_module)
 
         encrypted_org_id = urlsafe_data_encoding_function(create_org.id)
 
@@ -243,6 +245,19 @@ async def verify_organization(
             email_instance = EmailSchema(**email_data)
 
             email_sender_function(email_instance, background_task)
+
+            config_module = Models.ConfigModule()
+            config_module.organization_id = decrypted_data
+            db.add(config_module)
+            db.commit()
+            db.refresh(config_module)
+
+            background_task.add_task(
+                roles_permission_initial_data_seeder_function, db, decrypted_data
+            )
+            background_task.add_task(designation_initial_data_seeder, db, decrypted_data)
+            background_task.add_task(attachment_type_initial_data_seeder, db, decrypted_data)
+            background_task.add_task(project_status_initial_data_seeder, db, decrypted_data)
 
             return {
                 "message": "Organization Is Verified Successfully",
