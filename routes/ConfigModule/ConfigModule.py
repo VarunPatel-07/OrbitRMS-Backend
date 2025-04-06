@@ -978,7 +978,79 @@ async def add_role_permission(
         )
 
 
-@configRoute.get("/roles_permissions/fetch", status_code=status.HTTP_200_OK)
+@configRoute.get("/roles_permissions/fetch-all", status_code=status.HTTP_200_OK)
+async def fetch_all_role_of_organization(
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+):
+
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "User Not Found",
+                    "success": False,
+                },
+            )
+
+        config_module = (
+            db.query(Models.ConfigModule)
+            .filter(Models.ConfigModule.organization_id == user.organization_id)
+            .first()
+        )
+
+        if not config_module:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Config Module Not Found",
+                    "success": False,
+                },
+            )
+
+        roles_permissions = db.query(Models.ConfigRoleModule).filter(
+            Models.ConfigRoleModule.config_module_id == config_module.id
+        )
+
+        # Replace the model_to_dict part with this:
+
+        return {
+            "message": "Designation Fetched Successfully",
+            "success": True,
+            "data": [
+                model_to_filtered_dict(role_permission) for role_permission in roles_permissions
+            ],
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error While Fetching All The Role",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.get("/roles_permissions/fetch-role", status_code=status.HTTP_200_OK)
 async def fetch_roles_permission(
     db: db_dependencies, role_id: str = Query(..., description="ID of the role to fetch")
 ):

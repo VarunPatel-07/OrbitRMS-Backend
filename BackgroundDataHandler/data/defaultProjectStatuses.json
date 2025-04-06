@@ -1,26 +1,26 @@
 [
   {
-    "status_color": "#ff0000",
+    "status_color": "#64748B",
     "status_name": "Not Started"
   },
   {
-    "status_color": "#00ff00",
+    "status_color": "#3B82F6",
     "status_name": "In Development"
   },
   {
-    "status_color": "#ffff00",
+    "status_color": "#F59E0B",
     "status_name": "Testing"
   },
   {
-    "status_color": "#0000ff",
+    "status_color": "#10B981",
     "status_name": "Deployed"
   },
   {
-    "status_color": "#ff9900",
+    "status_color": "#F97316",
     "status_name": "On Hold"
   },
   {
-    "status_color": "#ff00ff",
+    "status_color": "#EF4444",
     "status_name": "Cancelled"
   }
 ]

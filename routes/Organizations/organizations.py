@@ -209,11 +209,11 @@ async def verify_organization(
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
-        decrypted_data = urlsafe_data_decoding_function(organization_id)
+        decrypted_org_id = urlsafe_data_decoding_function(organization_id)
 
         organization = (
             db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.organization_id == decrypted_data)
+            .filter(Models.OrganizationGeneralInfo.organization_id == decrypted_org_id)
             .first()
         )
         if not organization:
@@ -247,17 +247,17 @@ async def verify_organization(
             email_sender_function(email_instance, background_task)
 
             config_module = Models.ConfigModule()
-            config_module.organization_id = decrypted_data
+            config_module.organization_id = decrypted_org_id
             db.add(config_module)
             db.commit()
             db.refresh(config_module)
 
             background_task.add_task(
-                roles_permission_initial_data_seeder_function, db, decrypted_data
+                roles_permission_initial_data_seeder_function, db, decrypted_org_id
             )
-            background_task.add_task(designation_initial_data_seeder, db, decrypted_data)
-            background_task.add_task(attachment_type_initial_data_seeder, db, decrypted_data)
-            background_task.add_task(project_status_initial_data_seeder, db, decrypted_data)
+            background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(attachment_type_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(project_status_initial_data_seeder, db, decrypted_org_id)
 
             return {
                 "message": "Organization Is Verified Successfully",
@@ -300,7 +300,6 @@ async def onboard_organization(
 ):
     try:
         organization_id = urlsafe_data_decoding_function(organization_id)
-        print(organization_id)
         organization = (
             db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
         )
