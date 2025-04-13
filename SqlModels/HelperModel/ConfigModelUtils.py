@@ -25,11 +25,11 @@ class ProjectStatus(BaseModel):
         nullable=False,
     )
     config_module = relationship("ConfigModule", back_populates="project_status")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
         default=None,
-        onupdate=datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
         nullable=True,
     )
 
@@ -48,11 +48,11 @@ class AttachmentType(BaseModel):
     config_module = relationship("ConfigModule", back_populates="attachment_type")
     created_by = Column(JSON, nullable=True)
     updated_by = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
         default=None,
-        onupdate=datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
         nullable=True,
     )
 
@@ -106,6 +106,7 @@ class ConfigRoleModule(BaseModel):
     associated_permissions = relationship(
         "RoleAssociatedPermissionModule", back_populates="role_module"
     )
+    status = Column(Boolean, default=True, nullable=False)
 
     # created At UpdatedAt Field
     created_by = Column(JSON, nullable=True)
@@ -134,7 +135,10 @@ class RoleAssociatedPermissionModule(BaseModel):
         nullable=False,
     )
 
-    parent_module_id = Column(CHAR(36), ForeignKey("config_role_associated_permissions.id"))
+    parent_module_id = Column(
+        CHAR(36),
+        ForeignKey("config_role_associated_permissions.id", ondelete="CASCADE", onupdate="CASCADE"),
+    )
 
     role_module = relationship("ConfigRoleModule", back_populates="associated_permissions")
 

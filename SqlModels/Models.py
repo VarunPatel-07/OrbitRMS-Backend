@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.mysql import CHAR, JSON
+from zoneinfo import ZoneInfo
 from sqlalchemy.orm import relationship
 
-from Database.Database import BaseModel
+from Database.Base import BaseModel
 from SqlModels.HelperModel.ConfigModelUtils import (
     AttachmentType,
     Designations,
@@ -55,12 +56,12 @@ class User(BaseModel):
     password_created = Column(Boolean, nullable=False, default=False)
     organization_id = Column(CHAR(36), ForeignKey("organization.id"), nullable=False, index=True)
     organization = relationship("Organization", back_populates="employees")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
-        nullable=False,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
     )
 
 
@@ -84,12 +85,12 @@ class Organization(BaseModel):
         "ConfigModule", back_populates="organization", cascade="all, delete-orphan"
     )
 
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
-        nullable=False,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
     )
     organization_created = Column(Boolean, nullable=False, default=False)
 
@@ -119,10 +120,10 @@ class ConfigModule(BaseModel):
 
     organization = relationship("Organization", back_populates="config_modules")
 
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
-        nullable=False,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
     )
