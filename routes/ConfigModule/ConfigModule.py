@@ -17,6 +17,7 @@ from PydanticModels.ConfigModule.ConfigModule import (
     ProjectStatus,
     RolesPermission,
     RoleAssociatedPermissionModule,
+    AddRolesPermission,
 )
 from SqlModels import Models
 from BackgroundDataHandler.initialDataSeeder import roles_permission_initial_data_seeder_function
@@ -729,7 +730,8 @@ async def add_edit_designations(
                 db.query(Models.Designations)
                 .filter(
                     func.lower(Models.Designations.designations_name)
-                    == func.lower(data.designations_name)
+                    == func.lower(data.designations_name),
+                    Models.Designations.id != id,
                 )
                 .first()
             )
@@ -906,78 +908,41 @@ async def delete_designation(
 
 
 def recursive_creation_helper(
-    module: RoleAssociatedPermissionModule,
-    db: db_dependencies,
+    module_data: RoleAssociatedPermissionModule,
+    db,
     role_module_id,
     parent_module_id: Optional[str] = None,
 ):
-    try:
-        parent_module = Models.RoleAssociatedPermissionModule(
-            module_label=module.module_label,
-            module_title=module.module_title,
-            is_active=module.is_active,
-            parent_module_id=parent_module_id,
-            role_module_id=role_module_id,
+
+    parent_module = Models.RoleAssociatedPermissionModule(
+        module_label=module_data.get("module_label"),
+        module_title=module_data.get("module_title"),
+        is_active=module_data.get("is_active"),
+        parent_module_id=parent_module_id,
+        role_module_id=role_module_id,
+    )
+
+    db.add(parent_module)
+    db.flush()
+
+    for permission in module_data.get("permissions"):
+        permission_module = Models.PermissionModule(
+            label=permission.get("label"),
+            is_allowed=permission.get("is_allowed"),
+            show_input=permission.get("show_input"),
+            associated_permissions_module_id=parent_module.id,
+        )
+        db.add(permission_module)
+
+    for submodule in module_data.get("sub_modules"):
+        recursive_creation_helper(
+            submodule, db, role_module_id, parent_module.id  # Set parent ID for submodules
         )
 
-        db.add(parent_module)
-        db.flush()  #
-
-        for permission in module.permissions:
-            permission_module = Models.PermissionModule(
-                label=permission.label,
-                is_allowed=permission.is_allowed,
-                show_input=permission.show_input,
-                associated_permissions_module_id=parent_module.id,
-            )
-
-            db.add(permission_module)
-
-        for submodule in module.sub_modules:
-            recursive_creation_helper(
-                submodule, db, role_module_id, parent_module.id  # Set parent ID for submodules
-            )
-
-        return parent_module
-    except Exception as e:
-        db.rollback()  # ✅ Ensure rollback in case of error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Error While Adding The Role And Permission",
-                "success": False,
-                "error": str(e),
-            },
-        )
+    return parent_module
 
 
-@configRoute.post(path="/roles_permissions/add", status_code=status.HTTP_200_OK)
-async def add_role_permission(
-    db: db_dependencies,
-    data: RolesPermission,
-    organization_id: str = Query(None, description="ID for edit operation"),
-):
-    try:
-        roles_permission_initial_data_seeder_function(db, organization_id)
-        return {
-            "message": "Role and permissions added successfully",
-            "role_name": data.role_name,
-        }
-
-    except HTTPException as http_exception:
-        raise http_exception
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Error While Adding The Role And Permission",
-                "success": False,
-                "error": str(e),
-            },
-        )
-
-
+# ? ------------------------- The Api To Fetch All The Associated Role Of The Organization  -------------------
 @configRoute.get("/roles_permissions/fetch-all", status_code=status.HTTP_200_OK)
 async def fetch_all_role_of_organization(
     db: db_dependencies,
@@ -1050,11 +1015,60 @@ async def fetch_all_role_of_organization(
         )
 
 
+# * ------------------------- This The Comman Function To Build The Hierarchy For The Permission Module  -------------------
+def build_hierarchy(modules, parent_id=None):
+    result = []
+    for module in modules:
+        if module.parent_module_id == parent_id:
+            module_data = {
+                "id": module.id,
+                "module_label": module.module_label,
+                "module_title": module.module_title,
+                "is_active": module.is_active,
+                "permissions": [
+                    {
+                        "id": p.id,
+                        "label": p.label,
+                        "is_allowed": p.is_allowed,
+                        "show_input": p.show_input,
+                    }
+                    for p in module.permissions
+                ],
+                "sub_modules": build_hierarchy(modules, module.id),
+            }
+            result.append(module_data)
+    return result
+
+
+# * ------------------------- The Api To Fetch A Specific Role's Permission  -------------------
 @configRoute.get("/roles_permissions/fetch-role", status_code=status.HTTP_200_OK)
 async def fetch_roles_permission(
-    db: db_dependencies, role_id: str = Query(..., description="ID of the role to fetch")
+    db: db_dependencies,
+    role_id: str = Query(..., description="ID of the role to fetch"),
+    token: str = Depends(verify_token),
 ):
     try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "User Not Found",
+                    "success": False,
+                },
+            )
         # Get all modules for this role (flat structure)
         all_modules = (
             db.query(Models.RoleAssociatedPermissionModule)
@@ -1067,36 +1081,24 @@ async def fetch_roles_permission(
         )
 
         if not all_modules:
-            raise HTTPException(status_code=404, detail="Role not found")
-
-        # Build hierarchy
-        def build_hierarchy(modules, parent_id=None):
-            result = []
-            for module in modules:
-                if module.parent_module_id == parent_id:
-                    module_data = {
-                        "id": module.id,
-                        "module_label": module.module_label,
-                        "module_title": module.module_title,
-                        "is_active": module.is_active,
-                        "permissions": [
-                            {
-                                "id": p.id,
-                                "label": p.label,
-                                "is_allowed": p.is_allowed,
-                                "show_input": p.show_input,
-                            }
-                            for p in module.permissions
-                        ],
-                        "sub_modules": build_hierarchy(modules, module.id),
-                    }
-                    result.append(module_data)
-            return result
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Role not found",
+                    "success": False,
+                },
+            )
 
         # Get role details
         role = db.query(Models.ConfigRoleModule).get(role_id)
         if not role:
-            raise HTTPException(status_code=404, detail="Role not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Role not found",
+                    "success": False,
+                },
+            )
 
         return {
             "message": "Role fetched successfully",
@@ -1106,6 +1108,7 @@ async def fetch_roles_permission(
                 "role_name": role.role_name,
                 "description": role.description,
                 "source_type": role.source_type,
+                "status": role.status,
                 "created_by": role.created_by,
                 "created_at": role.created_at,
                 "updated_by": role.updated_by,
@@ -1129,13 +1132,40 @@ async def fetch_roles_permission(
         )
 
 
-@configRoute.post("/roles_permissions/update", status_code=status.HTTP_200_OK)
+# ? ------------------------- The Api To Update The Roles And Permission  -------------------
+
+
+@configRoute.put("/roles_permissions/update", status_code=status.HTTP_200_OK)
 async def update(
     db: db_dependencies,
     id: str = Query(..., description="Id Of The Module"),
     type: str = Query(..., description="type should be module or permission"),
+    token: str = Depends(verify_token),
 ):
     try:
+
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "User Not Found",
+                    "success": False,
+                },
+            )
+
         if type not in ["module", "permission"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
@@ -1150,6 +1180,16 @@ async def update(
             role_permission_module = (
                 db.query(Models.RoleAssociatedPermissionModule)
                 .filter(Models.RoleAssociatedPermissionModule.id == id)
+                .options(
+                    joinedload(Models.RoleAssociatedPermissionModule.permissions),
+                    joinedload(Models.RoleAssociatedPermissionModule.sub_modules),
+                    joinedload(Models.RoleAssociatedPermissionModule.sub_modules).joinedload(
+                        Models.RoleAssociatedPermissionModule.sub_modules
+                    ),
+                    joinedload(Models.RoleAssociatedPermissionModule.sub_modules).joinedload(
+                        Models.RoleAssociatedPermissionModule.permissions
+                    ),
+                )
                 .first()
             )
 
@@ -1162,12 +1202,28 @@ async def update(
                     },
                 )
 
-            role_permission_module.is_active = False if role_permission_module.is_active else True
+            if role_permission_module.is_active:
+                role_permission_module.is_active = False
+
+                for permission in role_permission_module.permissions:
+                    permission.is_allowed = False
+
+                for module in role_permission_module.sub_modules:
+                    module.is_active = False
+                    for permission in module.permissions:
+                        permission.is_allowed = False
+
+            else:
+                role_permission_module.is_active = True
 
             db.commit()
             db.refresh(role_permission_module)
 
-            return {"success": True, "message": "Attachment Updated Successfully"}
+            return {
+                "success": True,
+                "message": "Attachment Updated Successfully",
+                "data": role_permission_module,
+            }
         else:
             permission = (
                 db.query(Models.PermissionModule).filter(Models.PermissionModule.id == id).first()
@@ -1201,6 +1257,260 @@ async def update(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Error While Updating The Role And Permission",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+# * ------------------------- The Api To Add A New Role  -------------------
+@configRoute.post("/roles_permissions/add-edit", status_code=status.HTTP_200_OK)
+async def Add_Edit_Roles_Permissions(
+    db: db_dependencies,
+    data: AddRolesPermission,
+    type: str = Query("add", description="The Type Should Be Add Edit"),
+    edit_role_id: Optional[str] = Query(
+        None, description="The Edit Role Id Is Required To Edit Role"
+    ),
+    token: str = Depends(verify_token),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "User Not Found",
+                    "success": False,
+                },
+            )
+        personal_info = (
+            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
+
+        if type.lower() not in ["add", "edit"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={
+                    "message": "The Type Should Be Add Edit",
+                    "success": False,
+                },
+            )
+
+        if type.lower() == "add":
+
+            clone_role_id = data.clone_role_info.clone_role_id
+            config_module_id = data.clone_role_info.config_module_id
+
+            if not clone_role_id or not config_module_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": (
+                            "The Clone Role Id Is Required"
+                            if clone_role_id
+                            else "The Config Module Id Is Required"
+                        ),
+                        "success": False,
+                    },
+                )
+            existing_role = (
+                db.query(Models.ConfigRoleModule)
+                .filter(func.lower(Models.ConfigRoleModule.role_name) == func.lower(data.role_name))
+                .first()
+            )
+
+            if existing_role:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Designations Is Already Exist",
+                        "success": False,
+                    },
+                )
+
+            role_permission_module = (
+                db.query(Models.RoleAssociatedPermissionModule)
+                .filter(Models.RoleAssociatedPermissionModule.role_module_id == clone_role_id)
+                .options(
+                    joinedload(Models.RoleAssociatedPermissionModule.permissions),
+                    joinedload(Models.RoleAssociatedPermissionModule.sub_modules),
+                )
+                .all()
+            )
+            if not role_permission_module:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={
+                        "message": "Role not found",
+                        "success": False,
+                    },
+                )
+            modules = build_hierarchy(role_permission_module)
+            created_by_user = model_to_filtered_dict(
+                personal_info, ["id", "first_name", "last_name"]
+            )
+
+            config_role_module = Models.ConfigRoleModule(
+                role_name=data.role_name,
+                description=data.description,
+                status=data.status,
+                source_type="user_created",
+                config_module_id=config_module_id,
+                created_by=json.dumps(created_by_user),
+            )
+            db.add(config_role_module)
+            db.flush()
+
+            for module in modules:
+
+                permission_module = recursive_creation_helper(
+                    module, db, role_module_id=config_role_module.id
+                )
+
+                config_role_module.associated_permissions.append(permission_module)
+                db.commit()
+                db.refresh(config_role_module)
+
+            return {
+                "success": True,
+                "message": f"The Role Added SuccessFully",
+            }
+        else:
+            if type == "edit" and not edit_role_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "The Edit Role Id Is Required",
+                        "success": False,
+                    },
+                )
+
+            existing_role_module = (
+                db.query(Models.ConfigRoleModule)
+                .filter(
+                    func.lower(Models.ConfigRoleModule.role_name) == func.lower(data.role_name),
+                    Models.ConfigRoleModule.id != edit_role_id,
+                )
+                .first()
+            )
+
+            if existing_role_module:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Designations Is Already Exist",
+                        "success": False,
+                    },
+                )
+
+            update_by_user = model_to_filtered_dict(
+                personal_info, ["id", "first_name", "last_name"]
+            )
+
+            config_role_module = (
+                db.query(Models.ConfigRoleModule)
+                .filter(Models.ConfigRoleModule.id == edit_role_id)
+                .first()
+            )
+
+            config_role_module.role_name = data.role_name
+            config_role_module.description = data.description
+            config_role_module.status = data.status
+            config_role_module.updated_by = json.dumps(update_by_user)
+
+            db.commit()
+            db.refresh(config_role_module)
+
+            return {"success": True, "message": "Roles Permission Updated Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        db.rollback()  # ✅ Ensure rollback in case of error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Something Went Wrong",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.delete(path="/roles_permissions/delete", status_code=status.HTTP_200_OK)
+async def Delete_Roles_Permission(
+    db: db_dependencies,
+    id: str = Query(..., description="The Id Is Required To Delete a Role Module"),
+    token: str = Depends(verify_token),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "User Not Found",
+                    "success": False,
+                },
+            )
+        config_role_module = (
+            db.query(Models.ConfigRoleModule).filter(Models.ConfigRoleModule.id == id).first()
+        )
+
+        if not config_role_module:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "No Such Config Role Module Found",
+                    "success": False,
+                },
+            )
+        db.query(Models.RoleAssociatedPermissionModule).filter(
+            Models.RoleAssociatedPermissionModule.parent_module_id == id
+        ).delete(synchronize_session=False)
+
+        # Delete all associated permission entries for the role_module_id
+        db.query(Models.RoleAssociatedPermissionModule).filter(
+            Models.RoleAssociatedPermissionModule.role_module_id == id
+        ).delete(synchronize_session=False)
+        db.delete(config_role_module)
+        db.commit()
+
+        return {"success": True, "message": "Roles Permission Deleted Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        db.rollback()  # ✅ Ensure rollback in case of error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error While Deleting The Role",
                 "success": False,
                 "error": str(e),
             },

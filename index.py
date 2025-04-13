@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from Database.Database import DATABASE_ENGINE, database
+from Database.CacheDatabase import cache_database
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -47,6 +48,7 @@ app.include_router(configRoute)
 # Basic health check route
 @app.api_route(path="/", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
 async def root_health_check(request: Request):
+    await cache_database.set("hello", "Valkey from FastAPI!", ex=10 * 24 * 3600)
     db_status = "healthy"
 
     # Check database connection
@@ -63,6 +65,7 @@ async def root_health_check(request: Request):
             "status": (
                 "The app is healthy." if db_status == "healthy" else "Database connection issue."
             ),
+            "cache_database": await cache_database.get("hello"),
         }
     else:
         return Response(

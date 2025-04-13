@@ -1,11 +1,13 @@
 import os
 import time
 import unicodedata
-
+import json
 import httpx
 import requests
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, status
+from typing import Optional
+from Database.CacheDatabase import cache_database
 
 from Helper.formateDateOnTheBaseOfTheCountry import formateDateOnTheBaseOfTheCountry
 
@@ -38,8 +40,19 @@ countryApiRouter = APIRouter(prefix="/app/v1/country-info", tags=["country"])
 
 
 @countryApiRouter.get("/fetchAll", status_code=status.HTTP_200_OK)
-def FetchAllTheCountry(order: str = Query("asc", alias="order")):
+async def FetchAllTheCountry(order: str = Query("asc", alias="order")):
     try:
+        cache_data_key = "AllCountryDataInfo"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            cached_Data = json.loads(cached_data)
+            cached_sorted_data = sorted(
+                cached_Data, key=lambda x: x["country_name"], reverse=(order.lower() == "desc")
+            )
+            return cached_sorted_data
+
         REST_API_URL = os.getenv("REST_API_URL")
 
         response = requests.get(REST_API_URL)
@@ -71,6 +84,7 @@ def FetchAllTheCountry(order: str = Query("asc", alias="order")):
                 countryArray, key=lambda x: x["country_name"], reverse=(order.lower() == "desc")
             )
 
+            await cache_database.set(cache_data_key, json.dumps(sortedData), ex=10 * 24 * 3600)
             return sortedData
         else:
             print(f"Error fetching country data: {response.status_code}")
@@ -87,9 +101,25 @@ def FetchAllTheCountry(order: str = Query("asc", alias="order")):
 
 
 @countryApiRouter.get("/getCountryInfo", status_code=status.HTTP_200_OK)
-async def GetCountryInfo(country: str = Query(..., alias="country")):
+async def GetCountryInfo(
+    country: str = Query(..., alias="country"), order: str = Query("asc", alias="order")
+):
 
     try:
+        cache_data_key = f"CountryDataFor-{country}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            cached_statesData = json.loads(cached_data)
+            cached_reverse = order.lower() == "desc"
+            cached_statesData.sort(key=lambda x: x["state_name"], reverse=cached_reverse)
+            return {
+                "success": True,
+                "country": country,
+                "states": cached_statesData,
+            }
+
         username = "emilys"
 
         country_url = f"http://api.geonames.org/searchJSON?country={country}&featureCode=ADM1&username={username}"
@@ -129,6 +159,10 @@ async def GetCountryInfo(country: str = Query(..., alias="country")):
 
             state_array.append({"state_name": formatted_state_name, "state_code": state_code})
 
+        reverse = order.lower() == "desc"
+        state_array.sort(key=lambda x: x["state_name"], reverse=reverse)
+        await cache_database.set(cache_data_key, json.dumps(state_array), ex=10 * 24 * 3600)
+
         return {"success": True, "country": country, "states": state_array}
     except Exception as e:
         raise HTTPException(
@@ -143,9 +177,24 @@ async def GetCountryInfo(country: str = Query(..., alias="country")):
 
 @countryApiRouter.get("/getStateInfo", status_code=status.HTTP_200_OK)
 async def GetStateInfo(
-    country: str = Query(..., alias="country"), state_code: str = Query(..., alias="state_code")
+    country: str = Query(..., alias="country"),
+    state_code: str = Query(..., alias="state_code"),
+    order: str = Query("asc", alias="order"),
 ):
     try:
+        cached_data_key = f"cached_{state_code}_for_{country}"
+        cached_data = await cache_database.get(cached_data_key)
+        if cached_data:
+            formatted_cached_data = json.loads(cached_data)
+            cached_reverse = order.lower() == "desc"
+            sorted_cached_data = sorted(formatted_cached_data, reverse=cached_reverse)
+            return {
+                "success": True,
+                "country": country,
+                "states": state_code,
+                "cities_array": sorted_cached_data,
+            }
+
         username = "emilys"
         cities_url = f"http://api.geonames.org/searchJSON?adminCode1={state_code}&country={country}&featureClass=P&username={username}"
 
@@ -173,11 +222,14 @@ async def GetStateInfo(
             else:
                 formatted_city_name = city_name.lower()
             cities_array.append(formatted_city_name)
+        reverse = order.lower() == "desc"
+        sorted_data = sorted(cities_array, reverse=reverse)
+        await cache_database.set(cached_data_key, json.dumps(cities_array), ex=10 * 24 * 3600)
         return {
             "success": True,
             "country": country,
             "states": state_code,
-            "cities_array": cities_array,
+            "cities_array": sorted_data,
         }
 
     except Exception as e:
@@ -194,6 +246,16 @@ async def GetStateInfo(
 @countryApiRouter.get("/getFormats", status_code=status.HTTP_200_OK)
 async def getCountryFormats(country_name: str = Query(..., alias="country_code")):
     try:
+        cached_data_key = f"{country_name}_date_formate"
+        cached_data = await cache_database.get(cached_data_key)
+        if cached_data:
+            formatted_cached_data = json.loads(cached_data)
+            return {
+                "success": True,
+                "postal_code_formate": formatted_cached_data.get("postal_code_formate"),
+                "timeZones": formatted_cached_data.get("timeZones"),
+                "country_date_formate": formatted_cached_data.get("country_date_formate"),
+            }
         url = f"https://restcountries.com/v3.1/alpha/{country_name}"
         response = await fetch_data(url=url)
 
@@ -207,6 +269,18 @@ async def getCountryFormats(country_name: str = Query(..., alias="country_code")
         postalCode = resData.get("postalCode")
 
         country_date_formate = await formateDateOnTheBaseOfTheCountry(country_code)
+
+        data = {
+            "postal_code_formate": postalCode,
+            "timeZones": timeZones,
+            "country_date_formate": (
+                country_date_formate.get("dateFormat")
+                if country_date_formate.get("success")
+                else country_date_formate.get("error")
+            ),
+        }
+
+        await cache_database.set(cached_data_key, json.dumps(data), ex=10 * 24 * 3600)
 
         return {
             "success": True,
@@ -233,6 +307,14 @@ async def getCountryFormats(country_name: str = Query(..., alias="country_code")
 @countryApiRouter.get("/fetchAllCountry", status_code=status.HTTP_200_OK)
 async def fetchAllTheCountryData(order: str = Query("asc", alias="order")):
     try:
+        cache_data_key = "AllCountryCachedDataKey"
+        cache_data = await cache_database.get(cache_data_key)
+        if cache_data:
+            sorted_cached_data = json.loads(cache_data)
+            cache_reverse = order.lower() == "desc"
+            sorted_cached_data.sort(key=lambda x: x["country_name"], reverse=cache_reverse)
+
+            return {"success": True, "data": sorted_cached_data}
         url = os.getenv("REST_API_URL")
 
         response = await fetch_data(url=url)
@@ -263,6 +345,9 @@ async def fetchAllTheCountryData(order: str = Query("asc", alias="order")):
             }
 
             data.append(obj)
+        reverse = order.lower() == "desc"
+        data.sort(key=lambda x: x["country_name"], reverse=reverse)
+        await cache_database.set(cache_data_key, json.dumps(data), ex=10 * 24 * 3600)
         return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(
