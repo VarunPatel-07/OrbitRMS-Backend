@@ -278,6 +278,10 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
             "authenticationToken": token,
             "organization_created": organization.organization_created,
             "organization_id": encrypted_org_id,
+            "organization_general_info": model_to_filtered_dict(
+                organization.general_info,
+                ["organization_name", "organization_profile_picture", "portal_url"],
+            ),
         }
 
     except HTTPException as http_exception:
@@ -286,6 +290,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
+                "error": str(e),
                 "message": "error accrued while signing in",
                 "success": False,
             },
