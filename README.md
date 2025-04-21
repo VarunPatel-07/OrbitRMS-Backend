@@ -146,6 +146,6 @@ This project is licensed under the [MIT License](/LICENSE).
 For any inquiries or support, please contact:
 
 - **Varun Patel**
-- **Email**: <varunspatelo7@gmail.com>
+- **Email**: <contact.varunpatel.dev@gmail.com>
 - **Website**: [https://varunpatel.vercel.app/](https://varunpatel.vercel.app/)
 - **GitHub**: [VarunPatel-07](https://github.com/VarunPatel-07)
