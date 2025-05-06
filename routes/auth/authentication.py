@@ -1,7 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import json
+import os
+
+import httpx
+from bs4 import BeautifulSoup
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql import func
 
 from Database.Database import db_dependencies
+from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
+from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
     model_to_filtered_dict,
     urlsafe_data_decoding_function,
@@ -9,178 +18,141 @@ from Helper.helper import (
 )
 from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
 from Middleware.verifyToken import verify_token
-from PydanticModels.authentication.AuthenticationModels import CreatePassword, SignIn
-from PydanticModels.UserModels import User
+from PydanticModels.authentication.AuthenticationModels import (
+    CreatePassword,
+    RegisterOrganizationInfo,
+    SignIn,
+    VerifyMetaTag,
+)
 from SqlModels import Models
-from sqlalchemy.orm import joinedload
 
 authRoutes = APIRouter(prefix="/app/v1/auth", tags=["auth"])
 
-
-# todo : we have to complete it
-# @authRoutes.post(path="/add-employee", status_code=status.HTTP_201_CREATED)
-# async def add_employee(db: db_dependencies, user: User):
-#     try:
-#         find_user = (
-#             db.query(Models.EmployeeInfo)
-#             .filter(Models.EmployeeInfo.employee_email == user.employee_info.employee_email)
-#             .first()
-#         )
-
-#         if find_user:
-#             raise HTTPException(
-#                 status_code=status.HTTP_403_FORBIDDEN,
-#                 detail={
-#                     "message": "User With This Mail Already Exists",
-#                     "success": False,
-#                 },
-#             )
-
-#         hashed_password = hash_passwords("Orbit@1234")
-
-#         created_user = Models.User(password=hashed_password)
-#         db.add(created_user)
-#         db.commit()
-
-#         personal_info = cerate_model_instance(model=Models.PersonalInfo, data=user.personal_info)
-#         personal_info.user_id = created_user.id
-
-#         employee_info = cerate_model_instance(
-#             model=Models.EmployeeInfo,
-#             data=user.employee_info,
-#         )
-#         employee_info.user_id = created_user.id
-
-#         personal_contact_info = cerate_model_instance(
-#             model=Models.PersonalContactInfo,
-#             data=user.personal_contact_info,
-#         )
-#         personal_contact_info.user_id = created_user.id
-
-#         family_info = None
-
-#         children_arr = []
-#         if user.family_info.children:
-#             family_info = Models.FamilyInfo(
-#                 father_name=user.family_info.father_name,
-#                 mother_name=user.family_info.mother_name,
-#                 marital_status=user.family_info.marital_status,
-#                 children=children_arr,  # Initial empty children list
-#             )
-#             family_info.user_id = created_user.id
-
-#             db.add(family_info)
-#             db.commit()
-#             children_arr = [
-#                 Models.Children(
-#                     name=child.name,
-#                     gender=child.gender,
-#                     date_of_birth=child.date_of_birth,
-#                     family_id=family_info.id,  # Set the family_id for each child
-#                 )
-#                 for child in user.family_info.children
-#             ]
-#         else:
-#             family_info = Models.FamilyInfo(
-#                 father_name=user.family_info.father_name,
-#                 mother_name=user.family_info.mother_name,
-#                 marital_status=user.family_info.marital_status,
-#                 children=children_arr,  # Initial empty children list
-#             )
-#             family_info.user_id = created_user.id
-
-#             db.add(family_info)
-#             db.commit()
-
-#         address_info = cerate_model_instance(model=Models.Address, data=user.address, fields=[])
-#         address_info.user_id = created_user.id
-
-#         emergency_contact = [
-#             Models.EmergencyContact(
-#                 full_name=contact.full_name,
-#                 contact_number=contact.contact_number,
-#                 user_id=created_user.id,
-#             )
-#             for contact in user.emergency_contact
-#         ]
-
-#         social_link = [
-#             Models.SocialLinks(
-#                 icon=link.icon, name=link.name, link=link.link, user_id=created_user.id
-#             )
-#             for link in user.social_link
-#         ]
-
-#         children = []
-#         if user.family_info.children:
-#             children = [
-#                 {
-#                     "name": child.name,
-#                     "gender": child.gender,
-#                     "date_of_birth": child.date_of_birth,
-#                 }
-#                 for child in children_arr
-#             ]
-
-#         emergency_contacts = [
-#             {"full_name": item.full_name, "contact_number": item.contact_number}
-#             for item in emergency_contact
-#         ]
-#         social_links = [
-#             {"icon": item.icon, "name": item.name, "link": item.link} for item in social_link
-#         ]
-
-#         db.add(employee_info)
-#         db.add(personal_info)
-#         db.add(personal_contact_info)
-#         db.add(address_info)
-#         for child in children_arr:
-#             db.add()(child)
-#         for contact in emergency_contact:
-#             db.add(contact)
-#         for link in social_link:
-#             db.add(link)
-#         db.commit()
-
-#         user_info = {
-#             "password": created_user.password,
-#             "personal_info": model_to_filtered_dict(personal_info),
-#             "employee_info": model_to_filtered_dict(employee_info),
-#             "personal_contact_info": model_to_filtered_dict(personal_contact_info),
-#             "family_info": {
-#                 "father_name": family_info.father_name,
-#                 "mother_name": family_info.mother_name,
-#                 "marital_status": family_info.marital_status,
-#                 "children": children,
-#             },
-#             "address_info": model_to_filtered_dict(address_info),
-#             "emergency_contact": emergency_contacts,
-#             "social_link": social_links,
-#         }
-
-#         # JWT token creation
-#         token_data = {"sub": created_user.id}
-#         token = create_jwt_token(data=token_data)
-
-#         return {
-#             "message": "The User Is Registered Successfully",
-#             "token": token,
-#             "success": True,
-#             "user_info": user_info,
-#         }
-#     except HTTPException as http_exception:
-#         raise http_exception
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail={
-#                 "message": "Error Accrued While Adding Employee",
-#                 "success": False,
-#                 "error": str(e),
-#             },
-#         )
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
 
 
+#
+# ? The Api For The Sign UP And Creating a New Organization
+#
+@authRoutes.post("/sign-up", status_code=status.HTTP_201_CREATED)
+async def create_organization(
+    organization_info: RegisterOrganizationInfo,
+    db: db_dependencies,
+    background_task: BackgroundTasks,
+):
+    try:
+        find_organization = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(Models.OrganizationGeneralInfo.primary_email == organization_info.primary_email)
+            .first()
+        )
+        check_for_the_email_domain = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(
+                func.substring_index(Models.OrganizationGeneralInfo.primary_email, "@", -1)
+                == organization_info.primary_email.split("@")[1]
+            )
+            .first()
+        )
+
+        if check_for_the_email_domain:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "The Provided Email Domain Is Already In Use",
+                    "success": False,
+                    "owner_email": find_organization.primary_email if find_organization else None,
+                },
+            )
+
+        if find_organization:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "The Provided Email Is Already In Use",
+                    "success": False,
+                    "owner_email": find_organization.primary_email,
+                },
+            )
+
+        create_org = Models.Organization(status=True)
+
+        db.add(create_org)
+        db.commit()
+        db.refresh(create_org)
+
+        organization = cerate_model_instance(
+            model=Models.OrganizationGeneralInfo,
+            data=organization_info,
+            fields=["-country_info"],
+        )
+        user_info = Models.User(password="")
+        user_info.organization_id = create_org.id
+        db.add(user_info)
+        db.commit()
+        db.refresh(user_info)
+        user_employee_info = Models.EmployeeInfo(
+            status="Active",
+            organization_name=organization_info.organization_name,
+            employee_code="",
+            department="",
+            designation="",
+            reporting_to_id="",
+            employee_role="",
+            employee_email=organization_info.primary_email,
+        )
+        user_employee_info.user_id = user_info.id
+        db.add(user_employee_info)
+        db.commit()
+        db.refresh(user_employee_info)
+        organization.organization_id = create_org.id
+
+        organization.country_info = json.dumps(
+            organization_info.country_info.dict()
+            if hasattr(organization_info.country_info, "dict")
+            else organization_info.country_info
+        )
+
+        db.add(organization)
+        db.commit()
+        db.refresh(organization)
+
+        encrypted_org_id = urlsafe_data_encoding_function(create_org.id)
+
+        email_data = {
+            "recever_email": organization_info.primary_email,
+            "subject": "hello from the test mail",
+            "body": VerifyEmailHtmlBody(
+                f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}"
+            ),
+        }
+
+        email_instance = EmailSchema(**email_data)
+
+        send_mail = email_sender_function(email_instance, background_task)
+
+        return {
+            "success": True,
+            "title": "Organization Created",
+            "message": f"Your organization has been successfully created. A confirmation email with further details has been sent to {user_employee_info.employee_email}. Please check your inbox and follow the instructions to complete the setup.",
+            "email_status": send_mail,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error Accrued While Adding Employee",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+#
+# ? The Api To Create An Strong Password For You Organization
+#
 @authRoutes.post(path="/create-password", status_code=status.HTTP_201_CREATED)
 async def create_password(
     db: db_dependencies,
@@ -231,6 +203,9 @@ async def create_password(
         )
 
 
+#
+# ? The Api To Sign-In in Your Organization
+#
 @authRoutes.post(path="/sign-in", status_code=status.HTTP_200_OK)
 async def sing_in(db: db_dependencies, user_info: SignIn):
     try:
@@ -280,7 +255,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
             "organization_id": encrypted_org_id,
             "organization_general_info": model_to_filtered_dict(
                 organization.general_info,
-                ["organization_name", "organization_profile_picture", "portal_url"],
+                ["organization_name", "organization_profile_picture", "portal_url", "portal_slug"],
             ),
         }
 
@@ -297,6 +272,9 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
         )
 
 
+#
+# ? The Api To Verify The Organization
+#
 @authRoutes.get(path="/verify-user", status_code=status.HTTP_200_OK)
 async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
     try:
@@ -368,6 +346,52 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "error while verifying user",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.post("/verify-meta-tag", status_code=status.HTTP_200_OK)
+async def verify_meta_tag(data: VerifyMetaTag):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(data.website_url)
+            response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        meta_tag = soup.find("meta", attrs={"name": data.meta_name})
+
+        if not meta_tag:
+            return {
+                "meta_found": False,
+                "expected_value": data.meta_value,
+                "actual_value": "",
+                "match": False,
+                "success": False,
+            }
+
+        if meta_tag and "content" in meta_tag.attrs:
+            actual_value = meta_tag.get("content", "")
+
+            verified = actual_value == data.meta_value
+
+            return {
+                "meta_found": True,
+                "expected_value": data.meta_value,
+                "actual_value": actual_value,
+                "match": verified,
+                "success": True,
+            }
+        return {"error": "Meta tag not found"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error Accrued While Verifying The Meta Tag",
                 "success": False,
                 "error": str(e),
             },

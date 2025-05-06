@@ -1,0 +1,83 @@
+[
+  {
+    "department_name": "Requirement Analysis"
+  },
+  {
+    "department_name": "UI/UX Design"
+  },
+  {
+    "department_name": "Frontend Development"
+  },
+  {
+    "department_name": "Backend Development"
+  },
+  {
+    "department_name": "Mobile Development"
+  },
+  {
+    "department_name": "Full Stack Development"
+  },
+  {
+    "department_name": "DevOps"
+  },
+  {
+    "department_name": "Quality Assurance"
+  },
+  {
+    "department_name": "Project Management"
+  },
+  {
+    "department_name": "Product Management"
+  },
+  {
+    "department_name": "Technical Support"
+  },
+  {
+    "department_name": "Cybersecurity"
+  },
+  {
+    "department_name": "Data Science"
+  },
+  {
+    "department_name": "Machine Learning"
+  },
+  {
+    "department_name": "Business Intelligence"
+  },
+  {
+    "department_name": "System Administration"
+  },
+  {
+    "department_name": "Cloud Infrastructure"
+  },
+  {
+    "department_name": "HR (Human Resources)"
+  },
+  {
+    "department_name": "Administration"
+  },
+  {
+    "department_name": "Finance"
+  },
+  {
+    "department_name": "Sales"
+  },
+  {
+    "department_name": "Marketing"
+  },
+  {
+    "department_name": "Legal"
+  },
+  {
+    "department_name": "Customer Support"
+  },
+  {
+    "department_name": "Training & Development"
+  },
+  {
+    "department_name": "Content Writing"
+  },
+  {
+    "department_name": "Technical Documentation"
+  }
+]

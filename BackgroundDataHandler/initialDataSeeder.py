@@ -1,18 +1,20 @@
-from fastapi import HTTPException, status
-from PydanticModels.ConfigModule.ConfigModule import (
-    RolesPermission,
-    Designations,
-    AttachmentType,
-    ProjectStatus,
-)
-from BackgroundDataHandler.DataSeederHelper import (
-    roles_permission_data_seeder_helper,
-    designation_data_seeder_helper_function,
-    project_status_data_seeder_helper_function,
-    attachment_type_data_seeder_helper_function,
-)
 import json
 import os
+
+from fastapi import HTTPException, status
+
+from BackgroundDataHandler.DataSeederHelper import (
+    department_data_seeder_helper_function,
+    designation_data_seeder_helper_function,
+    project_status_data_seeder_helper_function,
+    roles_permission_data_seeder_helper,
+)
+from PydanticModels.ConfigModule.ConfigModule import (
+    Department,
+    Designations,
+    ProjectStatus,
+    RolesPermission,
+)
 
 
 def roles_permission_initial_data_seeder_function(db, organization_id: str):
@@ -195,9 +197,9 @@ def project_status_initial_data_seeder(db, organization_id: str):
         )
 
 
-def attachment_type_initial_data_seeder(db, organization_id: str):
+def department_data_initial_data_seeder(db, organization_id: str):
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "data", "defaultAttachmentTypes.json")
+    path = os.path.join(base_url, "data", "defaultDepartmentData.json")
 
     try:
         with open(path, "r") as file_content:
@@ -205,33 +207,31 @@ def attachment_type_initial_data_seeder(db, organization_id: str):
             data_list = json.load(file_content)
 
             if not isinstance(data_list, list):
-                raise ValueError("Expected a list of Attachment")
+                raise ValueError("Expected a list of department")
 
             for each_data in data_list:
                 if not isinstance(each_data, dict):
-                    raise ValueError("Each Attachment should be a dictionary")
+                    raise ValueError("Each department should be a dictionary")
 
-                if "attachment_name" not in each_data:
-                    raise ValueError("Missing 'status_name' in Attachment data")
+                if "department_name" not in each_data:
+                    raise ValueError("Missing 'status_name' in department data")
 
                 try:
-                    attachment_type_data = AttachmentType(**each_data)
-                    attachment_type_data_seeder_helper_function(
-                        db, organization_id, attachment_type_data
-                    )
+                    department_data = Department(**each_data)
+                    department_data_seeder_helper_function(db, organization_id, department_data)
 
                 except HTTPException as http_exception:
                     raise http_exception
                 except Exception as e:
 
-                    raise ValueError(f"Invalid Attachment data: {str(e)}")
+                    raise ValueError(f"Invalid department data: {str(e)}")
 
     except HTTPException as http_exception:
         raise http_exception
     except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"message": "Default Attachment data file not found", "success": False},
+            detail={"message": "Default department data file not found", "success": False},
         )
     except json.JSONDecodeError:
         raise HTTPException(

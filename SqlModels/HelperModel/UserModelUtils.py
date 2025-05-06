@@ -1,44 +1,18 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, String
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
 from SqlModels.Models import BaseModel
 
 
-#  helper
-class Children(BaseModel):
-    __tablename__ = "children"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-
-    name = Column(String(255), index=True)
-    gender = Column(CHAR(36), index=True)
-    date_of_birth = Column(DateTime)
-    family_id = Column(CHAR(36), ForeignKey("family_info.id"), nullable=False)
-    family_info = relationship(
-        "FamilyInfo", backref="children"
-    )  # Use backref for one-way relationship
-
-
-class EmergencyContact(BaseModel):
-    __tablename__ = "emergency_contact"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-
-    full_name = Column(String(255), nullable=False)
-    contact_number = Column(String(255), nullable=False)
-    user_id = Column(
-        CHAR(36),
-        ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
-    )
-    user = relationship("User", back_populates="emergency_contact")
-
-
 # main
 class PersonalInfo(BaseModel):
     __tablename__ = "personal_info"
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+
+    # todo: add the new field about
 
     first_name = Column(String(255), nullable=False)
     middle_name = Column(String(255), nullable=True, default=None)
@@ -49,6 +23,7 @@ class PersonalInfo(BaseModel):
     gender = Column(String(255), nullable=False)
     date_of_birth = Column(DateTime)
     blood_group = Column(String(255), nullable=False)
+    about = Column(Text, nullable=True, default=None)
     user_id = Column(
         CHAR(36),
         ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
@@ -62,20 +37,41 @@ class EmployeeInfo(BaseModel):
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
+    # todo: change the reporting to from storing the json to storing the reference to the reporting to manager id
+
     status = Column(String(255), nullable=False)
     organization_name = Column(String(255), nullable=False)
     employee_code = Column(String(255), nullable=False)
     department = Column(String(255), nullable=False)
     designation = Column(String(255), nullable=False)
-    reporting_to = Column(JSON, nullable=True, default=None)
-    employee_role = Column(String(255), nullable=False)
-    employee_email = Column(String(255), nullable=False, default=None)
-    user_id = Column(
-        CHAR(36),
-        ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
+
+    employee_role_id = Column(
+        CHAR(36), ForeignKey("config_role_module.id"), nullable=False, unique=True
     )
-    user = relationship("User", back_populates="employee_info")
+    employee_role = relationship(
+        "ConfigRoleModule", back_populates="associated_employees", foreign_keys=[employee_role_id]
+    )
+    employee_email = Column(String(255), nullable=False, default=None)
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, unique=True)
+    user = relationship("User", back_populates="employee_info", foreign_keys=[user_id])
+
+    reporting_to_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False)
+
+    reporting_manager = relationship(
+        "User", back_populates="reporting_employees", foreign_keys=[reporting_to_id]
+    )
+
+
+class EmergencyContact(BaseModel):
+    __tablename__ = "emergency_contacts"
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+
+    emergency_contact_name = Column(String(255), nullable=False, default=None)
+    emergency_contact_number = Column(String(255), nullable=False, default=None)
+    emergency_contact_country_info = Column(JSON, nullable=True)
+
+    contact_id = Column(CHAR(36), ForeignKey("personal_contact_info.id"), nullable=False)
+    personal_contact_info = relationship("PersonalContactInfo", back_populates="emergency_contacts")
 
 
 class PersonalContactInfo(BaseModel):
@@ -83,9 +79,15 @@ class PersonalContactInfo(BaseModel):
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
-    personal_email = Column(CHAR(36), nullable=False, default=None)
-    mobile_number = Column(CHAR(36), nullable=False, default=None)
-    alternative_contact = Column(CHAR(36), nullable=True, default=None)
+    # todo Change the field name form alternative_contact to emergency_contact As a Json and It contain two field emergency_contact_number and emergency_contact_name
+
+    personal_email = Column(String(255), nullable=False, default=None)
+    mobile_number = Column(String(255), nullable=False, default=None)
+    country_info = Column(JSON, nullable=True)
+    emergency_contacts = relationship(
+        "EmergencyContact", back_populates="personal_contact_info", cascade="all, delete-orphan"
+    )
+
     user_id = Column(
         CHAR(36),
         ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
@@ -94,13 +96,28 @@ class PersonalContactInfo(BaseModel):
     user = relationship("User", back_populates="personal_contact_info")
 
 
+class Children(BaseModel):
+    __tablename__ = "children"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    child_name = Column(String(255), nullable=True, default=None)
+    child_date_of_birth = Column(DateTime, nullable=True, default=None)
+
+    family_info_id = Column(CHAR(36), ForeignKey("family_info.id"), nullable=False)
+    family_info = relationship("FamilyInfo", back_populates="children")
+
+
 class FamilyInfo(BaseModel):
     __tablename__ = "family_info"
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
+    # todo we will also add the children info like name and dob as a array of the children
+
     father_name = Column(String(255), nullable=False, default=None)
     mother_name = Column(String(255), nullable=False, default=None)
     marital_status = Column(CHAR(36), nullable=False, default=None)
+    children = relationship("Children", back_populates="family_info", cascade="all, delete-orphan")
+
     user_id = Column(
         CHAR(36),
         ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
@@ -119,12 +136,7 @@ class Address(BaseModel):
     state = Column(String(255), nullable=False, default=None)
     city = Column(String(255), nullable=False, default=None)
     zip_code = Column(String(255), nullable=False, default=None)
-    user_id = Column(
-        CHAR(36),
-        ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
-    )
-    user = relationship("User", back_populates="address")
+    country_code = Column(String(255), nullable=True, default=None)
 
 
 class SocialLinks(BaseModel):

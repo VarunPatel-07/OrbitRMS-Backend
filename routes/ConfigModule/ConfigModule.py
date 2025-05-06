@@ -4,23 +4,25 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 
-
 # Import database dependencies and helper functions
 from sqlalchemy.orm import joinedload
+
+from BackgroundDataHandler.initialDataSeeder import (
+    roles_permission_initial_data_seeder_function,
+)
 from Database.Database import db_dependencies
 from Helper.createModelInstance import cerate_model_instance
 from Helper.helper import model_to_filtered_dict
 from Middleware.verifyToken import verify_token
 from PydanticModels.ConfigModule.ConfigModule import (
-    AttachmentType,
+    AddRolesPermission,
+    Department,
     Designations,
     ProjectStatus,
-    RolesPermission,
     RoleAssociatedPermissionModule,
-    AddRolesPermission,
+    RolesPermission,
 )
 from SqlModels import Models
-from BackgroundDataHandler.initialDataSeeder import roles_permission_initial_data_seeder_function
 
 configRoute = APIRouter(prefix="/app/v1/config", tags=["config"])
 
@@ -322,15 +324,15 @@ async def delete_project_status(
 #  ----- All The Crud Api For The Project Status End Here -----
 
 
-# *  ----- All The Crud Api For The Attachment Type Start From Here -----
+# *  ----- All The Crud Api For The Department Start From Here -----
 
-# ?  (4)  API To Add/Edit " Attachment Type "
+# ?  (4)  API To Add/Edit " Department "
 
 
-@configRoute.post(path="/attachment_type/add-edit", status_code=status.HTTP_200_OK)
-async def add_edit_attachment_type(
+@configRoute.post(path="/department/add-edit", status_code=status.HTTP_200_OK)
+async def add_edit_department(
     db: db_dependencies,
-    data: AttachmentType,
+    data: Department,
     token: str = Depends(verify_token),
     type: str = Query(..., description="Operation type: add or edit"),
     id: Optional[str] = Query(None, description="ID for edit operation"),
@@ -387,20 +389,20 @@ async def add_edit_attachment_type(
                     },
                 )
 
-            existing_attachment_type = (
-                db.query(Models.AttachmentType)
+            existing_department = (
+                db.query(Models.Department)
                 .filter(
-                    func.lower(Models.AttachmentType.attachment_name)
-                    == func.lower(data.attachment_name)
+                    func.lower(Models.Department.department_name)
+                    == func.lower(data.department_name)
                 )
                 .first()
             )
 
-            if existing_attachment_type:
+            if existing_department:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Attachment With This Name Is Already Exist",
+                        "message": "department With This Name Is Already Exist",
                         "success": False,
                     },
                 )
@@ -409,19 +411,19 @@ async def add_edit_attachment_type(
                 personal_info, ["id", "first_name", "last_name"]
             )
 
-            attachment_type = Models.AttachmentType(
-                attachment_name=data.attachment_name,
+            department = Models.Department(
+                department_name=data.department_name,
                 config_module_id=config_module.id,
                 source_type="user_created",
                 created_by=json.dumps(created_by_user),
                 updated_by=None,
             )
 
-            db.add(attachment_type)
+            db.add(department)
             db.commit()
-            db.refresh(attachment_type)
+            db.refresh(department)
 
-            return {"success": True, "message": "Attachment Created Successfully"}
+            return {"success": True, "message": "Department Created Successfully"}
         else:
 
             if type == "edit" and not id:
@@ -433,43 +435,41 @@ async def add_edit_attachment_type(
                     },
                 )
 
-            existing_attachment_type = (
-                db.query(Models.AttachmentType)
+            existing_department = (
+                db.query(Models.Department)
                 .filter(
-                    func.lower(Models.AttachmentType.attachment_name)
-                    == func.lower(data.attachment_name),
-                    Models.AttachmentType.id != id,
+                    func.lower(Models.Department.department_name)
+                    == func.lower(data.department_name),
+                    Models.Department.id != id,
                 )
                 .first()
             )
 
-            if existing_attachment_type:
+            if existing_department:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Attachment With This Name Is Already Exist",
+                        "message": "department With This Name Is Already Exist",
                         "success": False,
                     },
                 )
 
-            attachment_type = (
-                db.query(Models.AttachmentType).filter(Models.AttachmentType.id == id).first()
-            )
+            department = db.query(Models.Department).filter(Models.Department.id == id).first()
 
-            if not attachment_type:
+            if not department:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"message": "No Such Attachment Found", "success": False},
+                    detail={"message": "No Such department Found", "success": False},
                 )
             updated_by_user = model_to_filtered_dict(
                 personal_info, ["id", "first_name", "last_name"]
             )
-            attachment_type.attachment_name = data.attachment_name
-            attachment_type.updated_by = json.dumps(updated_by_user)
+            department.department_name = data.department_name
+            department.updated_by = json.dumps(updated_by_user)
             db.commit()
-            db.refresh(attachment_type)
+            db.refresh(department)
 
-            return {"success": True, "message": "Attachment Updated Successfully"}
+            return {"success": True, "message": "department Updated Successfully"}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -477,18 +477,18 @@ async def add_edit_attachment_type(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Add Attachment Type Right Now",
+                "message": "Unable To Add department Right Now",
                 "success": False,
                 "error": str(e),
             },
         )
 
 
-# ?  (5)  API To Fetch " Attachment Type "
+# ?  (5)  API To Fetch " department"
 
 
-@configRoute.get(path="/attachment_type/fetch", status_code=status.HTTP_200_OK)
-async def fetch_all_attachment_type(db: db_dependencies, token: str = Depends(verify_token)):
+@configRoute.get(path="/department/fetch", status_code=status.HTTP_200_OK)
+async def fetch_all_department_type(db: db_dependencies, token: str = Depends(verify_token)):
     try:
         if not token:
             raise HTTPException(
@@ -527,17 +527,14 @@ async def fetch_all_attachment_type(db: db_dependencies, token: str = Depends(ve
                 },
             )
 
-        attachment_type = db.query(Models.AttachmentType).filter(
-            Models.AttachmentType.config_module_id == config_module.id
+        department = db.query(Models.Department).filter(
+            Models.Department.config_module_id == config_module.id
         )
 
         return {
             "success": True,
-            "message": "Attachment Type Fetched Successfully",
-            "data": [
-                model_to_filtered_dict(each_attachment_type)
-                for each_attachment_type in attachment_type
-            ],
+            "message": "Department Fetched Successfully",
+            "data": [model_to_filtered_dict(each_department) for each_department in department],
         }
 
     except HTTPException as http_exception:
@@ -553,11 +550,11 @@ async def fetch_all_attachment_type(db: db_dependencies, token: str = Depends(ve
         )
 
 
-# ?  (6)  API To Delete " Attachment Type "
+# ?  (6)  API To Delete " department "
 
 
-@configRoute.delete(path="/attachment_type/delete", status_code=status.HTTP_200_OK)
-async def delete_attachment_type(
+@configRoute.delete(path="/department/delete", status_code=status.HTTP_200_OK)
+async def delete_department(
     db: db_dependencies,
     token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
@@ -585,23 +582,21 @@ async def delete_attachment_type(
                 },
             )
 
-        attachment_type = (
-            db.query(Models.AttachmentType).filter(Models.AttachmentType.id == id).first()
-        )
+        department = db.query(Models.Department).filter(Models.Department.id == id).first()
 
-        if not attachment_type:
+        if not department:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Attachment Not Found",
+                    "message": "Department Not Found",
                     "success": False,
                 },
             )
 
-        db.delete(attachment_type)
+        db.delete(department)
         db.commit()
 
-        return {"success": True, "message": "Attachment Deleted Successfully"}
+        return {"success": True, "message": "Department Deleted Successfully"}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -616,7 +611,7 @@ async def delete_attachment_type(
         )
 
 
-# *  ----- All The Crud Api For The Attachment Type End Here -----
+# *  ----- All The Crud Api For The department Type End Here -----
 
 
 #  ----- All The Crud Api For The Designations Start From Here -----
@@ -740,7 +735,7 @@ async def add_edit_designations(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Attachment With This Name Is Already Exist",
+                        "message": "department With This Name Is Already Exist",
                         "success": False,
                     },
                 )
@@ -1221,7 +1216,7 @@ async def update(
 
             return {
                 "success": True,
-                "message": "Attachment Updated Successfully",
+                "message": "Role Updated Successfully",
                 "data": role_permission_module,
             }
         else:
@@ -1245,7 +1240,7 @@ async def update(
 
             return {
                 "success": True,
-                "message": "Attachment Updated Successfully",
+                "message": "Permission Successfully",
                 "permission": model_to_filtered_dict(permission),
             }
 

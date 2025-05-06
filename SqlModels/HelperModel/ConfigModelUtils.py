@@ -1,11 +1,19 @@
 import uuid
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Table, Integer, Boolean
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+)
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
-
-from zoneinfo import ZoneInfo
 
 from SqlModels.Models import BaseModel
 
@@ -34,18 +42,18 @@ class ProjectStatus(BaseModel):
     )
 
 
-class AttachmentType(BaseModel):
-    __tablename__ = "config_model_attachment_type"
+class Department(BaseModel):
+    __tablename__ = "config_model_department"
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
-    attachment_name = Column(String(255), nullable=False)
+    department_name = Column(String(255), nullable=False)
     source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
     config_module_id = Column(
         CHAR(36),
         ForeignKey("config_module.id", ondelete="CASCADE", onupdate="CASCADE"),
         nullable=False,
     )
-    config_module = relationship("ConfigModule", back_populates="attachment_type")
+    config_module = relationship("ConfigModule", back_populates="department")
     created_by = Column(JSON, nullable=True)
     updated_by = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
@@ -91,6 +99,13 @@ class ConfigRoleModule(BaseModel):
     role_name = Column(String(255), nullable=False)
     description = Column(String(355), nullable=False)
     source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
+
+    associated_employees = relationship(
+        "EmployeeInfo",
+        foreign_keys="[EmployeeInfo.employee_role_id]",  # Define this in EmployeeInfo
+        back_populates="employee_role",
+        uselist=False,  # If one-to-one
+    )
 
     # connecting to Parent Config Module
 
