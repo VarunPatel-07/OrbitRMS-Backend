@@ -1,19 +1,19 @@
 import uuid
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.mysql import CHAR, JSON
-from zoneinfo import ZoneInfo
 from sqlalchemy.orm import relationship
 
 from Database.Base import BaseModel
 from SqlModels.HelperModel.ConfigModelUtils import (
-    AttachmentType,
-    Designations,
-    ProjectStatus,
     ConfigRoleModule,
-    RoleAssociatedPermissionModule,
+    Department,
+    Designations,
     PermissionModule,
+    ProjectStatus,
+    RoleAssociatedPermissionModule,
 )
 from SqlModels.HelperModel.OrganizationModelUtils import (
     OrganizationAboutInfo,
@@ -40,12 +40,31 @@ class User(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
     personal_info = relationship("PersonalInfo", back_populates="user")
-    employee_info = relationship("EmployeeInfo", back_populates="user")
+
+    employee_info = relationship(
+        "EmployeeInfo",
+        foreign_keys="[EmployeeInfo.user_id]",  # Define this in EmployeeInfo
+        back_populates="user",
+        uselist=False,  # If one-to-one
+    )
+    reporting_employees = relationship(  # Managers can have many reporting employees
+        "EmployeeInfo",
+        foreign_keys="[EmployeeInfo.reporting_to_id]",
+        back_populates="reporting_manager",
+    )
+
     personal_contact_info = relationship("PersonalContactInfo", back_populates="user")
     family_info = relationship("FamilyInfo", back_populates="user")
-    address = relationship("Address", back_populates="user")
-    emergency_contact = relationship(
-        "EmergencyContact", back_populates="user", cascade="all, delete-orphan"
+    same_as_current_address = Column(Boolean, nullable=False, default=True)
+
+    current_address_id = Column(CHAR(36), ForeignKey("address.id"), nullable=True)
+    permanent_address_id = Column(CHAR(36), ForeignKey("address.id"), nullable=True)
+
+    current_address = relationship(
+        "Address", foreign_keys=[current_address_id], backref="users_current"
+    )
+    permanent_address = relationship(
+        "Address", foreign_keys=[permanent_address_id], backref="users_permanent"
     )
 
     social_link = relationship("SocialLinks", back_populates="user")
@@ -101,9 +120,7 @@ class ConfigModule(BaseModel):
     project_status = relationship(
         "ProjectStatus", back_populates="config_module", cascade="all, delete"
     )
-    attachment_type = relationship(
-        "AttachmentType", back_populates="config_module", cascade="all, delete"
-    )
+    department = relationship("Department", back_populates="config_module", cascade="all, delete")
     designations = relationship(
         "Designations", back_populates="config_module", cascade="all, delete"
     )

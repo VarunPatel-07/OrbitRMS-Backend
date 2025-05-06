@@ -52,7 +52,7 @@ class EmployeeInfo(BaseModel):
     employee_code: str
     department: str
     designation: str
-    reporting_to: dict
+    reporting_to_id: str
     employee_role: str
     employee_email: EmailStr
 

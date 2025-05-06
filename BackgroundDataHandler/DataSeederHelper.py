@@ -1,14 +1,16 @@
-from SqlModels import Models
-from fastapi import HTTPException, status
 from typing import Optional
+
+from fastapi import HTTPException, status
 from sqlalchemy import func
+
 from PydanticModels.ConfigModule.ConfigModule import (
-    RoleAssociatedPermissionModule,
-    RolesPermission,
+    Department,
     Designations,
     ProjectStatus,
-    AttachmentType,
+    RoleAssociatedPermissionModule,
+    RolesPermission,
 )
+from SqlModels import Models
 
 
 # This is The Recursive Function That Helps to Add The Data Recursively In To The DataBase
@@ -187,7 +189,7 @@ def project_status_data_seeder_helper_function(db, organization_id: str, data: P
     db.refresh(project_status)
 
 
-def attachment_type_data_seeder_helper_function(db, organization_id: str, data: AttachmentType):
+def department_data_seeder_helper_function(db, organization_id: str, data: Department):
 
     config_module = (
         db.query(Models.ConfigModule)
@@ -201,31 +203,29 @@ def attachment_type_data_seeder_helper_function(db, organization_id: str, data: 
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_attachment_type = (
-        db.query(Models.AttachmentType)
-        .filter(
-            func.lower(Models.AttachmentType.attachment_name) == func.lower(data.attachment_name)
-        )
+    existing_department = (
+        db.query(Models.Department)
+        .filter(func.lower(Models.Department.department_name) == func.lower(data.department_name))
         .first()
     )
 
-    if existing_attachment_type:
+    if existing_department:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
-                "message": "Attachment With This Name Is Already Exist",
+                "message": "department With This Name Is Already Exist",
                 "success": False,
             },
         )
 
-    attachment_type = Models.AttachmentType(
-        attachment_name=data.attachment_name,
+    department = Models.Department(
+        department_name=data.department_name,
         source_type="default",
         config_module_id=config_module.id,
         created_by=None,
         updated_by=None,
     )
 
-    db.add(attachment_type)
+    db.add(department)
     db.commit()
-    db.refresh(attachment_type)
+    db.refresh(department)

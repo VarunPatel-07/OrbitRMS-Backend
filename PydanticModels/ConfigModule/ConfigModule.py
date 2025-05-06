@@ -1,6 +1,8 @@
 from __future__ import annotations
-from pydantic import BaseModel, ConfigDict
+
 from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict
 
 
 class ProjectStatus(BaseModel):
@@ -8,8 +10,8 @@ class ProjectStatus(BaseModel):
     status_color: str
 
 
-class AttachmentType(BaseModel):
-    attachment_name: str
+class Department(BaseModel):
+    department_name: str
 
 
 class Designations(BaseModel):

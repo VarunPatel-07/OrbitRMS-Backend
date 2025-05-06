@@ -2,8 +2,8 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from Database.Database import DATABASE_ENGINE, database
 from Database.CacheDatabase import cache_database
+from Database.Database import DATABASE_ENGINE, database
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes

@@ -49,8 +49,8 @@
             "sub_modules": []
           },
           {
-            "module_label": "attachment_type",
-            "module_title": "Attachment Type",
+            "module_label": "department",
+            "module_title": "Department",
             "is_active": true,
             "permissions": [
               {
