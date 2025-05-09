@@ -11,7 +11,7 @@ from BackgroundDataHandler.initialDataSeeder import (
     roles_permission_initial_data_seeder_function,
 )
 from Database.Database import db_dependencies
-from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
+from Email.HtmlEmailBody import CreatePasswordHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
@@ -33,6 +33,13 @@ orgRouter = APIRouter(prefix="/app/v1/organization", tags=["organization"])
 
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+
+
+#
+#
+# ? ------------ Api To Verify The Organization ---------------------
+#
+#
 
 
 @orgRouter.get("/verify-organization", status_code=status.HTTP_200_OK)
@@ -70,7 +77,7 @@ async def verify_organization(
             email_data = {
                 "recever_email": user_info.employee_email,
                 "subject": "hello from the test mail",
-                "body": VerifyEmailHtmlBody(
+                "body": CreatePasswordHtmlBody(
                     f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}"
                 ),
             }
@@ -123,6 +130,13 @@ async def verify_organization(
                 "error": str(e),
             },
         )
+
+
+#
+#
+# ? ------------ Api For The Onboarding An Organization ---------------------
+#
+#
 
 
 @orgRouter.post("/onboard-organization", status_code=status.HTTP_200_OK)
@@ -237,6 +251,13 @@ async def onboard_organization(
         )
 
 
+#
+#
+# ? ------------ Api To Fetch The Organization Info ---------------------
+#
+#
+
+
 @orgRouter.get("/fetch-organization-info", status_code=status.HTTP_200_OK)
 async def fetch_organization_info(
     db: db_dependencies, organization_id: str = Query(..., alias="organization_id")
@@ -329,6 +350,13 @@ async def fetch_organization_info(
         )
 
 
+#
+#
+# ? ------------ Api To Fetch The Reporting Managers ---------------------
+#
+#
+
+
 @orgRouter.get("/fetch-reporting-manager", status_code=status.HTTP_200_OK)
 async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(verify_token)):
     try:
@@ -356,28 +384,28 @@ async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(veri
             db.query(Models.User)
             .options(joinedload(Models.User.personal_info))
             .filter(Models.User.organization_id == user.organization_id)
+            .all()
         )
 
         return {
             "success": True,
             "data": [
                 (
-                    (
-                        {
-                            **filter_fields(info, ["last_name", "first_name", "middle_name", "id"]),
-                            "full_name": f"{info.first_name or ''} {info.middle_name or ''} {info.last_name or ''}".strip(),
-                        }
-                        if not getattr(info, "full_name", "")
-                        else filter_fields(
-                            info, ["last_name", "first_name", "middle_name", "id", "full_name"]
-                        )
-                    ),
+                    {
+                        **filter_fields(info, ["last_name", "first_name", "middle_name", "user_id"]),
+                        "full_name": f"{info.first_name or ''} {info.middle_name or ''} {info.last_name or ''}".strip(),
+                    }
+                    if not getattr(info, "full_name", "")
+                    else filter_fields(
+                        info, ["last_name", "first_name", "middle_name", "user_id", "full_name"]
+                    )
                 )
                 for each_user in fetch_all_users
                 if each_user.personal_info
                 for info in each_user.personal_info
             ],
         }
+
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:

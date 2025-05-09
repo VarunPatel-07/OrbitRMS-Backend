@@ -989,7 +989,7 @@ async def fetch_all_role_of_organization(
         # Replace the model_to_dict part with this:
 
         return {
-            "message": "Designation Fetched Successfully",
+            "message": "Roles Fetched Successfully",
             "success": True,
             "data": [
                 model_to_filtered_dict(role_permission) for role_permission in roles_permissions

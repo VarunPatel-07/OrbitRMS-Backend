@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text, Boolean
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
@@ -46,16 +46,18 @@ class EmployeeInfo(BaseModel):
     designation = Column(String(255), nullable=False)
 
     employee_role_id = Column(
-        CHAR(36), ForeignKey("config_role_module.id"), nullable=False, unique=True
+        CHAR(36), ForeignKey("config_role_module.id"), nullable=True, default=None
     )
     employee_role = relationship(
-        "ConfigRoleModule", back_populates="associated_employees", foreign_keys=[employee_role_id]
+        "ConfigRoleModule",
+        back_populates="associated_employees",
+        foreign_keys=[employee_role_id],
     )
     employee_email = Column(String(255), nullable=False, default=None)
     user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, unique=True)
     user = relationship("User", back_populates="employee_info", foreign_keys=[user_id])
 
-    reporting_to_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False)
+    reporting_to_id = Column(CHAR(36), ForeignKey("users.id"), nullable=True, default=None)
 
     reporting_manager = relationship(
         "User", back_populates="reporting_employees", foreign_keys=[reporting_to_id]
@@ -143,9 +145,10 @@ class SocialLinks(BaseModel):
     __tablename__ = "social_link"
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
-    icon = Column(String(255), nullable=True, default=None)
+    icon = Column(Text, nullable=True, default=None)
     name = Column(String(255), nullable=True, default=None)
     link = Column(String(255), nullable=True, default=None)
+    target_blank = Column(Boolean, nullable=True, default=True)
     user_id = Column(
         CHAR(36),
         ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
