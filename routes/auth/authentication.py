@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
 
 from Database.Database import db_dependencies
-from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
+from Email.HtmlEmailBody import VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
@@ -97,8 +97,6 @@ async def create_organization(
             employee_code="",
             department="",
             designation="",
-            reporting_to_id="",
-            employee_role="",
             employee_email=organization_info.primary_email,
         )
         user_employee_info.user_id = user_info.id
@@ -121,7 +119,7 @@ async def create_organization(
 
         email_data = {
             "recever_email": organization_info.primary_email,
-            "subject": "hello from the test mail",
+            "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
             "body": VerifyEmailHtmlBody(
                 f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}"
             ),
@@ -321,7 +319,7 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
             "success": True,
             "data": {
                 "user": {
-                    "employee_info": model_to_filtered_dict(user.employee_info[0]),
+                    "employee_info": model_to_filtered_dict(user.employee_info),
                 },
                 "organization": {
                     "id": organization.id,
