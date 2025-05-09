@@ -18,10 +18,10 @@ load_dotenv(override=True)
 
 SUPER_SECURE_HASH_PASSWORD = os.getenv("SUPER_SECURE_HASH_PASSWORD", "").strip()
 
-userRoute = APIRouter(prefix="/app/v1/user-controller", tags=["user-controller"])
+employee_router = APIRouter(prefix="/app/v1/employee", tags=["employee"])
 
 
-@userRoute.post("/add", status_code=status.HTTP_200_OK)
+@employee_router.post("/add", status_code=status.HTTP_200_OK)
 async def handel_add_user_function(
     db: db_dependencies,
     data: AddEditUserProfileModel,
