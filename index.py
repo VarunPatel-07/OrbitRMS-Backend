@@ -10,8 +10,8 @@ from routes.auth.authentication import authRoutes
 from routes.ConfigModule.ConfigModule import configRoute
 from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
-from routes.Organizations.organizations import orgRouter
 from routes.Organizations.EmployeeController import employee_router
+from routes.Organizations.organizations import orgRouter
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
