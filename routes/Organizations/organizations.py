@@ -76,7 +76,7 @@ async def verify_organization(
 
             email_data = {
                 "recever_email": user_info.employee_email,
-                "subject": "hello from the test mail",
+                "subject": "Complete Your Account Setup – Create Your Password",
                 "body": CreatePasswordHtmlBody(
                     f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}"
                 ),
@@ -392,7 +392,9 @@ async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(veri
             "data": [
                 (
                     {
-                        **filter_fields(info, ["last_name", "first_name", "middle_name", "user_id"]),
+                        **filter_fields(
+                            info, ["last_name", "first_name", "middle_name", "user_id"]
+                        ),
                         "full_name": f"{info.first_name or ''} {info.middle_name or ''} {info.last_name or ''}".strip(),
                     }
                     if not getattr(info, "full_name", "")
