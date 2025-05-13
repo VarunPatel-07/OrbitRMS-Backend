@@ -59,7 +59,7 @@ class PersonalContactInfo(BaseModel):
     personal_email: str
     mobile_number: str
     country_info: str
-    emergency_contact: List[EmergencyContact]
+    emergency_contacts: List[EmergencyContact]
 
 
 class FamilyInfo(BaseModel):
@@ -86,4 +86,4 @@ class AddEditUserProfileModel(BaseModel):
     current_address: Address
     same_as_current_address: bool
     permanent_address: Address
-    social_links: List[SocialLink]
+    social_link: List[SocialLink]
