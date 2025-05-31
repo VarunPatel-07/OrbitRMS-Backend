@@ -190,35 +190,42 @@ def update_model_data(
     id_field: str = "id",
     filter_fields: list = None,
 ):
-    print(model_id)
-    print(updated_data)
-    print(id_field)
-    print(getattr(model, id_field))
+
     record = db.query(model).filter(getattr(model, id_field) == model_id).first()
 
-    updated_data_dict = updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
+
+    print(record)
+
     if not record:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"{model.__name__} not found"
+        print(f"Record with {id_field}={model_id} not found")
+        return None
+    else:
+        updated_data_dict = (
+            updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
         )
-    if filter_fields:
-        include_field = set()
-        exclude_field = set()
+        if not isinstance(updated_data_dict, dict):
+            print(f"Expected updated_data to be a dict, but got {type(updated_data_dict)}")
+            return None
+        else:
 
-        for field in filter_fields:
-            if field.startswith("-"):
-                exclude_field.add(field.strip("-"))
-            else:
-                include_field.add(field)
-        updated_data = {
-            field: value
-            for field, value in updated_data_dict.items()
-            if (field in include_field and field not in exclude_field)
-        }
-    for field, value in updated_data_dict.items():
-        if hasattr(record, field) and value is not None:
-            setattr(record, field, value)
+            if filter_fields:
+                include_field = set()
+                exclude_field = set()
 
-    db.commit()
-    db.refresh(record)
-    return record
+                for field in filter_fields:
+                    if field.startswith("-"):
+                        exclude_field.add(field.strip("-"))
+                    else:
+                        include_field.add(field)
+                updated_data_dict = {
+                    field: value
+                    for field, value in updated_data_dict.items()
+                    if (field in include_field and field not in exclude_field)
+                }
+            for field, value in updated_data_dict.items():
+                if hasattr(record, field) and value is not None:
+                    setattr(record, field, value)
+
+            db.commit()
+            db.refresh(record)
+            return record

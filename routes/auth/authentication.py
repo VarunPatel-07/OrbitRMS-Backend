@@ -290,6 +290,7 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
         user = (
             db.query(Models.User)
             .options(
+                joinedload(Models.User.personal_info),
                 joinedload(Models.User.employee_info),
                 joinedload(Models.User.organization).joinedload(Models.Organization.general_info),
                 joinedload(Models.User.organization).joinedload(Models.Organization.address),
@@ -320,6 +321,11 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
             "data": {
                 "user": {
                     "employee_info": model_to_filtered_dict(user.employee_info),
+                    "personal_info": (
+                        model_to_filtered_dict(user.personal_info[0])
+                        if user.personal_info[0]
+                        else None
+                    ),
                 },
                 "organization": {
                     "id": organization.id,

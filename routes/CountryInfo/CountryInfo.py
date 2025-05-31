@@ -245,9 +245,9 @@ async def GetStateInfo(
 
 
 @countryApiRouter.get("/getFormats", status_code=status.HTTP_200_OK)
-async def getCountryFormats(country_name: str = Query(..., alias="country_code")):
+async def getCountryFormats(country_code: str = Query(..., alias="country-code")):
     try:
-        cached_data_key = f"{country_name}_date_formate"
+        cached_data_key = f"{country_code}_date_formate"
         cached_data = await cache_database.get(cached_data_key)
         if cached_data:
             formatted_cached_data = json.loads(cached_data)
@@ -257,7 +257,7 @@ async def getCountryFormats(country_name: str = Query(..., alias="country_code")
                 "timeZones": formatted_cached_data.get("timeZones"),
                 "country_date_formate": formatted_cached_data.get("country_date_formate"),
             }
-        url = f"https://restcountries.com/v3.1/alpha/{country_name}"
+        url = f"https://restcountries.com/v3.1/alpha/{country_code}"
         response = await fetch_data(url=url)
 
         resData = response[0]
