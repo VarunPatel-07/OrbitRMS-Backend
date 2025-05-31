@@ -15,6 +15,8 @@ class EmployeeRole(BaseModel):
 
 
 class EmergencyContact(BaseModel):
+    contact_id: str
+    id: str
     emergency_contact_country_info: str
     emergency_contact_number: str
     emergency_contact_name: str
@@ -30,6 +32,8 @@ class SocialLink(BaseModel):
     name: str
     link: str
     target_blank: bool
+    id: str
+    user_id: str
 
 
 class PersonalInfo(BaseModel):
@@ -53,6 +57,8 @@ class EmployeeInfo(BaseModel):
     employee_email: str
     reporting_to: ReportingTo
     employee_role: EmployeeRole
+    employee_type: str
+    joining_date: Optional[datetime]
 
 
 class PersonalContactInfo(BaseModel):

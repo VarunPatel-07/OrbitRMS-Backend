@@ -40,11 +40,12 @@ class EmployeeInfo(BaseModel):
     # todo: change the reporting to from storing the json to storing the reference to the reporting to manager id
 
     status = Column(String(255), nullable=False)
+    employee_type = Column(String(255), nullable=True, default=None)
     organization_name = Column(String(255), nullable=False)
     employee_code = Column(String(255), nullable=False)
     department = Column(String(255), nullable=False)
     designation = Column(String(255), nullable=False)
-
+    joining_date = Column(DateTime)
     employee_role_id = Column(
         CHAR(36), ForeignKey("config_role_module.id"), nullable=True, default=None
     )

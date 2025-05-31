@@ -439,16 +439,19 @@ async def edit_employee_profile(
                     "success": False,
                 },
             )
-
-        employee_info = update_model_data(
-            db=db,
-            model=Models.EmployeeInfo,
-            model_id=employee.id,
-            id_field="user_id",
-            updated_data=data.employee_info.dict(exclude={"employee_role", "reporting_to"}),
-            filter_fields=["-employee_role_id", "-reporting_to_id"],
+        employee_info_data = data.employee_info.dict(exclude={"employee_role", "reporting_to"})
+        print(employee_info_data)
+        employee_info = (
+            db.query(Models.EmployeeInfo).filter(Models.EmployeeInfo.user_id == employee.id).first()
         )
-
+        employee_info.status = data.employee_info.status
+        employee_info.employee_type = data.employee_info.employee_type
+        employee_info.organization_name = data.employee_info.organization_name
+        employee_info.employee_code = data.employee_info.employee_code
+        employee_info.department = data.employee_info.department
+        employee_info.designation = data.employee_info.designation
+        employee_info.employee_email = data.employee_info.employee_email
+        employee_info.joining_date = data.employee_info.joining_date
         employee_info.employee_role_id = data.employee_info.employee_role.role_id
         employee_info.reporting_to_id = data.employee_info.reporting_to.id
 
@@ -457,139 +460,194 @@ async def edit_employee_profile(
 
         personal_contact_info_data = data.personal_contact_info.dict(exclude={"emergency_contacts"})
 
-        personal_contact_info = update_model_data(
-            db=db,
-            model=Models.PersonalContactInfo,
-            model_id=employee.id,
-            id_field="user_id",
-            updated_data=personal_contact_info_data,
-            filter_fields=["-emergency_contacts"],
+        find_personal_contact_info = (
+            db.query(Models.PersonalContactInfo)
+            .filter(Models.PersonalContactInfo.user_id == employee.id)
+            .first()
         )
 
-        if not personal_contact_info:
-
-            # Ensure it's a model instance, not a dict
-            personal_contact_info = Models.PersonalContactInfo(
-                personal_email=data.personal_contact_info.personal_email,
-                mobile_number=data.personal_contact_info.mobile_number,
-                country_info=data.personal_contact_info.country_info,
-                user_id=employee.id,
-            )
-
-        emergency_contact_array = []
-        for emergency_contact in data.personal_contact_info.emergency_contacts:
-            contact = update_model_data(
+        if find_personal_contact_info:
+            personal_contact_info = update_model_data(
                 db=db,
-                model=Models.EmergencyContact,
-                model_id=personal_contact_info.id,
-                id_field="contact_id",
-                updated_data=emergency_contact,
+                model=Models.PersonalContactInfo,
+                model_id=employee.id,
+                id_field="user_id",
+                updated_data=personal_contact_info_data,
+                filter_fields=["-emergency_contacts"],
             )
-            if not contact:
 
-                new_contact = cerate_model_instance(
-                    model=Models.EmergencyContact, data=emergency_contact, fields=["-contact_id"]
+        else:
+            personal_contact_info = cerate_model_instance(
+                model=Models.PersonalContactInfo,
+                data=personal_contact_info_data,
+                fields=["-user_id"],
+            )
+            personal_contact_info.user_id = employee.id
+            db.add(personal_contact_info)
+            db.commit()
+            db.refresh(personal_contact_info)
+
+        existing_contacts = (
+            db.query(Models.EmergencyContact)
+            .filter(Models.EmergencyContact.contact_id == personal_contact_info.id)
+            .all()
+        )
+        existing_contacts_ids_map = [contact.id for contact in existing_contacts]
+
+        new_contacts = []
+
+        for emergency_contact in data.personal_contact_info.emergency_contacts:
+            if emergency_contact.id in existing_contacts_ids_map:
+                update_model_data(
+                    db=db,
+                    model=Models.EmergencyContact,
+                    model_id=emergency_contact.id,
+                    id_field="id",
+                    updated_data=emergency_contact,
+                    filter_fields=["-contact_id", "id"],
+                )
+            else:
+
+                contact = cerate_model_instance(
+                    model=Models.EmergencyContact,
+                    data=emergency_contact,
+                    fields=["-contact_id", "id"],
                 )
                 contact.contact_id = personal_contact_info.id
+                new_contacts.append(contact)
 
-                db.add(new_contact)
+        db.add_all(new_contacts)
+        db.commit()
+
+        find_family_info = (
+            db.query(Models.FamilyInfo).filter(Models.FamilyInfo.user_id == employee.id).first()
+        )
+        family_info_data = data.family_info.dict(exclude={"children"})
+        if find_family_info:
+            family_info = update_model_data(
+                db=db,
+                model=Models.FamilyInfo,
+                model_id=employee.id,
+                id_field="user_id",
+                updated_data=family_info_data,
+            )
+        else:
+            family_info = cerate_model_instance(
+                model=Models.FamilyInfo, data=family_info_data, fields=["-user_id"]
+            )
+            family_info.user_id = employee.id
+            db.add(family_info)
+            db.commit()
+            db.refresh(family_info)
+
+        if data.family_info.marital_status in alignable_for_child_info:
+
+            existing_child = (
+                db.query(Models.Children)
+                .filter(Models.Children.family_info_id == family_info)
+                .all()
+            )
+            existing_child_ids_map = [child.id for child in existing_child]
+
+            children_array = []
+
+            for each_child in data.family_info.children:
+                if each_child.id in existing_child_ids_map:
+                    update_model_data(
+                        db=db,
+                        model=Models.Children,
+                        model_id=each_child.id,
+                        id_field="id",
+                        updated_data=each_child,
+                    )
+                else:
+                    child = cerate_model_instance(
+                        model=Models.Children, data=each_child, fields=["-family_info_id"]
+                    )
+                    child.family_info_id = family_info.id
+                    children_array.append(child)
+            db.add_all(children_array)
+            db.commit()
+
+        existing_current_address = (
+            db.query(Models.Address)
+            .filter(Models.Address.id == employee.current_address_id)
+            .first()
+        )
+
+        employee.same_as_current_address = data.same_as_current_address
+
+        if existing_current_address:
+            update_model_data(
+                db=db,
+                model=Models.Address,
+                model_id=employee.current_address_id,
+                id_field="id",
+                updated_data=data.current_address,
+            )
+
+        else:
+            current_address = cerate_model_instance(model=Models.Address, data=data.current_address)
+            db.add(current_address)
+            db.commit()
+            db.refresh(current_address)
+            employee.current_address_id = current_address.id
+
+        if not data.same_as_current_address:
+            existing_permanent_address = (
+                db.query(Models.Address)
+                .filter(Models.Address.id == employee.permanent_address_id)
+                .first()
+            )
+            if existing_permanent_address:
+                update_model_data(
+                    db=db,
+                    model=Models.Address,
+                    model_id=employee.permanent_address_id,
+                    id_field="id",
+                    updated_data=data.permanent_address,
+                )
+            else:
+                permanent_address = cerate_model_instance(
+                    model=Models.Address, data=data.permanent_address
+                )
+                db.add(permanent_address)
                 db.commit()
+                db.refresh(permanent_address)
+                employee.permanent_address_id = permanent_address.id
 
-        # family_info = update_model_data(
-        #     db=db,
-        #     model=Models.FamilyInfo,
-        #     model_id=employee.id,
-        #     id_field="user_id",
-        #     updated_data=data.family_info.dict(exclude={"children"}),
-        # )
+        db.commit()
+        db.refresh(employee)
 
-        # if not family_info:
-        #     family_info = cerate_model_instance(
-        #         model=Models.FamilyInfo,
-        #         data=data.family_info.dict(exclude={"children"}),
-        #         fields=["-user_id"],
-        #     )
-        #     family_info.user_id = employee.id
-        #     db.add(family_info)
-        #     db.commit()
-        #     db.refresh(family_info)
+        existing_social_link = (
+            db.query(Models.SocialLinks).filter(Models.SocialLinks.user_id == employee.id).all()
+        )
 
-        # if data.family_info.marital_status in alignable_for_child_info:
-        #     for each_child in data.family_info.children:
-        #         child = update_model_data(
-        #             db=db,
-        #             model=Models.Children,
-        #             model_id=family_info.id,
-        #             id_field="family_info_id",
-        #             updated_data=each_child,
-        #         )
-        #         if not child:
-        #             children_array = []
-        #             for each_child in data.family_info.children:
-        #                 each_child_data = cerate_model_instance(
-        #                     model=Models.Children, data=each_child, fields=["-family_info_id"]
-        #                 )
-        #                 each_child_data.family_info_id = family_info.id
-        #                 children_array.append(each_child_data)
-        #             db.add_all(children_array)
-        #             db.commit()
+        existing_social_link_ids_map = [social_link.id for social_link in existing_social_link]
 
-        # current_address = update_model_data(
-        #     db=db,
-        #     model=Models.Address,
-        #     model_id=employee.current_address_id,
-        #     id_field="id",
-        #     updated_data=data.current_address,
-        # )
-        # if not current_address:
-        #     current_address = cerate_model_instance(model=Models.Address, data=data.current_address)
+        social_links_array = []
+        for link in data.social_link:
 
-        #     db.add(current_address)
-        #     db.commit()
-        #     db.refresh(current_address)
+            if not link.id == "" and link.id in existing_social_link_ids_map:
+                update_model_data(
+                    db=db,
+                    model=Models.SocialLinks,
+                    model_id=link.id,
+                    id_field="id",
+                    updated_data=link.dict(exclude={"user_id", "id"}),
+                    filter_fields=["-user_id", "-id"],
+                )
+            else:
+                social_link = cerate_model_instance(
+                    model=Models.SocialLinks,
+                    data=link.dict(exclude={"user_id", "id"}),
+                    fields=["-user_id", "id"],
+                )
+                social_link.user_id = employee.id
+                social_links_array.append(social_link)
 
-        #     employee.current_address_id = current_address.id
-        #     employee.same_as_current_address = data.same_as_current_address
-
-        # if not data.same_as_current_address:
-        #     permanent_address = update_model_data(
-        #         db=db,
-        #         model=Models.Address,
-        #         model_id=employee.permanent_address_id,
-        #         id_field="id",
-        #         updated_data=data.permanent_address,
-        #     )
-        #     if not permanent_address:
-        #         permanent_address = cerate_model_instance(
-        #             model=Models.Address, data=data.permanent_address
-        #         )
-        #         db.add(permanent_address)
-        #         db.commit()
-        #         db.refresh(permanent_address)
-        #         employee.permanent_address_id = permanent_address.id
-
-        # employee.same_as_current_address = data.same_as_current_address
-
-        # db.commit()
-        # db.refresh(employee)
-
-        # social_links_array = []
-        # for link in data.social_link:
-        #     social_link = update_model_data(
-        #         db=db,
-        #         model=Models.SocialLinks,
-        #         model_id=employee.id,
-        #         id_field="user_id",
-        #         updated_data=link,
-        #     )
-        #     if not social_link:
-        #         social_link = cerate_model_instance(
-        #             model=Models.SocialLinks, data=link, fields=["-user_id"]
-        #         )
-        #         social_link.user_id = employee.id
-        #         social_links_array.append(social_link)
-        # db.add_all(social_links_array)
-        # db.commit()
+        db.add_all(social_links_array)
+        db.commit()
 
         return {
             "message": "User Info Updated Successfully",
