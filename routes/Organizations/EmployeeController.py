@@ -2,8 +2,16 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy.sql import func
+from typing import Optional
+
+import json
+
+
+from urllib.parse import unquote
+
+from .EmployeeQueryFilters import apply_query_filter
 
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import WelcomeMailForNewlyAddedEmployee
@@ -271,7 +279,7 @@ async def handel_fetch_profile_info(
                 },
             )
 
-        user_info = (
+        employee_data = (
             db.query(Models.User)
             .options(
                 joinedload(Models.User.personal_info),
@@ -296,7 +304,7 @@ async def handel_fetch_profile_info(
             "success": True,
             "data": {
                 **filter_fields(
-                    user_info,
+                    employee_data,
                     fields=[
                         "-password",
                         "-personal_info",
@@ -306,16 +314,16 @@ async def handel_fetch_profile_info(
                     ],
                 ),
                 "employee_info": {
-                    **filter_fields(user_info.employee_info, fields=["-reporting_manager"]),
+                    **filter_fields(employee_data.employee_info, fields=["-reporting_manager"]),
                     "reporting_manager": (
                         {
                             **filter_fields(
-                                user_info.employee_info.reporting_manager,
+                                employee_data.employee_info.reporting_manager,
                                 fields=["id"],
                             ),
                             **(
                                 filter_fields(
-                                    user_info.employee_info.reporting_manager.personal_info[0],
+                                    employee_data.employee_info.reporting_manager.personal_info[0],
                                     fields=[
                                         "-id",
                                         "first_name",
@@ -327,25 +335,28 @@ async def handel_fetch_profile_info(
                                         "gender",
                                     ],
                                 )
-                                if user_info.employee_info.reporting_manager
-                                and user_info.employee_info.reporting_manager.personal_info
+                                if employee_data.employee_info.reporting_manager
+                                and employee_data.employee_info.reporting_manager.personal_info
                                 else {}
                             ),
                         }
-                        if user_info.employee_info and user_info.employee_info.reporting_manager
+                        if employee_data.employee_info
+                        and employee_data.employee_info.reporting_manager
                         else {}
                     ),
                 },
                 "personal_info": (
-                    filter_fields(user_info.personal_info[0]) if user_info.personal_info else {}
+                    filter_fields(employee_data.personal_info[0])
+                    if employee_data.personal_info
+                    else {}
                 ),
                 "personal_contact_info": (
-                    filter_fields(user_info.personal_contact_info[0])
-                    if user_info.personal_contact_info
+                    filter_fields(employee_data.personal_contact_info[0])
+                    if employee_data.personal_contact_info
                     else {}
                 ),
                 "family_info": (
-                    filter_fields(user_info.family_info[0]) if user_info.family_info else {}
+                    filter_fields(employee_data.family_info[0]) if employee_data.family_info else {}
                 ),
             },
         }
@@ -661,6 +672,134 @@ async def edit_employee_profile(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "error while Editing the User The User",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+# * This Is An Api That Is Used To Fetch All The EmployeeOf The Given Organization
+@employee_router.get("/fetch-all", status_code=status.HTTP_200_OK)
+async def fetch_all_employee(
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    filter: Optional[str] = Query(None),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Unable To Find User With This ID",
+                    "success": False,
+                },
+            )
+        filter_data = ""
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
+
+        ReportingManager = aliased(Models.User)
+
+        query_data = (
+            db.query(Models.User)
+            .join(ReportingManager, Models.EmployeeInfo.reporting_manager)
+            .options(
+                joinedload(Models.User.personal_info),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.reporting_manager)
+                .joinedload(Models.User.personal_info),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.reporting_manager)
+                .joinedload(Models.User.employee_info),
+                joinedload(Models.User.employee_info).joinedload(Models.EmployeeInfo.employee_role),
+            )
+            .filter(Models.User.organization_id == user.organization_id)
+        )
+
+        if filter_data:
+            query_data = apply_query_filter(query_data, filter_data)
+        employee_data = query_data.all()
+
+        _data = []
+
+        for employee in employee_data:
+            employee_dict = filter_fields(employee, fields=["account_status", "organization_id"])
+            personal_info = (
+                filter_fields(employee.personal_info[0]) if employee.personal_info else {}
+            )
+            employee_info = {}
+            reporting_manager_info = {}
+
+            if employee.employee_info:
+                employee_info = filter_fields(employee.employee_info, fields=["-reporting_manager"])
+
+                if employee.employee_info.reporting_manager:
+
+                    reporting_manager_info = {
+                        **filter_fields(employee.employee_info.reporting_manager, fields=["id"]),
+                    }
+                    if employee.employee_info.reporting_manager.personal_info:
+                        reporting_manager_info.update(
+                            filter_fields(
+                                employee.employee_info.reporting_manager.personal_info[0],
+                                fields=[
+                                    "id",
+                                    "first_name",
+                                    "last_name",
+                                    "middle_name",
+                                    "profile_picture",
+                                    "profile_picture_bg",
+                                    "full_name",
+                                    "gender",
+                                ],
+                            )
+                        )
+                    if employee.employee_info.reporting_manager.employee_info:
+                        reporting_manager_info.update(
+                            filter_fields(
+                                employee.employee_info.reporting_manager.employee_info,
+                                fields=["employee_code"],
+                            )
+                        )
+
+            _data.append(
+                {
+                    **employee_dict,
+                    "personal_info": personal_info,
+                    "employee_info": {
+                        **employee_info,
+                        "reporting_manager": (
+                            reporting_manager_info if reporting_manager_info else None
+                        ),
+                    },
+                }
+            )
+
+        return {
+            "message": "user verified successfully",
+            "success": True,
+            "data": _data,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Fetching All The Employee",
                 "error": str(e),
                 "success": False,
             },

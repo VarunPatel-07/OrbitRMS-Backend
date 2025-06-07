@@ -11,6 +11,8 @@ from sqlalchemy.orm import class_mapper
 
 from Database.Database import db_dependencies
 
+from fastapi import Request, status
+
 load_dotenv(override=True)
 
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
@@ -193,7 +195,6 @@ def update_model_data(
 
     record = db.query(model).filter(getattr(model, id_field) == model_id).first()
 
-
     print(record)
 
     if not record:
@@ -229,3 +230,13 @@ def update_model_data(
             db.commit()
             db.refresh(record)
             return record
+
+
+def get_client_ip(request: Request) -> str:
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.headers.get("X-Real-IP", request.client.host)
+
+    return ip

@@ -92,7 +92,7 @@ async def create_organization(
         db.commit()
         db.refresh(user_info)
         user_employee_info = Models.EmployeeInfo(
-            status="Active",
+            status="Confirmed",
             organization_name=organization_info.organization_name,
             employee_code="",
             department="",

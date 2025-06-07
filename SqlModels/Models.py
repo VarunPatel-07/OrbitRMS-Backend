@@ -31,6 +31,7 @@ from SqlModels.HelperModel.UserModelUtils import (
     PersonalContactInfo,
     PersonalInfo,
     SocialLinks,
+    Sessions,
 )
 
 
@@ -75,6 +76,8 @@ class User(BaseModel):
     password_created = Column(Boolean, nullable=False, default=False)
     organization_id = Column(CHAR(36), ForeignKey("organization.id"), nullable=False, index=True)
     organization = relationship("Organization", back_populates="employees")
+    sessions = relationship("Sessions", back_populates="user")
+
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
