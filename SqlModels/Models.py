@@ -30,8 +30,8 @@ from SqlModels.HelperModel.UserModelUtils import (
     FamilyInfo,
     PersonalContactInfo,
     PersonalInfo,
-    SocialLinks,
     Sessions,
+    SocialLinks,
 )
 
 

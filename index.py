@@ -1,9 +1,11 @@
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from user_agents import parse as parse_user_agent
 
 from Database.CacheDatabase import cache_database
 from Database.Database import DATABASE_ENGINE, database
+from Helper.helper import get_client_ip
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -13,9 +15,6 @@ from routes.ImageUploadation.ImageUploadation import imgRoute
 from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.organizations import orgRouter
 from SqlModels.Models import BaseModel
-from Helper.helper import get_client_ip
-
-from user_agents import parse as parse_user_agent
 
 app = FastAPI(
     title="OrbitRMS",

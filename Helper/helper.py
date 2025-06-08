@@ -5,13 +5,11 @@ from typing import Dict, List, Optional, Union
 
 from Crypto.Cipher import AES
 from dotenv import load_dotenv
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
 
 from Database.Database import db_dependencies
-
-from fastapi import Request, status
 
 load_dotenv(override=True)
 

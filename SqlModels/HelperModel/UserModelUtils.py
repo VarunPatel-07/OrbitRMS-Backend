@@ -1,13 +1,12 @@
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
 from SqlModels.Models import BaseModel
-
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 
 # main

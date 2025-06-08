@@ -182,7 +182,6 @@ async def onboard_organization(
         updated_user_info = cerate_model_instance(
             model=Models.PersonalInfo,
             data=data.employee_profile_info,
-            
         )
 
         updated_user_info.user_id = user_info.user_id

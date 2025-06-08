@@ -1,23 +1,23 @@
+import json
+import math
 import os
+from typing import Optional
+from urllib.parse import unquote
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy.sql import func
-from typing import Optional
-
-import json
-
-
-from urllib.parse import unquote
-
-from .EmployeeQueryFilters import apply_query_filter
 
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import WelcomeMailForNewlyAddedEmployee
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
-from Helper.helper import filter_fields, urlsafe_data_encoding_function, update_model_data
+from Helper.helper import (
+    filter_fields,
+    update_model_data,
+    urlsafe_data_encoding_function,
+)
 from Helper.jwtHelper import hash_passwords
 from Middleware.verifyToken import verify_token
 from PydanticModels.HelperPydanticModel import WelcomeEmployeeMailModel
@@ -25,6 +25,8 @@ from PydanticModels.Organizations.AddEditEmployeePydanticModal import (
     AddEditUserProfileModel,
 )
 from SqlModels import Models
+
+from .EmployeeQueryFilters import apply_query_filter
 
 load_dotenv(override=True)
 
@@ -87,8 +89,10 @@ async def handel_add_user_function(
                 },
             )
 
-        existing_user = db.query(Models.PersonalInfo).filter(
-            func.lower(Models.PersonalInfo.full_name) == data.personal_info.full_name
+        existing_user = (
+            db.query(Models.PersonalInfo)
+            .filter(func.lower(Models.PersonalInfo.full_name) == data.personal_info.full_name)
+            .first()
         )
         if existing_user:
             raise HTTPException(
@@ -145,10 +149,14 @@ async def handel_add_user_function(
         db.commit()
         db.refresh(employee_info)
 
-        personal_contact_info_data = data.personal_contact_info.dict(exclude={"emergency_contact"})
+        personal_contact_info_data = data.personal_contact_info.dict(exclude={"emergency_contacts"})
 
         personal_contact_info = cerate_model_instance(
-            model=Models.PersonalContactInfo, data=personal_contact_info_data, fields=["-user_id"]
+            model=Models.PersonalContactInfo,
+            data=personal_contact_info_data,
+            fields=[
+                "-user_id",
+            ],
         )
         personal_contact_info.user_id = new_user.id
         db.add(personal_contact_info)
@@ -158,7 +166,7 @@ async def handel_add_user_function(
         emergency_contact_array = []
         for emergency_contact in data.personal_contact_info.emergency_contacts:
             contact = cerate_model_instance(
-                model=Models.EmergencyContact, data=emergency_contact, fields=["-contact_id"]
+                model=Models.EmergencyContact, data=emergency_contact, fields=["-contact_id", "-id"]
             )
             contact.contact_id = personal_contact_info.id
             emergency_contact_array.append(contact)
@@ -209,7 +217,7 @@ async def handel_add_user_function(
         social_links_array = []
         for link in data.social_link:
             social_link = cerate_model_instance(
-                model=Models.SocialLinks, data=link, fields=["-user_id"]
+                model=Models.SocialLinks, data=link, fields=["-user_id", "-id"]
             )
             social_link.user_id = new_user.id
             social_links_array.append(social_link)
@@ -683,6 +691,8 @@ async def edit_employee_profile(
 async def fetch_all_employee(
     db: db_dependencies,
     token: str = Depends(verify_token),
+    page: int = Query(..., alias="page"),
+    limit: int = Query(..., alias="limit"),
     filter: Optional[str] = Query(None),
 ):
     try:
@@ -711,10 +721,10 @@ async def fetch_all_employee(
             filter_data = json.loads(decoded)
 
         ReportingManager = aliased(Models.User)
+        ReportingManagerPersonalInfo = aliased(Models.PersonalInfo)
 
         query_data = (
             db.query(Models.User)
-            .join(ReportingManager, Models.EmployeeInfo.reporting_manager)
             .options(
                 joinedload(Models.User.personal_info),
                 joinedload(Models.User.employee_info)
@@ -731,6 +741,12 @@ async def fetch_all_employee(
         if filter_data:
             query_data = apply_query_filter(query_data, filter_data)
         employee_data = query_data.all()
+
+        page = page if page else 1
+        limit = limit if limit else 10
+
+        start = (page - 1) * limit
+        end = start + limit
 
         _data = []
 
@@ -790,7 +806,14 @@ async def fetch_all_employee(
         return {
             "message": "user verified successfully",
             "success": True,
-            "data": _data,
+            "data": _data[start:end],
+            "filter_data": filter_data,
+            "metadata": {
+                "total_data": len(_data),
+                "total_pages": math.ceil(len(_data) / limit),
+                "current_page": page,
+                "record_per_page": limit,
+            },
         }
 
     except HTTPException as http_exception:

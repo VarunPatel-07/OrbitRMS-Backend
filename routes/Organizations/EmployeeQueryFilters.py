@@ -1,18 +1,15 @@
 from sqlalchemy import and_, or_
-from SqlModels import Models
 from sqlalchemy.orm import aliased
+from sqlalchemy import func
+
+from SqlModels import Models
 
 
 def apply_query_filter(query, filters):
 
     conditions = []
 
-    ReportingManager = aliased(Models.User)
-
     ReportingManagerPersonalInfo = aliased(Models.PersonalInfo)
-
-    query.join(Models.EmployeeInfo.reporting_manager.of_type(ReportingManager))
-    query.join(ReportingManager.personal_info.of_type(ReportingManagerPersonalInfo))
 
     for each_filter in filters:
 
@@ -22,7 +19,11 @@ def apply_query_filter(query, filters):
 
         if field_name == "employee_name":
             if operator == "equals":
-                conditions.append(Models.PersonalInfo.full_name == value)
+                normalized_db_name = func.replace(
+                    func.trim(Models.PersonalInfo.full_name), "  ", " "
+                )
+                normalized_input = value.strip().replace("  ", " ")
+                conditions.append(normalized_db_name.ilike(f"%{normalized_input}%"))
             if operator == "contains":
                 conditions.append(Models.PersonalInfo.full_name.ilike(f"%{value}%"))
             if operator == "starts_with":
@@ -41,7 +42,7 @@ def apply_query_filter(query, filters):
                 conditions.append(Models.EmployeeInfo.employee_type.ilike(f"%{value}%"))
         if field_name == "reporting_manager":
             if operator == "equals":
-                conditions.append(ReportingManagerPersonalInfo.full_name == value)
+                conditions.append(ReportingManagerPersonalInfo.full_name.ilike(f"%{value}%"))
             if operator == "contains":
                 conditions.append(ReportingManagerPersonalInfo.full_name.ilike(f"%{value}%"))
             if operator == "starts_with":
