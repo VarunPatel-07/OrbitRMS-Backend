@@ -1,15 +1,23 @@
+import json
+import math
 import os
+from typing import Optional
+from urllib.parse import unquote
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import func
 
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import WelcomeMailForNewlyAddedEmployee
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
-from Helper.helper import filter_fields, urlsafe_data_encoding_function, update_model_data
+from Helper.helper import (
+    filter_fields,
+    update_model_data,
+    urlsafe_data_encoding_function,
+)
 from Helper.jwtHelper import hash_passwords
 from Middleware.verifyToken import verify_token
 from PydanticModels.HelperPydanticModel import WelcomeEmployeeMailModel
@@ -17,6 +25,8 @@ from PydanticModels.Organizations.AddEditEmployeePydanticModal import (
     AddEditUserProfileModel,
 )
 from SqlModels import Models
+
+from .EmployeeQueryFilters import apply_query_filter
 
 load_dotenv(override=True)
 
@@ -43,6 +53,9 @@ async def handel_add_user_function(
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -53,19 +66,48 @@ async def handel_add_user_function(
             )
 
         user_id = token["user_id"]
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
-        if not user:
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Unable To Find User With This ID",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
 
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
         organization_info = (
             db.query(Models.Organization)
-            .options(joinedload(Models.Organization.general_info))
+            .options(
+                joinedload(Models.Organization.employees).joinedload(Models.User.personal_info),
+                joinedload(Models.Organization.employees).joinedload(Models.User.employee_info),
+            )
             .filter(Models.Organization.id == organization_id)
             .first()
         )
@@ -79,8 +121,18 @@ async def handel_add_user_function(
                 },
             )
 
-        existing_user = db.query(Models.PersonalInfo).filter(
-            func.lower(Models.PersonalInfo.full_name) == data.personal_info.full_name
+        def normalize_name(name: str) -> str:
+            return " ".join(name.strip().split()).lower()
+
+        existing_user = next(
+            (
+                employee
+                for employee in organization_info.employees
+                if employee.personal_info
+                and normalize_name(employee.personal_info.full_name)
+                == normalize_name(data.personal_info.full_name)
+            ),
+            None,
         )
         if existing_user:
             raise HTTPException(
@@ -89,6 +141,37 @@ async def handel_add_user_function(
                     "message": "Employee With This Name Already Exist",
                     "success": False,
                 },
+            )
+
+        user_with_same_email = next(
+            (
+                employee
+                for employee in organization_info.employees
+                if employee.employee_info
+                and employee.employee_info.employee_email == data.employee_info.employee_email
+            ),
+            None,
+        )
+
+        if user_with_same_email:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"message": "The Employee With This Mail Already Exist", "success": False},
+            )
+
+        user_with_same_employee_code = next(
+            (
+                employee
+                for employee in organization_info.employees
+                if employee.employee_info
+                and employee.employee_info.employee_code == data.employee_info.employee_code
+            ),
+            None,
+        )
+        if user_with_same_employee_code:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"message": "The Employee With This Employee Code Exist", "success": False},
             )
 
         hash_password = hash_passwords(SUPER_SECURE_HASH_PASSWORD)
@@ -137,10 +220,14 @@ async def handel_add_user_function(
         db.commit()
         db.refresh(employee_info)
 
-        personal_contact_info_data = data.personal_contact_info.dict(exclude={"emergency_contact"})
+        personal_contact_info_data = data.personal_contact_info.dict(exclude={"emergency_contacts"})
 
         personal_contact_info = cerate_model_instance(
-            model=Models.PersonalContactInfo, data=personal_contact_info_data, fields=["-user_id"]
+            model=Models.PersonalContactInfo,
+            data=personal_contact_info_data,
+            fields=[
+                "-user_id",
+            ],
         )
         personal_contact_info.user_id = new_user.id
         db.add(personal_contact_info)
@@ -150,7 +237,7 @@ async def handel_add_user_function(
         emergency_contact_array = []
         for emergency_contact in data.personal_contact_info.emergency_contacts:
             contact = cerate_model_instance(
-                model=Models.EmergencyContact, data=emergency_contact, fields=["-contact_id"]
+                model=Models.EmergencyContact, data=emergency_contact, fields=["-contact_id", "-id"]
             )
             contact.contact_id = personal_contact_info.id
             emergency_contact_array.append(contact)
@@ -200,12 +287,14 @@ async def handel_add_user_function(
 
         social_links_array = []
         for link in data.social_link:
-            social_link = cerate_model_instance(
-                model=Models.SocialLinks, data=link, fields=["-user_id"]
-            )
-            social_link.user_id = new_user.id
-            social_links_array.append(social_link)
-        db.add_all(social_links_array)
+            if link.name and link.link and link.icon:
+                social_link = cerate_model_instance(
+                    model=Models.SocialLinks, data=link, fields=["-user_id", "-id"]
+                )
+                social_link.user_id = new_user.id
+                social_links_array.append(social_link)
+        if social_links_array:
+            db.add_all(social_links_array)
         db.commit()
 
         encrypted_user_id = urlsafe_data_encoding_function(new_user.id)
@@ -251,6 +340,9 @@ async def handel_fetch_profile_info(
     employee_id: str = Query(..., alias="employee_id"),
 ):
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -261,17 +353,43 @@ async def handel_fetch_profile_info(
             )
 
         user_id = token["user_id"]
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
-        if not user:
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Unable To Find User With This ID",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
 
-        user_info = (
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        employee_data = (
             db.query(Models.User)
             .options(
                 joinedload(Models.User.personal_info),
@@ -296,7 +414,7 @@ async def handel_fetch_profile_info(
             "success": True,
             "data": {
                 **filter_fields(
-                    user_info,
+                    employee_data,
                     fields=[
                         "-password",
                         "-personal_info",
@@ -306,16 +424,16 @@ async def handel_fetch_profile_info(
                     ],
                 ),
                 "employee_info": {
-                    **filter_fields(user_info.employee_info, fields=["-reporting_manager"]),
+                    **filter_fields(employee_data.employee_info, fields=["-reporting_manager"]),
                     "reporting_manager": (
                         {
                             **filter_fields(
-                                user_info.employee_info.reporting_manager,
+                                employee_data.employee_info.reporting_manager,
                                 fields=["id"],
                             ),
                             **(
                                 filter_fields(
-                                    user_info.employee_info.reporting_manager.personal_info[0],
+                                    employee_data.employee_info.reporting_manager.personal_info,
                                     fields=[
                                         "-id",
                                         "first_name",
@@ -327,25 +445,28 @@ async def handel_fetch_profile_info(
                                         "gender",
                                     ],
                                 )
-                                if user_info.employee_info.reporting_manager
-                                and user_info.employee_info.reporting_manager.personal_info
+                                if employee_data.employee_info.reporting_manager
+                                and employee_data.employee_info.reporting_manager.personal_info
                                 else {}
                             ),
                         }
-                        if user_info.employee_info and user_info.employee_info.reporting_manager
+                        if employee_data.employee_info
+                        and employee_data.employee_info.reporting_manager
                         else {}
                     ),
                 },
                 "personal_info": (
-                    filter_fields(user_info.personal_info[0]) if user_info.personal_info else {}
+                    filter_fields(employee_data.personal_info)
+                    if employee_data.personal_info
+                    else {}
                 ),
                 "personal_contact_info": (
-                    filter_fields(user_info.personal_contact_info[0])
-                    if user_info.personal_contact_info
+                    filter_fields(employee_data.personal_contact_info[0])
+                    if employee_data.personal_contact_info
                     else {}
                 ),
                 "family_info": (
-                    filter_fields(user_info.family_info[0]) if user_info.family_info else {}
+                    filter_fields(employee_data.family_info[0]) if employee_data.family_info else {}
                 ),
             },
         }
@@ -371,6 +492,9 @@ async def edit_employee_profile(
     employee_id: str = Query(..., alias="employee-id"),
 ):
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -381,15 +505,41 @@ async def edit_employee_profile(
             )
 
         user_id = token["user_id"]
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
-        if not user:
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Unable To Find User With This ID",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
         employee = db.query(Models.User).filter(Models.User.id == employee_id).first()
         if not employee:
@@ -440,7 +590,7 @@ async def edit_employee_profile(
                 },
             )
         employee_info_data = data.employee_info.dict(exclude={"employee_role", "reporting_to"})
-        print(employee_info_data)
+
         employee_info = (
             db.query(Models.EmployeeInfo).filter(Models.EmployeeInfo.user_id == employee.id).first()
         )
@@ -503,15 +653,15 @@ async def edit_employee_profile(
                     model=Models.EmergencyContact,
                     model_id=emergency_contact.id,
                     id_field="id",
-                    updated_data=emergency_contact,
-                    filter_fields=["-contact_id", "id"],
+                    updated_data=emergency_contact.dict(exclude={"contact_id", "id"}),
+                    filter_fields=["-contact_id", "-id"],
                 )
             else:
 
                 contact = cerate_model_instance(
                     model=Models.EmergencyContact,
-                    data=emergency_contact,
-                    fields=["-contact_id", "id"],
+                    data=emergency_contact.dict(exclude={"contact_id", "id"}),
+                    fields=["-contact_id", "-id"],
                 )
                 contact.contact_id = personal_contact_info.id
                 new_contacts.append(contact)
@@ -623,30 +773,33 @@ async def edit_employee_profile(
             db.query(Models.SocialLinks).filter(Models.SocialLinks.user_id == employee.id).all()
         )
 
-        existing_social_link_ids_map = [social_link.id for social_link in existing_social_link]
+        existing_social_link_ids_map = [str(social_link.id) for social_link in existing_social_link]
 
         social_links_array = []
         for link in data.social_link:
 
-            if not link.id == "" and link.id in existing_social_link_ids_map:
-                update_model_data(
-                    db=db,
-                    model=Models.SocialLinks,
-                    model_id=link.id,
-                    id_field="id",
-                    updated_data=link.dict(exclude={"user_id", "id"}),
-                    filter_fields=["-user_id", "-id"],
+            if link.id and str(link.id) in existing_social_link_ids_map:
+                updated_link = (
+                    db.query(Models.SocialLinks).filter(Models.SocialLinks.id == link.id).first()
                 )
+                updated_link.icon = link.icon
+                updated_link.name = link.name
+                updated_link.link = link.link
+                updated_link.target_blank = link.target_blank
+
+                db.commit()
+                db.refresh(updated_link)
             else:
                 social_link = cerate_model_instance(
                     model=Models.SocialLinks,
                     data=link.dict(exclude={"user_id", "id"}),
-                    fields=["-user_id", "id"],
+                    fields=["-user_id", "-id"],
                 )
                 social_link.user_id = employee.id
                 social_links_array.append(social_link)
 
-        db.add_all(social_links_array)
+        if social_links_array:
+            db.add_all(social_links_array)
         db.commit()
 
         return {
@@ -661,6 +814,183 @@ async def edit_employee_profile(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "error while Editing the User The User",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+# * This Is An Api That Is Used To Fetch All The EmployeeOf The Given Organization
+@employee_router.get("/fetch-all", status_code=status.HTTP_200_OK)
+async def fetch_all_employee(
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    page: int = Query(..., alias="page"),
+    limit: int = Query(..., alias="limit"),
+    filter: Optional[str] = Query(None),
+):
+    try:
+
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        filter_data = ""
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
+
+        query_data = db.query(Models.User).filter(
+            Models.User.organization_id == user.organization_id
+        )
+
+        query_data = query_data.join(Models.User.personal_info)
+
+        query_data = query_data.outerjoin(Models.User.employee_info)
+
+        if filter_data:
+            query_data = apply_query_filter(query_data, filter_data)
+
+        total_data = query_data.count()
+
+        start = (page - 1) * limit
+        end = start + limit
+        query_data = query_data.offset(start).limit(end)
+
+        query_data = query_data.options(
+            joinedload(Models.User.personal_info),
+            joinedload(Models.User.employee_info)
+            .joinedload(Models.EmployeeInfo.reporting_manager)
+            .joinedload(Models.User.personal_info),
+            joinedload(Models.User.employee_info)
+            .joinedload(Models.EmployeeInfo.reporting_manager)
+            .joinedload(Models.User.employee_info),
+            joinedload(Models.User.employee_info).joinedload(Models.EmployeeInfo.employee_role),
+        )
+
+        employee_data = query_data.all()
+
+        page = page if page else 1
+        limit = limit if limit else 10
+
+        _data = []
+
+        for employee in employee_data:
+            employee_dict = filter_fields(employee, fields=["account_status", "organization_id"])
+            personal_info = filter_fields(employee.personal_info) if employee.personal_info else {}
+            employee_info = {}
+            reporting_manager_info = {}
+
+            if employee.employee_info:
+                employee_info = filter_fields(employee.employee_info, fields=["-reporting_manager"])
+
+                if employee.employee_info.reporting_manager:
+
+                    reporting_manager_info = {
+                        **filter_fields(employee.employee_info.reporting_manager, fields=["id"]),
+                    }
+                    if employee.employee_info.reporting_manager.personal_info:
+                        reporting_manager_info.update(
+                            filter_fields(
+                                employee.employee_info.reporting_manager.personal_info,
+                                fields=[
+                                    "id",
+                                    "first_name",
+                                    "last_name",
+                                    "middle_name",
+                                    "profile_picture",
+                                    "profile_picture_bg",
+                                    "full_name",
+                                    "gender",
+                                ],
+                            )
+                        )
+                    if employee.employee_info.reporting_manager.employee_info:
+                        reporting_manager_info.update(
+                            filter_fields(
+                                employee.employee_info.reporting_manager.employee_info,
+                                fields=["employee_code"],
+                            )
+                        )
+
+            _data.append(
+                {
+                    **employee_dict,
+                    "personal_info": personal_info,
+                    "employee_info": {
+                        **employee_info,
+                        "reporting_manager": (
+                            reporting_manager_info if reporting_manager_info else None
+                        ),
+                    },
+                }
+            )
+
+        return {
+            "message": "user verified successfully",
+            "success": True,
+            "data": _data,
+            "filter_data": filter_data,
+            "metadata": {
+                "total_data": total_data,
+                "total_pages": math.ceil(total_data / limit),
+                "current_page": page,
+                "record_per_page": limit,
+            },
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Fetching All The Employee",
                 "error": str(e),
                 "success": False,
             },

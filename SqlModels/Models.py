@@ -30,6 +30,7 @@ from SqlModels.HelperModel.UserModelUtils import (
     FamilyInfo,
     PersonalContactInfo,
     PersonalInfo,
+    Sessions,
     SocialLinks,
 )
 
@@ -39,7 +40,7 @@ class User(BaseModel):
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
-    personal_info = relationship("PersonalInfo", back_populates="user")
+    personal_info = relationship("PersonalInfo", back_populates="user", uselist=False)
 
     employee_info = relationship(
         "EmployeeInfo",
@@ -75,6 +76,8 @@ class User(BaseModel):
     password_created = Column(Boolean, nullable=False, default=False)
     organization_id = Column(CHAR(36), ForeignKey("organization.id"), nullable=False, index=True)
     organization = relationship("Organization", back_populates="employees")
+    sessions = relationship("Sessions", back_populates="user")
+
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,

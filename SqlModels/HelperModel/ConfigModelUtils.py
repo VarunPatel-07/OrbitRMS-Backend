@@ -104,7 +104,6 @@ class ConfigRoleModule(BaseModel):
         "EmployeeInfo",
         foreign_keys="[EmployeeInfo.employee_role_id]",  # Define this in EmployeeInfo
         back_populates="employee_role",
-        uselist=False,  # If one-to-one
     )
 
     # connecting to Parent Config Module

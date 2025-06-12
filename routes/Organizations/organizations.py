@@ -182,7 +182,6 @@ async def onboard_organization(
         updated_user_info = cerate_model_instance(
             model=Models.PersonalInfo,
             data=data.employee_profile_info,
-            
         )
 
         updated_user_info.user_id = user_info.user_id
@@ -361,6 +360,9 @@ async def fetch_organization_info(
 @orgRouter.get("/fetch-reporting-manager", status_code=status.HTTP_200_OK)
 async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(verify_token)):
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -371,15 +373,41 @@ async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(veri
             )
 
         user_id = token["user_id"]
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
-        if not user:
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Unable To Find User With This ID",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
         fetch_all_users = (
             db.query(Models.User)
@@ -394,18 +422,19 @@ async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(veri
                 (
                     {
                         **filter_fields(
-                            info, ["last_name", "first_name", "middle_name", "user_id"]
+                            each_user.personal_info,
+                            ["last_name", "first_name", "middle_name", "user_id"],
                         ),
-                        "full_name": f"{info.first_name or ''} {info.middle_name or ''} {info.last_name or ''}".strip(),
+                        "full_name": f"{each_user.personal_info.first_name or ''} {each_user.personal_info.middle_name or ''} {each_user.personal_info.last_name or ''}".strip(),
                     }
-                    if not getattr(info, "full_name", "")
+                    if not getattr(each_user.personal_info, "full_name", "")
                     else filter_fields(
-                        info, ["last_name", "first_name", "middle_name", "user_id", "full_name"]
+                        each_user.personal_info,
+                        ["last_name", "first_name", "middle_name", "user_id", "full_name"],
                     )
                 )
                 for each_user in fetch_all_users
                 if each_user.personal_info
-                for info in each_user.personal_info
             ],
         }
 

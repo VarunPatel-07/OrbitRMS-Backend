@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Union
 
 from Crypto.Cipher import AES
 from dotenv import load_dotenv
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
 
@@ -25,7 +25,7 @@ def generate_full_name(first_name: str, last_name: str, middle_name: str = None)
 
 def generate_random_secret_key() -> str:
     generated_secret_key = secrets.token_urlsafe(16)
-    print(generated_secret_key)
+
     return generated_secret_key
 
 
@@ -193,9 +193,6 @@ def update_model_data(
 
     record = db.query(model).filter(getattr(model, id_field) == model_id).first()
 
-
-    print(record)
-
     if not record:
         print(f"Record with {id_field}={model_id} not found")
         return None
@@ -229,3 +226,13 @@ def update_model_data(
             db.commit()
             db.refresh(record)
             return record
+
+
+def get_client_ip(request: Request) -> str:
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.headers.get("X-Real-IP", request.client.host)
+
+    return ip

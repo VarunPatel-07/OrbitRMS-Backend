@@ -54,6 +54,8 @@ async def project_status_function(
 
         user_id = token["user_id"]
 
+        session_id = token["session_id"]
+
         if type not in ["add", "edit"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
@@ -63,15 +65,31 @@ async def project_status_function(
                 },
             )
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
 
-        if not user:
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
+            )
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         personal_info = (
@@ -201,6 +219,9 @@ async def project_status_function(
 @configRoute.get(path="/project_status/fetch", status_code=status.HTTP_200_OK)
 async def fetch_project_status(db: db_dependencies, token: str = Depends(verify_token)):
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -212,17 +233,39 @@ async def fetch_project_status(db: db_dependencies, token: str = Depends(verify_
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
 
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
         config_module = (
             db.query(Models.ConfigModule)
             .filter(Models.ConfigModule.organization_id == user.organization_id)
@@ -274,6 +317,9 @@ async def delete_project_status(
     id: str = Query(..., description="ID for delete operation"),
 ):
     try:
+        #
+        # * We Will Firstly Check For The Users Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -285,16 +331,41 @@ async def delete_project_status(
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
         project_status = (
             db.query(Models.ProjectStatus).filter(Models.ProjectStatus.id == id).first()
         )
@@ -348,6 +419,8 @@ async def add_edit_department(
             )
         user_id = token["user_id"]
 
+        session_id = token["session_id"]
+
         if type not in ["add", "edit"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
@@ -357,15 +430,31 @@ async def add_edit_department(
                 },
             )
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
 
-        if not user:
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
+            )
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         personal_info = (
@@ -490,6 +579,10 @@ async def add_edit_department(
 @configRoute.get(path="/department/fetch", status_code=status.HTTP_200_OK)
 async def fetch_all_department_type(db: db_dependencies, token: str = Depends(verify_token)):
     try:
+
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -501,16 +594,40 @@ async def fetch_all_department_type(db: db_dependencies, token: str = Depends(ve
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
         config_module = (
             db.query(Models.ConfigModule)
@@ -560,6 +677,9 @@ async def delete_department(
     id: str = Query(..., description="ID for delete operation"),
 ):
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -571,16 +691,40 @@ async def delete_department(
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
         department = db.query(Models.Department).filter(Models.Department.id == id).first()
 
@@ -629,14 +773,6 @@ async def add_edit_designations(
     id: Optional[str] = Query(None, description="ID for edit operation"),
 ):
     try:
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
 
         if type not in ["add", "edit"]:
             raise HTTPException(
@@ -647,15 +783,54 @@ async def add_edit_designations(
                 },
             )
 
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "User Not Found", "success": False},
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
         personal_info = (
             db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
@@ -781,6 +956,9 @@ async def add_edit_designations(
 @configRoute.get(path="/designations/fetch", status_code=status.HTTP_200_OK)
 async def fetch_all_designations(db: db_dependencies, token: str = Depends(verify_token)):
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -792,13 +970,40 @@ async def fetch_all_designations(db: db_dependencies, token: str = Depends(verif
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "User Not Found", "success": False},
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
         config_module = (
             db.query(Models.ConfigModule)
@@ -848,6 +1053,10 @@ async def delete_designation(
     id: str = Query(..., description="ID for delete operation"),
 ):
     try:
+
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -859,16 +1068,41 @@ async def delete_designation(
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
         designations = db.query(Models.Designations).filter(Models.Designations.id == id).first()
 
         if not designations:
@@ -945,6 +1179,9 @@ async def fetch_all_role_of_organization(
 ):
 
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -956,16 +1193,40 @@ async def fetch_all_role_of_organization(
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
         config_module = (
             db.query(Models.ConfigModule)
@@ -982,8 +1243,10 @@ async def fetch_all_role_of_organization(
                 },
             )
 
-        roles_permissions = db.query(Models.ConfigRoleModule).filter(
-            Models.ConfigRoleModule.config_module_id == config_module.id
+        roles_permissions = (
+            db.query(Models.ConfigRoleModule)
+            .options(joinedload(Models.ConfigRoleModule.associated_employees))
+            .filter(Models.ConfigRoleModule.config_module_id == config_module.id)
         )
 
         # Replace the model_to_dict part with this:
@@ -1043,6 +1306,10 @@ async def fetch_roles_permission(
     token: str = Depends(verify_token),
 ):
     try:
+
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1054,16 +1321,41 @@ async def fetch_roles_permission(
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
         # Get all modules for this role (flat structure)
         all_modules = (
             db.query(Models.RoleAssociatedPermissionModule)
@@ -1139,6 +1431,9 @@ async def update(
 ):
     try:
 
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1150,16 +1445,40 @@ async def update(
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
         if type not in ["module", "permission"]:
             raise HTTPException(
@@ -1270,6 +1589,9 @@ async def Add_Edit_Roles_Permissions(
     token: str = Depends(verify_token),
 ):
     try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1281,16 +1603,40 @@ async def Add_Edit_Roles_Permissions(
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
         personal_info = (
             db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
         )
@@ -1452,6 +1798,10 @@ async def Delete_Roles_Permission(
     token: str = Depends(verify_token),
 ):
     try:
+
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1463,16 +1813,41 @@ async def Delete_Roles_Permission(
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
-        if not user:
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
                     "success": False,
                 },
             )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
         config_role_module = (
             db.query(Models.ConfigRoleModule).filter(Models.ConfigRoleModule.id == id).first()
         )
