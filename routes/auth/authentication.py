@@ -3,15 +3,25 @@ import os
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
+from user_agents import parse as parse_user_agent
 
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
+    get_client_ip,
     model_to_filtered_dict,
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
@@ -164,11 +174,40 @@ async def create_password(
 
         hash_password = hash_passwords(password.password)
 
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"message": "user not found", "success": False},
             )
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "organization not found", "success": False},
+            )
+        if not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "Account is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        if not organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
         if not user.password_created:
 
             user.password = hash_password
@@ -205,7 +244,7 @@ async def create_password(
 # ? The Api To Sign-In in Your Organization
 #
 @authRoutes.post(path="/sign-in", status_code=status.HTTP_200_OK)
-async def sing_in(db: db_dependencies, user_info: SignIn):
+async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
     try:
         employee_info = (
             db.query(Models.EmployeeInfo)
@@ -230,6 +269,28 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"message": "user not found", "success": False},
             )
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "organization not found", "success": False},
+            )
+        if not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "Account is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        if not organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
 
         check_password = verify_password(
             plain_password=user_info.password, hashed_password=user.password
@@ -240,7 +301,47 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": "Invalid Email Or Password", "success": False},
             )
-        sub = {"user_id": user.id}
+        ip = get_client_ip(request)
+        user_agent_string = request.headers.get("user-agent", "unknown")
+        user_agent = parse_user_agent(user_agent_string)
+
+        device_fingerprint = f"{user_agent_string}-{ip}"
+
+        hash_device_fingerprint = hash_passwords(device_fingerprint)
+
+        existing_session = (
+            db.query(Models.Sessions)
+            .filter(Models.Sessions.fingerprint == hash_device_fingerprint)
+            .first()
+        )
+
+        if existing_session:
+            db.commit()
+            db.refresh(existing_session)
+        else:
+            device_info = {
+                "ip_address": ip,
+                "browser": user_agent.browser.family,
+                "browser_version": user_agent.browser.version_string,
+                "os": user_agent.os.family,
+                "os_version": user_agent.os.version_string,
+                "device_type": user_agent.device.family,
+                "is_mobile": user_agent.is_mobile,
+                "is_tablet": user_agent.is_tablet,
+                "is_pc": user_agent.is_pc,
+                "is_bot": user_agent.is_bot,
+                "fingerprint": hash_device_fingerprint,
+            }
+            user_sessions = cerate_model_instance(
+                data=device_info, model=Models.Sessions, fields=["-user_id"]
+            )
+            user_sessions.user_id = user.id
+            db.add(user_sessions)
+            db.commit()
+            db.refresh(user_sessions)
+
+        sub = {"user_id": user.id, "session_id": user_sessions.id}
+
         token = create_jwt_token(data=sub)
 
         encrypted_org_id = urlsafe_data_encoding_function(organization.id)
@@ -287,6 +388,8 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
 
         user_id = token["user_id"]
 
+        session_id = token["session_id"]
+
         user = (
             db.query(Models.User)
             .options(
@@ -299,16 +402,46 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
                 joinedload(Models.User.organization).joinedload(
                     Models.Organization.organization_settings
                 ),
+                joinedload(Models.User.sessions),
             )
             .filter(Models.User.id == user_id)
             .first()
         )
 
-        if not user:
+        if not user or not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Unable To Find User With This ID",
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "Unable To Find User With This ID"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+        if not organization or not organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Organization is deactivated. Access denied."
+                        if user.account_status
+                        else "Organization not found"
+                    ),
                     "success": False,
                 },
             )
@@ -322,9 +455,7 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
                 "user": {
                     "employee_info": model_to_filtered_dict(user.employee_info),
                     "personal_info": (
-                        model_to_filtered_dict(user.personal_info[0])
-                        if user.personal_info[0]
-                        else None
+                        model_to_filtered_dict(user.personal_info) if user.personal_info else None
                     ),
                 },
                 "organization": {

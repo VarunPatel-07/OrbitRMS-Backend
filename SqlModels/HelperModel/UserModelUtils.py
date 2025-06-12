@@ -174,7 +174,7 @@ class Sessions(BaseModel):
     is_tablet = Column(Boolean, nullable=True, default=False)
     is_pc = Column(Boolean, nullable=True, default=False)
     is_bot = Column(Boolean, nullable=True, default=False)
-    fingerprint = Column(Boolean, nullable=True, default=False)
+    fingerprint = Column(String(500), nullable=True, default=False)
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(

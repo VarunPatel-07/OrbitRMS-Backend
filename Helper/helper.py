@@ -25,7 +25,7 @@ def generate_full_name(first_name: str, last_name: str, middle_name: str = None)
 
 def generate_random_secret_key() -> str:
     generated_secret_key = secrets.token_urlsafe(16)
-    print(generated_secret_key)
+
     return generated_secret_key
 
 
@@ -192,8 +192,6 @@ def update_model_data(
 ):
 
     record = db.query(model).filter(getattr(model, id_field) == model_id).first()
-
-    print(record)
 
     if not record:
         print(f"Record with {id_field}={model_id} not found")

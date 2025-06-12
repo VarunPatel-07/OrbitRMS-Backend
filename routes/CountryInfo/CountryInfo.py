@@ -85,11 +85,16 @@ async def FetchAllTheCountry(order: str = Query("asc", alias="order")):
                 countryArray, key=lambda x: x["country_name"], reverse=(order.lower() == "desc")
             )
 
-            await cache_database.set(cache_data_key, json.dumps(sortedData), ex=10 * 24 * 3600)
+            await cache_database.set(cache_data_key, json.dumps(sortedData), ex=30 * 24 * 3600)
             return sortedData
         else:
-            print(f"Error fetching country data: {response.status_code}")
-            return []
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "message": "Error Accrued While Fetching The Country Contact Info",
+                    "success": False,
+                },
+            )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -162,7 +167,7 @@ async def GetCountryInfo(
 
         reverse = order.lower() == "desc"
         state_array.sort(key=lambda x: x["state_name"], reverse=reverse)
-        await cache_database.set(cache_data_key, json.dumps(state_array), ex=10 * 24 * 3600)
+        await cache_database.set(cache_data_key, json.dumps(state_array), ex=30 * 24 * 3600)
 
         return {"success": True, "country": country, "states": state_array}
     except Exception as e:
@@ -225,7 +230,7 @@ async def GetStateInfo(
             cities_array.append(formatted_city_name)
         reverse = order.lower() == "desc"
         sorted_data = sorted(cities_array, reverse=reverse)
-        await cache_database.set(cached_data_key, json.dumps(cities_array), ex=10 * 24 * 3600)
+        await cache_database.set(cached_data_key, json.dumps(cities_array), ex=30 * 24 * 3600)
         return {
             "success": True,
             "country": country,
@@ -281,7 +286,7 @@ async def getCountryFormats(country_code: str = Query(..., alias="country-code")
             ),
         }
 
-        await cache_database.set(cached_data_key, json.dumps(data), ex=10 * 24 * 3600)
+        await cache_database.set(cached_data_key, json.dumps(data), ex=30 * 24 * 3600)
 
         return {
             "success": True,
@@ -316,6 +321,7 @@ async def fetchAllTheCountryData(order: str = Query("asc", alias="order")):
             sorted_cached_data.sort(key=lambda x: x["country_name"], reverse=cache_reverse)
 
             return {"success": True, "data": sorted_cached_data}
+
         url = os.getenv("REST_API_URL")
 
         response = await fetch_data(url=url)
@@ -324,11 +330,13 @@ async def fetchAllTheCountryData(order: str = Query("asc", alias="order")):
 
         data = []
         for country in countryData:
+
             postal_code = country.get("postalCode")
             default_postal_code = {
                 "format": "##########",
                 "regex": "^(\\d{10})$",
             }
+
             global country_number_code
             if country.get("idd"):
                 root = country.get("idd").get("root", "")
@@ -347,8 +355,10 @@ async def fetchAllTheCountryData(order: str = Query("asc", alias="order")):
 
             data.append(obj)
         reverse = order.lower() == "desc"
+
         data.sort(key=lambda x: x["country_name"], reverse=reverse)
-        await cache_database.set(cache_data_key, json.dumps(data), ex=10 * 24 * 3600)
+
+        await cache_database.set(cache_data_key, json.dumps(data), ex=30 * 24 * 3600)
         return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(

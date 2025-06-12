@@ -15,7 +15,7 @@ ALGORITHM = os.getenv("JWT_ALGORITHM")
 def hash_passwords(password: str) -> str:
     salt = os.urandom(16)
     hashed_password = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
-    print(hashed_password)
+
     return salt.hex() + hashed_password.hex()
 
 

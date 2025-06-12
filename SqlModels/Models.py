@@ -40,7 +40,7 @@ class User(BaseModel):
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
-    personal_info = relationship("PersonalInfo", back_populates="user")
+    personal_info = relationship("PersonalInfo", back_populates="user", uselist=False)
 
     employee_info = relationship(
         "EmployeeInfo",
