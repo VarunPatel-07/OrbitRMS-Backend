@@ -1,5 +1,7 @@
 import json
 import os
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 from bs4 import BeautifulSoup
@@ -21,7 +23,9 @@ from Email.HtmlEmailBody import VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
+    filter_fields,
     get_client_ip,
+    hash_fingerprint,
     model_to_filtered_dict,
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
@@ -307,18 +311,25 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
         device_fingerprint = f"{user_agent_string}-{ip}"
 
-        hash_device_fingerprint = hash_passwords(device_fingerprint)
+        hash_device_fingerprint = hash_fingerprint(device_fingerprint)
 
         existing_session = (
             db.query(Models.Sessions)
-            .filter(Models.Sessions.fingerprint == hash_device_fingerprint)
+            .filter(
+                Models.Sessions.fingerprint == hash_device_fingerprint,
+                Models.Sessions.user_id == user.id,
+            )
             .first()
         )
 
         if existing_session:
+            existing_session.updated_at = datetime.now(ZoneInfo("UTC"))
+            print("finger print found")
             db.commit()
             db.refresh(existing_session)
+            user_sessions = existing_session
         else:
+            print("finger print not found")
             device_info = {
                 "ip_address": ip,
                 "browser": user_agent.browser.family,
@@ -372,6 +383,180 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
 
 #
+# ? The Api To Fetch All The Logged In Devices Of The User Your Organization
+#
+@authRoutes.get(path="/fetch-sessions", status_code=status.HTTP_200_OK)
+async def fetch_sessions(db: db_dependencies, token: str = Depends(verify_token)):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        _data = [filter_fields(data) for data in user.sessions]
+
+        return {
+            "message": "user verified successfully",
+            "success": True,
+            "data": _data,
+            "current_session_id": session_id,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while verifying user",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+#
+# ? The Api To Delete An Specific Sessions
+#
+@authRoutes.delete(path="/delete-session", status_code=status.HTTP_200_OK)
+async def fetch_sessions(
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    session_id: str = Query(..., alias="session_id"),
+):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        current_session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == current_session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        find_session = db.query(Models.Sessions).filter(Models.Sessions.id == session_id).first()
+
+        db.delete(find_session)
+        db.commit()
+
+        return {
+            "message": "Session Deleted successfully",
+            "success": True,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while verifying user",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+#
 # ? The Api To Verify The Organization
 #
 @authRoutes.get(path="/verify-user", status_code=status.HTTP_200_OK)
@@ -417,6 +602,14 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
                         if user.account_status
                         else "Unable To Find User With This ID"
                     ),
+                    "success": False,
+                },
+            )
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )

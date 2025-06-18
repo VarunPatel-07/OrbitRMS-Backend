@@ -378,7 +378,7 @@ async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(veri
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -392,6 +392,15 @@ async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(veri
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )

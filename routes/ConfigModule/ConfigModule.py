@@ -21,6 +21,7 @@ from PydanticModels.ConfigModule.ConfigModule import (
     ProjectStatus,
     RoleAssociatedPermissionModule,
     RolesPermission,
+    ClientFormSchemaModel,
 )
 from SqlModels import Models
 
@@ -67,7 +68,7 @@ async def project_status_function(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -81,6 +82,14 @@ async def project_status_function(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -237,7 +246,7 @@ async def fetch_project_status(db: db_dependencies, token: str = Depends(verify_
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -251,6 +260,15 @@ async def fetch_project_status(db: db_dependencies, token: str = Depends(verify_
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -335,7 +353,7 @@ async def delete_project_status(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -349,6 +367,14 @@ async def delete_project_status(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -432,7 +458,7 @@ async def add_edit_department(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -446,6 +472,15 @@ async def add_edit_department(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -598,7 +633,7 @@ async def fetch_all_department_type(db: db_dependencies, token: str = Depends(ve
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -612,6 +647,15 @@ async def fetch_all_department_type(db: db_dependencies, token: str = Depends(ve
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -644,8 +688,10 @@ async def fetch_all_department_type(db: db_dependencies, token: str = Depends(ve
                 },
             )
 
-        department = db.query(Models.Department).filter(
-            Models.Department.config_module_id == config_module.id
+        department = (
+            db.query(Models.Department)
+            .filter(Models.Department.config_module_id == config_module.id)
+            .all()
         )
 
         return {
@@ -695,7 +741,7 @@ async def delete_department(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -709,6 +755,15 @@ async def delete_department(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -801,7 +856,7 @@ async def add_edit_designations(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -815,6 +870,15 @@ async def add_edit_designations(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -974,7 +1038,7 @@ async def fetch_all_designations(db: db_dependencies, token: str = Depends(verif
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -988,6 +1052,15 @@ async def fetch_all_designations(db: db_dependencies, token: str = Depends(verif
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -1020,8 +1093,10 @@ async def fetch_all_designations(db: db_dependencies, token: str = Depends(verif
                 },
             )
 
-        designations = db.query(Models.Designations).filter(
-            Models.Designations.config_module_id == config_module.id
+        designations = (
+            db.query(Models.Designations)
+            .filter(Models.Designations.config_module_id == config_module.id)
+            .all()
         )
 
         return {
@@ -1072,7 +1147,7 @@ async def delete_designation(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -1086,6 +1161,15 @@ async def delete_designation(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -1197,7 +1281,7 @@ async def fetch_all_role_of_organization(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -1211,6 +1295,15 @@ async def fetch_all_role_of_organization(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -1247,6 +1340,7 @@ async def fetch_all_role_of_organization(
             db.query(Models.ConfigRoleModule)
             .options(joinedload(Models.ConfigRoleModule.associated_employees))
             .filter(Models.ConfigRoleModule.config_module_id == config_module.id)
+            .all()
         )
 
         # Replace the model_to_dict part with this:
@@ -1255,7 +1349,12 @@ async def fetch_all_role_of_organization(
             "message": "Roles Fetched Successfully",
             "success": True,
             "data": [
-                model_to_filtered_dict(role_permission) for role_permission in roles_permissions
+                {
+                    **(model_to_filtered_dict(role_permission)),
+                    "associated_employees": role_permission.associated_employees,
+                    "employees": len(role_permission.associated_employees),
+                }
+                for role_permission in roles_permissions
             ],
         }
 
@@ -1325,7 +1424,7 @@ async def fetch_roles_permission(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -1339,6 +1438,15 @@ async def fetch_roles_permission(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -1449,7 +1557,7 @@ async def update(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -1463,6 +1571,15 @@ async def update(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -1607,7 +1724,7 @@ async def Add_Edit_Roles_Permissions(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -1621,6 +1738,15 @@ async def Add_Edit_Roles_Permissions(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -1817,7 +1943,7 @@ async def Delete_Roles_Permission(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -1831,6 +1957,15 @@ async def Delete_Roles_Permission(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -1881,6 +2016,402 @@ async def Delete_Roles_Permission(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Error While Deleting The Role",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+# ? ------------------------- This Is The Api For The Client Form Schema  -------------------
+
+
+@configRoute.get("/client_form_schema/fetch")
+async def Client_Form_Schema(db: db_dependencies, token: str = Depends(verify_token)):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        config_module = (
+            db.query(Models.ConfigModule)
+            .filter(Models.ConfigModule.organization_id == user.organization_id)
+            .first()
+        )
+
+        if not config_module:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Config Module Not Found",
+                    "success": False,
+                },
+            )
+
+        client_form_schemas = (
+            db.query(Models.ClientFormSchema)
+            .filter(Models.ClientFormSchema.config_module_id == config_module.id)
+            .all()
+        )
+
+        return {
+            "success": True,
+            "message": "Client Form Schema Fetched Successfully",
+            "data": [model_to_filtered_dict(client_form) for client_form in client_form_schemas],
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        db.rollback()  # ✅ Ensure rollback in case of error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error While Fetching The Client Form Schema",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.post(path="/client_form_schema/add-edit", status_code=status.HTTP_200_OK)
+async def add_edit_Client_Form_Schema(
+    db: db_dependencies,
+    data: ClientFormSchemaModel,
+    token: str = Depends(verify_token),
+    type: str = Query(..., description="type Should be 'add' , 'edit'"),
+    id: Optional[str] = Query(None, description="ID for edit operation"),
+):
+    try:
+
+        if type not in ["add", "edit"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={
+                    "message": "Invalid type. Must be 'add' or 'edit'",
+                    "success": False,
+                },
+            )
+
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        personal_info = (
+            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
+
+        if type == "add":
+
+            config_module = (
+                db.query(Models.ConfigModule)
+                .filter(Models.ConfigModule.organization_id == user.organization_id)
+                .first()
+            )
+
+            if not config_module:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"message": "Config Module Not Found", "success": False},
+                )
+
+            existing_field = (
+                db.query(Models.ClientFormSchema)
+                .filter(
+                    func.lower(Models.ClientFormSchema.field_name) == func.lower(data.field_name)
+                )
+                .first()
+            )
+
+            if existing_field:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Field With This Name Is Already Exist",
+                        "success": False,
+                    },
+                )
+
+            created_by_user = model_to_filtered_dict(
+                personal_info, ["id", "first_name", "last_name"]
+            )
+
+            form_field = Models.ClientFormSchema(
+                field_name=data.field_name,
+                is_required_field=data.is_required_field,
+                type=data.type,
+                source_type="user_created",
+                config_module_id=config_module.id,
+                created_by=json.dumps(created_by_user),
+                updated_by=None,
+            )
+
+            db.add(form_field)
+            db.commit()
+            db.refresh(form_field)
+
+            return {"success": True, "message": "Field Added Successfully"}
+
+        else:
+            if type == "edit" and not id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "ID is required for edit operation",
+                        "success": False,
+                    },
+                )
+
+            existing_field = (
+                db.query(Models.ClientFormSchema)
+                .filter(
+                    func.lower(Models.ClientFormSchema.field_name) == func.lower(data.field_name),
+                    Models.ClientFormSchema.id != id,
+                )
+                .first()
+            )
+
+            if existing_field:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Field With This Name Is Already Exist",
+                        "success": False,
+                    },
+                )
+
+            form_field = (
+                db.query(Models.ClientFormSchema).filter(Models.ClientFormSchema.id == id).first()
+            )
+
+            if not form_field:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"message": "Field Not Found", "success": False},
+                )
+
+            updated_by_user = model_to_filtered_dict(
+                personal_info, ["id", "first_name", "last_name"]
+            )
+
+            form_field.field_name = data.field_name
+            form_field.is_required_field = data.is_required_field
+            form_field.type = data.type
+            form_field.updated_by = json.dumps(updated_by_user)
+
+            db.commit()
+            db.refresh(form_field)
+
+            return {"success": True, "message": "Field Updated Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Add , Edit Field Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.delete(path="/client_form_schema/delete", status_code=status.HTTP_200_OK)
+async def delete_designation(
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    id: str = Query(..., description="ID for delete operation"),
+):
+    try:
+
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        client_form_field = (
+            db.query(Models.ClientFormSchema).filter(Models.ClientFormSchema.id == id).first()
+        )
+
+        if not client_form_field:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Filed Not Found", "success": False},
+            )
+
+        db.delete(client_form_field)
+        db.commit()
+
+        return {"success": True, "message": "Field Deleted Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Delete Status Right Now",
                 "success": False,
                 "error": str(e),
             },

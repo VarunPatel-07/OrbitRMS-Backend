@@ -8,6 +8,7 @@ from sqlalchemy.orm import relationship
 
 from Database.Base import BaseModel
 from SqlModels.HelperModel.ConfigModelUtils import (
+    ClientFormSchema,
     ConfigRoleModule,
     Department,
     Designations,
@@ -107,6 +108,10 @@ class Organization(BaseModel):
         "ConfigModule", back_populates="organization", cascade="all, delete-orphan"
     )
 
+    client_inquires = relationship(
+        "ClientInquires", back_populates="organization", cascade="all, delete-orphan", uselist=False
+    )
+
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
@@ -128,6 +133,10 @@ class ConfigModule(BaseModel):
         "Designations", back_populates="config_module", cascade="all, delete"
     )
 
+    client_form_schema = relationship(
+        "ClientFormSchema", back_populates="config_module", cascade="all, delete"
+    )
+
     roles_and_permissions = relationship(
         "ConfigRoleModule", back_populates="config_module", cascade="all, delete"
     )
@@ -147,3 +156,43 @@ class ConfigModule(BaseModel):
         onupdate=lambda: datetime.now(ZoneInfo("UTC")),
         nullable=True,
     )
+
+
+class ClientInquires(BaseModel):
+    __tablename__ = "client_inquires"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+
+    api_key = Column(String(255), nullable=False)
+    api_secrete = Column(String(255), nullable=False)
+
+    status = Column(Boolean, nullable=False, default=False)
+
+    client_inquires_data = relationship(
+        "ClientInquiresData", back_populates="client_inquire", cascade="all, delete-orphan"
+    )
+
+    organization_id = Column(
+        CHAR(36),
+        ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+
+    organization = relationship("Organization", back_populates="client_inquires")
+
+
+class ClientInquiresData(BaseModel):
+
+    __tablename__ = "client_inquires_data"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+
+    data = Column(JSON, nullable=True, default=None)
+
+    client_inquire_id = Column(
+        CHAR(36),
+        ForeignKey("client_inquires.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+
+    client_inquire = relationship("ClientInquires", back_populates="client_inquires_data")
