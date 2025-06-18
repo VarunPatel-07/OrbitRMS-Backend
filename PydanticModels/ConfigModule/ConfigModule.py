@@ -18,6 +18,12 @@ class Designations(BaseModel):
     designations_name: str
 
 
+class ClientFormSchemaModel(BaseModel):
+    field_name: str
+    is_required_field: bool
+    type: str
+
+
 class PermissionModule(BaseModel):
     label: str
     is_allowed: bool

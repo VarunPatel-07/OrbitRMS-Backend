@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import os
 import secrets
 from typing import Dict, List, Optional, Union
@@ -8,6 +9,9 @@ from dotenv import load_dotenv
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
+
+import secrets
+import string
 
 from Database.Database import db_dependencies
 
@@ -236,3 +240,38 @@ def get_client_ip(request: Request) -> str:
         ip = request.headers.get("X-Real-IP", request.client.host)
 
     return ip
+
+
+def hash_fingerprint(fingerprint: str) -> str:
+    return hashlib.sha256(fingerprint.encode()).hexdigest()
+
+
+def generate_api_secrets_api_key():
+    api_key = "api_" + "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(24)
+    )
+    api_secret = secrets.token_urlsafe(32)
+
+    return api_key, api_secret
+
+
+def is_valid_type(value, field_type):
+    try:
+        if field_type == "string":
+            return isinstance(value, str)
+        elif field_type == "boolean":
+            return isinstance(value, bool)
+        elif field_type == "number":
+            return isinstance(value, int)
+        elif field_type == "array":
+            return isinstance(value, List)
+        elif field_type == "object":
+            return isinstance(value, dict)
+        elif field_type == "array of string":
+            return isinstance(value, list) and all(isinstance(item, str) for item in value)
+        elif field_type == "array of object":
+            return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+
+        return False
+    except:
+        return False

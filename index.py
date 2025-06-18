@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from user_agents import parse as parse_user_agent
 
 from Database.CacheDatabase import cache_database
 from Database.Database import DATABASE_ENGINE, database
@@ -14,6 +13,7 @@ from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
 from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.organizations import orgRouter
+from routes.ClientInquires.ClientInquires import clientInquires
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
@@ -47,6 +47,7 @@ app.include_router(countryApiRouter)
 app.include_router(imgRoute)
 app.include_router(configRoute)
 app.include_router(employee_router)
+app.include_router(clientInquires)
 
 
 # Basic health check route
@@ -65,24 +66,6 @@ async def root_health_check(request: Request):
     if request.method == "GET":
 
         ip = get_client_ip(request)
-        user_agent_string = request.headers.get("user-agent", "unknown")
-        user_agent = parse_user_agent(user_agent_string)
-
-        device_fingerprint = f"{user_agent_string}-{ip}"
-
-        device_info = {
-            "ip_address": ip,
-            "browser": user_agent.browser.family,
-            "browser_version": user_agent.browser.version_string,
-            "os": user_agent.os.family,
-            "os_version": user_agent.os.version_string,
-            "device_type": user_agent.device.family,
-            "is_mobile": user_agent.is_mobile,
-            "is_tablet": user_agent.is_tablet,
-            "is_pc": user_agent.is_pc,
-            "is_bot": user_agent.is_bot,
-            "fingerprint": device_fingerprint,
-        }
 
         return {
             "message": "Welcome To OrbitRMS. The app functionality is working fine.",
@@ -91,8 +74,7 @@ async def root_health_check(request: Request):
                 "The app is healthy." if db_status == "healthy" else "Database connection issue."
             ),
             "cache_database": await cache_database.get("hello"),
-            "device_info": device_info,
-            "device_fingerprint": device_fingerprint,
+            "ip": ip,
         }
     else:
         return Response(

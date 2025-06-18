@@ -25,6 +25,8 @@ class EmergencyContact(BaseModel):
 class Child(BaseModel):
     child_name: str
     child_date_of_birth: Optional[datetime] = None
+    family_info_id: str
+    id: str
 
 
 class SocialLink(BaseModel):

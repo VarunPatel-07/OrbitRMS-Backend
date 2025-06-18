@@ -182,3 +182,32 @@ class PermissionModule(BaseModel):
     associated_permissions_module = relationship(
         "RoleAssociatedPermissionModule", back_populates="permissions"
     )
+
+
+class ClientFormSchema(BaseModel):
+    __tablename__ = "client_form_schema"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+
+    field_name = Column(String(255), nullable=False)
+    is_required_field = Column(Boolean, nullable=False, default=True)
+    type = Column(String(255), nullable=False)
+
+    source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
+    config_module_id = Column(
+        CHAR(36),
+        ForeignKey("config_module.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+    config_module = relationship("ConfigModule", back_populates="client_form_schema")
+
+    # created At UpdatedAt Field
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )

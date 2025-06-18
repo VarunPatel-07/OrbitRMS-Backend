@@ -71,7 +71,7 @@ async def handel_add_user_function(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -85,6 +85,15 @@ async def handel_add_user_function(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -358,7 +367,7 @@ async def handel_fetch_profile_info(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -372,6 +381,15 @@ async def handel_fetch_profile_info(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
@@ -510,7 +528,7 @@ async def edit_employee_profile(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -528,6 +546,14 @@ async def edit_employee_profile(
                 },
             )
 
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
         # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
 
         if not any(session.id == session_id for session in user.sessions):
@@ -694,10 +720,12 @@ async def edit_employee_profile(
 
             existing_child = (
                 db.query(Models.Children)
-                .filter(Models.Children.family_info_id == family_info)
+                .filter(Models.Children.family_info_id == find_family_info.id)
                 .all()
             )
+
             existing_child_ids_map = [child.id for child in existing_child]
+            print(existing_child_ids_map)
 
             children_array = []
 
@@ -709,6 +737,7 @@ async def edit_employee_profile(
                         model_id=each_child.id,
                         id_field="id",
                         updated_data=each_child,
+                        filter_fields=["-family_info_id", "-id"],
                     )
                 else:
                     child = cerate_model_instance(
@@ -790,13 +819,14 @@ async def edit_employee_profile(
                 db.commit()
                 db.refresh(updated_link)
             else:
-                social_link = cerate_model_instance(
-                    model=Models.SocialLinks,
-                    data=link.dict(exclude={"user_id", "id"}),
-                    fields=["-user_id", "-id"],
-                )
-                social_link.user_id = employee.id
-                social_links_array.append(social_link)
+                if link.name and link.link and link.icon:
+                    social_link = cerate_model_instance(
+                        model=Models.SocialLinks,
+                        data=link.dict(exclude={"user_id", "id"}),
+                        fields=["-user_id", "-id"],
+                    )
+                    social_link.user_id = employee.id
+                    social_links_array.append(social_link)
 
         if social_links_array:
             db.add_all(social_links_array)
@@ -849,7 +879,7 @@ async def fetch_all_employee(
 
         user = (
             db.query(Models.User)
-            .options(joinedload(Models.User.sessions))
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
             .filter(Models.User.id == user_id)
             .first()
         )
@@ -863,6 +893,15 @@ async def fetch_all_employee(
                         if user.account_status
                         else "User Not Found"
                     ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
                     "success": False,
                 },
             )
