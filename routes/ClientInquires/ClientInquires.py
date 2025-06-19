@@ -1,18 +1,23 @@
-import json
-from typing import Optional
+import math
+import os
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import joinedload
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
-from SqlModels import Models
+from sqlalchemy.orm import joinedload
+
 from Database.Database import db_dependencies
-from Middleware.verifyToken import verify_token
 from Helper.helper import (
+    filter_fields,
     generate_api_secrets_api_key,
     is_valid_type,
     model_to_filtered_dict,
-    filter_fields,
+    validate_field,
 )
+from Middleware.verifyToken import verify_token
+from RateLimiting import limiter
+from SqlModels import Models
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
 clientInquires = APIRouter(prefix="/app/v1/client-inquires", tags=["clientInquires"])
 
@@ -21,7 +26,8 @@ clientInquires = APIRouter(prefix="/app/v1/client-inquires", tags=["clientInquir
 # ? This Is An Api Which Is Used To Enable Or Disable The Api That Mens it Shows That The Current Status Of The Api
 #
 @clientInquires.put("/enable-api", status_code=status.HTTP_200_OK)
-async def Enable_Api(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def Enable_Api(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
         if not token:
             raise HTTPException(
@@ -132,7 +138,10 @@ async def Enable_Api(db: db_dependencies, token: str = Depends(verify_token)):
 # ? Fetch All The Client Inquiry Data That Have Been Submitted
 #
 @clientInquires.get(path="/status/fetch", status_code=status.HTTP_200_OK)
-async def Fetch_Status_OF_Api(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def Fetch_Status_OF_Api(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
     try:
         if not token:
             raise HTTPException(
@@ -210,7 +219,14 @@ async def Fetch_Status_OF_Api(db: db_dependencies, token: str = Depends(verify_t
 # ? Fetch All The Client Inquiry Data That Have Been Submitted
 #
 @clientInquires.get(path="/fetch", status_code=status.HTTP_200_OK)
-async def Fetch_Client_Inquires(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def Fetch_Client_Inquires(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    page: int = Query(..., alias="page"),
+    limit: int = Query(..., alias="limit"),
+):
     try:
         if not token:
             raise HTTPException(
@@ -273,11 +289,15 @@ async def Fetch_Client_Inquires(db: db_dependencies, token: str = Depends(verify
                 detail={"message": "Client Inquiry Not Found", "success": False},
             )
 
-        array_data = (
-            db.query(Models.ClientInquiresData)
-            .filter(Models.ClientInquiresData.client_inquire_id == client_inquires.id)
-            .all()
+        array_data = db.query(Models.ClientInquiresData).filter(
+            Models.ClientInquiresData.client_inquire_id == client_inquires.id
         )
+        total_data = array_data.count()
+        page = page if page else 1
+        limit = limit if limit else 10
+        start = (page - 1) * limit
+        end = start + limit
+        query_data = array_data.offset(start).limit(end)
 
         return {
             "message": "Client Inquiry Fetched Successfully",
@@ -288,8 +308,14 @@ async def Fetch_Client_Inquires(db: db_dependencies, token: str = Depends(verify
                     "client_inquire_id": _data.client_inquire_id,
                     "id": _data.id,
                 }
-                for _data in array_data
+                for _data in query_data
             ],
+            "metadata": {
+                "total_data": total_data,
+                "total_pages": math.ceil(total_data / limit),
+                "current_page": page,
+                "record_per_page": limit,
+            },
         }
 
     except HTTPException as http_exception:
@@ -306,7 +332,9 @@ async def Fetch_Client_Inquires(db: db_dependencies, token: str = Depends(verify
 
 
 @clientInquires.put(path="/re-generate", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def ReGenerateKeys(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
     id: str = Query(..., alias="id"),
@@ -399,7 +427,9 @@ async def ReGenerateKeys(
 
 
 @clientInquires.post(path="/submit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def submit_inquiry(
+    request: Request,
     db: db_dependencies,
     payload: dict,
     api_key: str = Query(..., alias="api_key"),
@@ -489,6 +519,22 @@ async def submit_inquiry(
                 detail={
                     "message": "Missing required fields",
                     "success": False,
+                },
+            )
+
+        null_required_field = [
+            field
+            for field in required_fields
+            if not validate_field(payload.get(field["field_name"]))
+        ]
+
+        if null_required_field:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "message": "Required Field Can't Be Null",
+                    "success": False,
+                    "fields": [field["field_name"] for field in null_required_field],
                 },
             )
 

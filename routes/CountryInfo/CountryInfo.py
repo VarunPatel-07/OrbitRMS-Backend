@@ -7,12 +7,15 @@ from typing import Optional
 import httpx
 import requests
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from Database.CacheDatabase import cache_database
 from Helper.formateDateOnTheBaseOfTheCountry import formateDateOnTheBaseOfTheCountry
+from RateLimiting import limiter
 
 load_dotenv(override=True)
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
 
 async def fetch_data(url, retries=3, timeout=20):
@@ -41,7 +44,8 @@ countryApiRouter = APIRouter(prefix="/app/v1/country-info", tags=["country"])
 
 
 @countryApiRouter.get("/fetchAll", status_code=status.HTTP_200_OK)
-async def FetchAllTheCountry(order: str = Query("asc", alias="order")):
+@limiter.limit(API_RATE_LIMITING)
+async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="order")):
     try:
         cache_data_key = "AllCountryDataInfo"
 
@@ -107,8 +111,11 @@ async def FetchAllTheCountry(order: str = Query("asc", alias="order")):
 
 
 @countryApiRouter.get("/getCountryInfo", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def GetCountryInfo(
-    country: str = Query(..., alias="country"), order: str = Query("asc", alias="order")
+    request: Request,
+    country: str = Query(..., alias="country"),
+    order: str = Query("asc", alias="order"),
 ):
 
     try:
@@ -182,7 +189,9 @@ async def GetCountryInfo(
 
 
 @countryApiRouter.get("/getStateInfo", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def GetStateInfo(
+    request: Request,
     country: str = Query(..., alias="country"),
     state_code: str = Query(..., alias="state_code"),
     order: str = Query("asc", alias="order"),
@@ -250,7 +259,8 @@ async def GetStateInfo(
 
 
 @countryApiRouter.get("/getFormats", status_code=status.HTTP_200_OK)
-async def getCountryFormats(country_code: str = Query(..., alias="country-code")):
+@limiter.limit(API_RATE_LIMITING)
+async def getCountryFormats(request: Request, country_code: str = Query(..., alias="country-code")):
     try:
         cached_data_key = f"{country_code}_date_formate"
         cached_data = await cache_database.get(cached_data_key)
@@ -311,7 +321,8 @@ async def getCountryFormats(country_code: str = Query(..., alias="country-code")
 
 
 @countryApiRouter.get("/fetchAllCountry", status_code=status.HTTP_200_OK)
-async def fetchAllTheCountryData(order: str = Query("asc", alias="order")):
+@limiter.limit(API_RATE_LIMITING)
+async def fetchAllTheCountryData(request: Request, order: str = Query("asc", alias="order")):
     try:
         cache_data_key = "AllCountryCachedDataKey"
         cache_data = await cache_database.get(cache_data_key)

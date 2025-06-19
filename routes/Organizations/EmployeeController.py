@@ -5,7 +5,15 @@ from typing import Optional
 from urllib.parse import unquote
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import func
 
@@ -24,6 +32,7 @@ from PydanticModels.HelperPydanticModel import WelcomeEmployeeMailModel
 from PydanticModels.Organizations.AddEditEmployeePydanticModal import (
     AddEditUserProfileModel,
 )
+from RateLimiting import limiter
 from SqlModels import Models
 
 from .EmployeeQueryFilters import apply_query_filter
@@ -31,7 +40,10 @@ from .EmployeeQueryFilters import apply_query_filter
 load_dotenv(override=True)
 
 SUPER_SECURE_HASH_PASSWORD = os.getenv("SUPER_SECURE_HASH_PASSWORD", "").strip()
+
 FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
 
 alignable_for_child_info = [
@@ -45,7 +57,9 @@ employee_router = APIRouter(prefix="/app/v1/employee", tags=["employee"])
 
 
 @employee_router.post("/add", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def handel_add_user_function(
+    request: Request,
     db: db_dependencies,
     data: AddEditUserProfileModel,
     background_task: BackgroundTasks,
@@ -343,7 +357,9 @@ async def handel_add_user_function(
 
 
 @employee_router.get("/fetch-profile", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def handel_fetch_profile_info(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
     employee_id: str = Query(..., alias="employee_id"),
@@ -503,7 +519,9 @@ async def handel_fetch_profile_info(
 
 
 @employee_router.put("/edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def edit_employee_profile(
+    request: Request,
     db: db_dependencies,
     data: AddEditUserProfileModel,
     token: str = Depends(verify_token),
@@ -852,7 +870,9 @@ async def edit_employee_profile(
 
 # * This Is An Api That Is Used To Fetch All The EmployeeOf The Given Organization
 @employee_router.get("/fetch-all", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def fetch_all_employee(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
     page: int = Query(..., alias="page"),
@@ -936,7 +956,8 @@ async def fetch_all_employee(
             query_data = apply_query_filter(query_data, filter_data)
 
         total_data = query_data.count()
-
+        page = page if page else 1
+        limit = limit if limit else 10
         start = (page - 1) * limit
         end = start + limit
         query_data = query_data.offset(start).limit(end)
@@ -953,9 +974,6 @@ async def fetch_all_employee(
         )
 
         employee_data = query_data.all()
-
-        page = page if page else 1
-        limit = limit if limit else 10
 
         _data = []
 

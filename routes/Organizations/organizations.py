@@ -1,7 +1,15 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from sqlalchemy.orm import joinedload
 
 from BackgroundDataHandler.initialDataSeeder import (
@@ -25,6 +33,7 @@ from Middleware.verifyToken import verify_token
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
 )
+from RateLimiting import limiter
 from SqlModels import Models
 
 load_dotenv(override=True)
@@ -33,6 +42,8 @@ orgRouter = APIRouter(prefix="/app/v1/organization", tags=["organization"])
 
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
 
 #
@@ -43,7 +54,9 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
 
 
 @orgRouter.get("/verify-organization", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def verify_organization(
+    request: Request,
     db: db_dependencies,
     background_task: BackgroundTasks,
     organization_id: str = Query(..., alias="organization-id"),
@@ -140,7 +153,9 @@ async def verify_organization(
 
 
 @orgRouter.post("/onboard-organization", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def onboard_organization(
+    request: Request,
     db: db_dependencies,
     data: OnboardingOrganization,
     organization_id: str = Query(..., alias="organization-id"),
@@ -259,8 +274,11 @@ async def onboard_organization(
 
 
 @orgRouter.get("/fetch-organization-info", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def fetch_organization_info(
-    db: db_dependencies, organization_id: str = Query(..., alias="organization_id")
+    request: Request,
+    db: db_dependencies,
+    organization_id: str = Query(..., alias="organization_id"),
 ):
     try:
 
@@ -358,7 +376,10 @@ async def fetch_organization_info(
 
 
 @orgRouter.get("/fetch-reporting-manager", status_code=status.HTTP_200_OK)
-async def fetch_reporting_manager(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_reporting_manager(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
     try:
         #
         # *  We Will Firstly Check For The User's Authentication

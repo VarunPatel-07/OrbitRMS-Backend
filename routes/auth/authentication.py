@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -38,18 +39,25 @@ from PydanticModels.authentication.AuthenticationModels import (
     SignIn,
     VerifyMetaTag,
 )
+from RateLimiting import limiter
 from SqlModels import Models
 
-authRoutes = APIRouter(prefix="/app/v1/auth", tags=["auth"])
+load_dotenv(override=True)
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+
+authRoutes = APIRouter(prefix="/app/v1/auth", tags=["auth"])
 
 
 #
 # ? The Api For The Sign UP And Creating a New Organization
 #
 @authRoutes.post("/sign-up", status_code=status.HTTP_201_CREATED)
+@limiter.limit(API_RATE_LIMITING)
 async def create_organization(
+    request: Request,
     organization_info: RegisterOrganizationInfo,
     db: db_dependencies,
     background_task: BackgroundTasks,
@@ -166,7 +174,9 @@ async def create_organization(
 # ? The Api To Create An Strong Password For You Organization
 #
 @authRoutes.post(path="/create-password", status_code=status.HTTP_201_CREATED)
+@limiter.limit(API_RATE_LIMITING)
 async def create_password(
+    request: Request,
     db: db_dependencies,
     password: CreatePassword,
     user_id: str = Query(..., alias="user-id"),
@@ -248,6 +258,7 @@ async def create_password(
 # ? The Api To Sign-In in Your Organization
 #
 @authRoutes.post(path="/sign-in", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
     try:
         employee_info = (
@@ -386,7 +397,8 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 # ? The Api To Fetch All The Logged In Devices Of The User Your Organization
 #
 @authRoutes.get(path="/fetch-sessions", status_code=status.HTTP_200_OK)
-async def fetch_sessions(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_sessions(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
         #
         # *  We Will Firstly Check For The User's Authentication
@@ -470,7 +482,9 @@ async def fetch_sessions(db: db_dependencies, token: str = Depends(verify_token)
 # ? The Api To Delete An Specific Sessions
 #
 @authRoutes.delete(path="/delete-session", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def fetch_sessions(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
     session_id: str = Query(..., alias="session_id"),
@@ -560,7 +574,8 @@ async def fetch_sessions(
 # ? The Api To Verify The Organization
 #
 @authRoutes.get(path="/verify-user", status_code=status.HTTP_200_OK)
-async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def verify_user(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
         if not token:
             raise HTTPException(
@@ -681,7 +696,8 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
 
 
 @authRoutes.post("/verify-meta-tag", status_code=status.HTTP_200_OK)
-async def verify_meta_tag(data: VerifyMetaTag):
+@limiter.limit(API_RATE_LIMITING)
+async def verify_meta_tag(request: Request, data: VerifyMetaTag):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(data.website_url)

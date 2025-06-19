@@ -2,6 +2,7 @@ import base64
 import hashlib
 import os
 import secrets
+import string
 from typing import Dict, List, Optional, Union
 
 from Crypto.Cipher import AES
@@ -10,14 +11,20 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
 
-import secrets
-import string
-
 from Database.Database import db_dependencies
 
 load_dotenv(override=True)
 
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
+
+APP_ENVIRONMENT = os.getenv("APP_ENVIRONMENT")
+
+
+def is_Production():
+    if APP_ENVIRONMENT == "Production":
+        return True
+    else:
+        return False
 
 
 def generate_full_name(first_name: str, last_name: str, middle_name: str = None) -> str:
@@ -275,3 +282,13 @@ def is_valid_type(value, field_type):
         return False
     except:
         return False
+
+
+def validate_field(vale):
+    if vale is None:
+        return False
+    if isinstance(vale, str) and vale.strip() == "":
+        return False
+    if isinstance(vale, (list, Dict)) and len(vale) == 0:
+        return False
+    return True
