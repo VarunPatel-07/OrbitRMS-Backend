@@ -3,14 +3,17 @@ import os
 import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import joinedload
 
 from Database.Database import db_dependencies
 from Middleware.verifyToken import verify_token
+from RateLimiting import limiter
 from SqlModels import Models
 
 load_dotenv(override=True)
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
 
 # --- NOW We Are Configuring The Cloudinary ---
@@ -26,8 +29,12 @@ imgRoute = APIRouter(prefix="/app/v1/uploadation", tags=["uploadation"])
 
 
 @imgRoute.post("/single-upload", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def ImageUploadation(
-    db: db_dependencies, file: UploadFile = File(...), token: str = Depends(verify_token)
+    request: Request,
+    db: db_dependencies,
+    file: UploadFile = File(...),
+    token: str = Depends(verify_token),
 ):
     try:
 

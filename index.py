@@ -1,19 +1,21 @@
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from slowapi.errors import RateLimitExceeded
 
 from Database.CacheDatabase import cache_database
 from Database.Database import DATABASE_ENGINE, database
 from Helper.helper import get_client_ip
+from RateLimiting import custom_rate_limit_handler, limiter
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
+from routes.ClientInquires.ClientInquires import clientInquires
 from routes.ConfigModule.ConfigModule import configRoute
 from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
 from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.organizations import orgRouter
-from routes.ClientInquires.ClientInquires import clientInquires
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
@@ -25,7 +27,8 @@ app = FastAPI(
         "email": "varunspatelo7@gmail.com",
     },
 )
-
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
 app.add_middleware(
     CORSMiddleware,

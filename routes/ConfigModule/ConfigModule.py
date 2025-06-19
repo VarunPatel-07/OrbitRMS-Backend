@@ -1,29 +1,30 @@
 import json
+import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
-
-# Import database dependencies and helper functions
 from sqlalchemy.orm import joinedload
 
-from BackgroundDataHandler.initialDataSeeder import (
-    roles_permission_initial_data_seeder_function,
-)
 from Database.Database import db_dependencies
-from Helper.createModelInstance import cerate_model_instance
 from Helper.helper import model_to_filtered_dict
 from Middleware.verifyToken import verify_token
 from PydanticModels.ConfigModule.ConfigModule import (
     AddRolesPermission,
+    ClientFormSchemaModel,
     Department,
     Designations,
     ProjectStatus,
     RoleAssociatedPermissionModule,
-    RolesPermission,
-    ClientFormSchemaModel,
 )
+from RateLimiting import limiter
 from SqlModels import Models
+
+load_dotenv(override=True)
+
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
 configRoute = APIRouter(prefix="/app/v1/config", tags=["config"])
 
@@ -35,7 +36,9 @@ configRoute = APIRouter(prefix="/app/v1/config", tags=["config"])
 
 
 @configRoute.post(path="/project_status/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def project_status_function(
+    request: Request,
     db: db_dependencies,
     data: ProjectStatus,
     token: str = Depends(verify_token),
@@ -226,7 +229,10 @@ async def project_status_function(
 
 
 @configRoute.get(path="/project_status/fetch", status_code=status.HTTP_200_OK)
-async def fetch_project_status(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_project_status(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
     try:
         #
         # *  We Will Firstly Check For The User's Authentication
@@ -329,7 +335,9 @@ async def fetch_project_status(db: db_dependencies, token: str = Depends(verify_
 
 
 @configRoute.delete(path="/project_status/delete", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def delete_project_status(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
@@ -427,7 +435,9 @@ async def delete_project_status(
 
 
 @configRoute.post(path="/department/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def add_edit_department(
+    request: Request,
     db: db_dependencies,
     data: Department,
     token: str = Depends(verify_token),
@@ -612,7 +622,10 @@ async def add_edit_department(
 
 
 @configRoute.get(path="/department/fetch", status_code=status.HTTP_200_OK)
-async def fetch_all_department_type(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_all_department_type(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
     try:
 
         #
@@ -717,7 +730,9 @@ async def fetch_all_department_type(db: db_dependencies, token: str = Depends(ve
 
 
 @configRoute.delete(path="/department/delete", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def delete_department(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
@@ -820,7 +835,9 @@ async def delete_department(
 
 
 @configRoute.post(path="/designations/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def add_edit_designations(
+    request: Request,
     db: db_dependencies,
     data: Designations,
     token: str = Depends(verify_token),
@@ -1018,7 +1035,10 @@ async def add_edit_designations(
 
 
 @configRoute.get(path="/designations/fetch", status_code=status.HTTP_200_OK)
-async def fetch_all_designations(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_all_designations(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
     try:
         #
         # *  We Will Firstly Check For The User's Authentication
@@ -1122,7 +1142,9 @@ async def fetch_all_designations(db: db_dependencies, token: str = Depends(verif
 
 
 @configRoute.delete(path="/designations/delete", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def delete_designation(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
@@ -1257,7 +1279,9 @@ def recursive_creation_helper(
 
 # ? ------------------------- The Api To Fetch All The Associated Role Of The Organization  -------------------
 @configRoute.get("/roles_permissions/fetch-all", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def fetch_all_role_of_organization(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
 ):
@@ -1399,7 +1423,9 @@ def build_hierarchy(modules, parent_id=None):
 
 # * ------------------------- The Api To Fetch A Specific Role's Permission  -------------------
 @configRoute.get("/roles_permissions/fetch-role", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def fetch_roles_permission(
+    request: Request,
     db: db_dependencies,
     role_id: str = Query(..., description="ID of the role to fetch"),
     token: str = Depends(verify_token),
@@ -1531,7 +1557,9 @@ async def fetch_roles_permission(
 
 
 @configRoute.put("/roles_permissions/update", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def update(
+    request: Request,
     db: db_dependencies,
     id: str = Query(..., description="Id Of The Module"),
     type: str = Query(..., description="type should be module or permission"),
@@ -1696,7 +1724,9 @@ async def update(
 
 # * ------------------------- The Api To Add A New Role  -------------------
 @configRoute.post("/roles_permissions/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def Add_Edit_Roles_Permissions(
+    request: Request,
     db: db_dependencies,
     data: AddRolesPermission,
     type: str = Query("add", description="The Type Should Be Add Edit"),
@@ -1918,7 +1948,9 @@ async def Add_Edit_Roles_Permissions(
 
 
 @configRoute.delete(path="/roles_permissions/delete", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def Delete_Roles_Permission(
+    request: Request,
     db: db_dependencies,
     id: str = Query(..., description="The Id Is Required To Delete a Role Module"),
     token: str = Depends(verify_token),
@@ -2026,7 +2058,10 @@ async def Delete_Roles_Permission(
 
 
 @configRoute.get("/client_form_schema/fetch")
-async def Client_Form_Schema(db: db_dependencies, token: str = Depends(verify_token)):
+@limiter.limit(API_RATE_LIMITING)
+async def Client_Form_Schema(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
     try:
         #
         # *  We Will Firstly Check For The User's Authentication
@@ -2128,7 +2163,9 @@ async def Client_Form_Schema(db: db_dependencies, token: str = Depends(verify_to
 
 
 @configRoute.post(path="/client_form_schema/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def add_edit_Client_Form_Schema(
+    request: Request,
     db: db_dependencies,
     data: ClientFormSchemaModel,
     token: str = Depends(verify_token),
@@ -2325,7 +2362,9 @@ async def add_edit_Client_Form_Schema(
 
 
 @configRoute.delete(path="/client_form_schema/delete", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def delete_designation(
+    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
