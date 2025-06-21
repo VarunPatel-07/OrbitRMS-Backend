@@ -31,7 +31,7 @@ def apply_query_filter(query, filters):
         value = each_filter.get("value")
 
         if field_name == "employee_name":
-            if operator == "equals":
+            if operator == "equals" or operator == "is":
                 normalized_db_name = func.replace(
                     func.trim(Models.PersonalInfo.full_name), "  ", " "
                 )
@@ -44,22 +44,24 @@ def apply_query_filter(query, filters):
             if operator == "ends_with":
                 conditions.append(Models.PersonalInfo.full_name.ilike(f"%{value}"))
         if field_name == "status":
-            if operator == "equals":
+            if operator == "equals" or operator == "is":
                 if value == "Active":
                     conditions.append(Models.User.account_status == True)
                 elif value == "Inactive":
                     conditions.append(Models.User.account_status == False)
 
         if field_name == "employee_type":
-            if operator == "equals":
+            if operator == "equals" or operator == "is":
                 conditions.append(Models.EmployeeInfo.employee_type.ilike(f"%{value}%"))
         if field_name == "reporting_manager":
-            if operator == "equals":
+
+            if operator == "equals" or operator == "is":
                 normalized_db_name = func.replace(
                     func.trim(ReportingManagerInfo.full_name), "  ", " "
                 )
                 normalized_input = value.strip().replace("  ", " ")
                 conditions.append(normalized_db_name.ilike(f"%{normalized_input}%"))
+
             if operator == "contains":
                 conditions.append(ReportingManagerInfo.full_name.ilike(f"%{value}%"))
 

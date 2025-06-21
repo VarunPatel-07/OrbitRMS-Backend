@@ -574,7 +574,6 @@ async def fetch_sessions(
 # ? The Api To Verify The Organization
 #
 @authRoutes.get(path="/verify-user", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
 async def verify_user(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
         if not token:

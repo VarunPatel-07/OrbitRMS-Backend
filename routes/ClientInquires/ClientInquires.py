@@ -1,6 +1,6 @@
 import math
-import os
-
+import os, json
+from urllib.parse import unquote
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -16,6 +16,8 @@ from Helper.helper import (
 from Middleware.verifyToken import verify_token
 from RateLimiting import limiter
 from SqlModels import Models
+from typing import Optional
+from .ClientInquiresQueryFilter import apply_client_inquiry_query_filter
 
 API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
@@ -226,6 +228,7 @@ async def Fetch_Client_Inquires(
     token: str = Depends(verify_token),
     page: int = Query(..., alias="page"),
     limit: int = Query(..., alias="limit"),
+    filter: Optional[str] = Query(None),
 ):
     try:
         if not token:
@@ -283,21 +286,37 @@ async def Fetch_Client_Inquires(
             .first()
         )
 
+        filter_data = ""
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
+
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"message": "Client Inquiry Not Found", "success": False},
             )
 
-        array_data = db.query(Models.ClientInquiresData).filter(
+        query_data = db.query(Models.ClientInquiresData).filter(
             Models.ClientInquiresData.client_inquire_id == client_inquires.id
         )
-        total_data = array_data.count()
+        total_data = 0
+
         page = page if page else 1
         limit = limit if limit else 10
+
         start = (page - 1) * limit
         end = start + limit
-        query_data = array_data.offset(start).limit(end)
+
+        if filter_data:
+            query_data = apply_client_inquiry_query_filter(query_data, filter_data)
+            total_data = len(query_data)
+            query_data = query_data[start:end]
+
+        else:
+            total_data = query_data.count()
+
+            query_data = query_data.offset(start).limit(end)
 
         return {
             "message": "Client Inquiry Fetched Successfully",
