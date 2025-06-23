@@ -84,3 +84,7 @@ class OnboardingOrganization(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AuthorizedRecipientEmail(BaseModel):
+    authorized_recipient: List[str]

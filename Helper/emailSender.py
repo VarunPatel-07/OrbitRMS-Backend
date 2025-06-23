@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, List
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, HTTPException, status
@@ -11,7 +11,7 @@ load_dotenv(override=True)
 
 # pydantic model to verify the incoming email data
 class EmailSchema(BaseModel):
-    recever_email: str
+    recever_email: str | List[str]
     subject: str
     body: Optional[str]
 
@@ -36,7 +36,11 @@ def email_sender_function(email_data: EmailSchema, background_task: BackgroundTa
         # create the email message
         message = MessageSchema(
             subject=email_data.subject,
-            recipients=[email_data.recever_email],
+            recipients=(
+                [email_data.recever_email]
+                if isinstance(email_data.recever_email, str)
+                else email_data.recever_email
+            ),
             body=email_data.body,
             subtype="html",
         )
