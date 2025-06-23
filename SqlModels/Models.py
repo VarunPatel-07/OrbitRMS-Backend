@@ -2,7 +2,9 @@ import uuid
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy.sql import expression
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
@@ -167,6 +169,10 @@ class ClientInquires(BaseModel):
     api_secrete = Column(String(255), nullable=False)
 
     status = Column(Boolean, nullable=False, default=False)
+
+    email_notification = Column(Boolean, nullable=True, default=True)
+
+    authorized_recipient_emails = Column(Text, nullable=True, default=None)
 
     client_inquires_data = relationship(
         "ClientInquiresData", back_populates="client_inquire", cascade="all, delete-orphan"
