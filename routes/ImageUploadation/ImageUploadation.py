@@ -99,7 +99,13 @@ async def ImageUploadation(
 
         result = cloudinary.uploader.upload(file_bytes, resource_type="image")
 
-        return {"url": result["secure_url"], "success": True}
+        return {
+            "message": "Image Upload Successfully",
+            "success": True,
+            "data": {
+                "url": result["secure_url"],
+            },
+        }
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:

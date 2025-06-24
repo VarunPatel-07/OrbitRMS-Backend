@@ -707,11 +707,14 @@ async def verify_meta_tag(request: Request, data: VerifyMetaTag):
 
         if not meta_tag:
             return {
-                "meta_found": False,
-                "expected_value": data.meta_value,
-                "actual_value": "",
-                "match": False,
+                "data": {
+                    "meta_found": False,
+                    "expected_value": data.meta_value,
+                    "actual_value": "",
+                    "match": False,
+                },
                 "success": False,
+                "message": "Meta Tag Not Found",
             }
 
         if meta_tag and "content" in meta_tag.attrs:
@@ -720,11 +723,14 @@ async def verify_meta_tag(request: Request, data: VerifyMetaTag):
             verified = actual_value == data.meta_value
 
             return {
-                "meta_found": True,
-                "expected_value": data.meta_value,
-                "actual_value": actual_value,
-                "match": verified,
+                "data": {
+                    "meta_found": True,
+                    "expected_value": data.meta_value,
+                    "actual_value": actual_value,
+                    "match": verified,
+                },
                 "success": True,
+                "message": "Meta Tag Verified Successfully",
             }
         return {"error": "Meta tag not found"}
 
