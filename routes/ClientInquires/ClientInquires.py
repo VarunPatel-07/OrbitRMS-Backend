@@ -540,7 +540,9 @@ async def EnableMailNotification(
         return {
             "message": f"Updated Successfully",
             "success": True,
-            "email_notification": client_inquires.email_notification,
+            "data": {
+                "email_notification": client_inquires.email_notification,
+            },
         }
 
     except HTTPException as http_exception:
@@ -631,7 +633,11 @@ async def EnableMailNotification(
         return {
             "message": f"Updated Successfully",
             "success": True,
-            "authorized_recipient_email": json.loads(client_inquires.authorized_recipient_emails),
+            "data": {
+                "authorized_recipient_email": json.loads(
+                    client_inquires.authorized_recipient_emails
+                ),
+            },
         }
 
     except HTTPException as http_exception:
@@ -641,6 +647,88 @@ async def EnableMailNotification(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Enable Api Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@clientInquires.delete("/delete-inquire")
+@limiter.limit(API_RATE_LIMITING)
+async def DeleteClientInquire(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    id: str = Query(..., alias="id"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+            )
+
+        client_inquiry = (
+            db.query(Models.ClientInquiresData).filter(Models.ClientInquiresData.id == id).first()
+        )
+        if not client_inquiry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Client Inquiry Not Found", "success": False},
+            )
+        db.delete(client_inquiry)
+        db.commit()
+
+        return {"message": "Inquiry Deleted Successfully", "success": True}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable Delete Inquiry Right Now",
                 "success": False,
                 "error": str(e),
             },

@@ -115,7 +115,9 @@ async def verify_organization(
             return {
                 "message": "Organization Is Verified Successfully",
                 "success": True,
-                "alreadyVerified": False,
+                "data": {
+                    "alreadyVerified": False,
+                },
             }
         else:
             user_info = (
@@ -129,7 +131,9 @@ async def verify_organization(
             return {
                 "message": "Organization already Verified",
                 "success": True,
-                "alreadyVerified": True,
+                "data": {
+                    "alreadyVerified": True,
+                },
             }
 
     except HTTPException as http_exception:
@@ -466,6 +470,123 @@ async def fetch_reporting_manager(
                 for each_user in fetch_all_users
                 if each_user.personal_info
             ],
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while fetching All The Reporting Manager",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+#
+#
+# ? ------------ Api To Fetch The Info Of The Organization ---------------------
+#
+#
+@orgRouter.get("/fetch-info", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def FetchTheInfoOfTheOrganization(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        organization = (
+            db.query(Models.Organization)
+            .options(
+                joinedload(Models.Organization.general_info),
+                joinedload(Models.Organization.address),
+                joinedload(Models.Organization.contact_info),
+                joinedload(Models.Organization.about_info),
+                joinedload(Models.Organization.organization_settings),
+            )
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Organization Not Found", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return {
+            "message": "Info Fetched Successfully",
+            "success": True,
+            "data": {
+                "id": organization.id,
+                "general_info": model_to_filtered_dict(organization.general_info),
+                "address": model_to_filtered_dict(organization.address[0]),
+                "contact_info": organization.contact_info,
+                "about_info": model_to_filtered_dict(organization.about_info[0]),
+                "organization_settings": model_to_filtered_dict(
+                    organization.organization_settings[0]
+                ),
+                "status": organization.status,
+                "organization_created": organization.organization_created,
+                "created_at": organization.created_at,
+                "updated_at": organization.updated_at,
+            },
         }
 
     except HTTPException as http_exception:

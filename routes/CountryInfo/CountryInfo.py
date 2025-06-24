@@ -56,7 +56,7 @@ async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="
             cached_sorted_data = sorted(
                 cached_Data, key=lambda x: x["country_name"], reverse=(order.lower() == "desc")
             )
-            return cached_sorted_data
+            return {"message": "Fetched Successfully", "success": True, "data": cached_sorted_data}
 
         REST_API_URL = os.getenv("REST_API_URL")
 
@@ -90,7 +90,11 @@ async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="
             )
 
             await cache_database.set(cache_data_key, json.dumps(sortedData), ex=30 * 24 * 3600)
-            return sortedData
+            return {
+                "message": "Fetched Successfully",
+                "success": True,
+                "data": sortedData,
+            }
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -128,9 +132,12 @@ async def GetCountryInfo(
             cached_reverse = order.lower() == "desc"
             cached_statesData.sort(key=lambda x: x["state_name"], reverse=cached_reverse)
             return {
+                "message": "Fetched Successfully",
                 "success": True,
-                "country": country,
-                "states": cached_statesData,
+                "data": {
+                    "country": country,
+                    "states": cached_statesData,
+                },
             }
 
         username = "emilys"
@@ -176,7 +183,14 @@ async def GetCountryInfo(
         state_array.sort(key=lambda x: x["state_name"], reverse=reverse)
         await cache_database.set(cache_data_key, json.dumps(state_array), ex=30 * 24 * 3600)
 
-        return {"success": True, "country": country, "states": state_array}
+        return {
+            "message": "Fetched Successfully",
+            "success": True,
+            "data": {
+                "country": country,
+                "states": state_array,
+            },
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -204,10 +218,13 @@ async def GetStateInfo(
             cached_reverse = order.lower() == "desc"
             sorted_cached_data = sorted(formatted_cached_data, reverse=cached_reverse)
             return {
+                "message": "Fetched Successfully",
                 "success": True,
-                "country": country,
-                "states": state_code,
-                "cities_array": sorted_cached_data,
+                "data": {
+                    "country": country,
+                    "states": state_code,
+                    "cities_array": sorted_cached_data,
+                },
             }
 
         username = "emilys"
@@ -241,10 +258,13 @@ async def GetStateInfo(
         sorted_data = sorted(cities_array, reverse=reverse)
         await cache_database.set(cached_data_key, json.dumps(cities_array), ex=30 * 24 * 3600)
         return {
+            "message": "Fetched Successfully",
             "success": True,
-            "country": country,
-            "states": state_code,
-            "cities_array": sorted_data,
+            "data": {
+                "country": country,
+                "states": state_code,
+                "cities_array": sorted_data,
+            },
         }
 
     except Exception as e:
@@ -267,10 +287,13 @@ async def getCountryFormats(request: Request, country_code: str = Query(..., ali
         if cached_data:
             formatted_cached_data = json.loads(cached_data)
             return {
+                "message": "Fetched Successfully",
                 "success": True,
-                "postal_code_formate": formatted_cached_data.get("postal_code_formate"),
-                "timeZones": formatted_cached_data.get("timeZones"),
-                "country_date_formate": formatted_cached_data.get("country_date_formate"),
+                "data": {
+                    "postal_code_formate": formatted_cached_data.get("postal_code_formate"),
+                    "timeZones": formatted_cached_data.get("timeZones"),
+                    "country_date_formate": formatted_cached_data.get("country_date_formate"),
+                },
             }
         url = f"https://restcountries.com/v3.1/alpha/{country_code}"
         response = await fetch_data(url=url)
@@ -299,14 +322,17 @@ async def getCountryFormats(request: Request, country_code: str = Query(..., ali
         await cache_database.set(cached_data_key, json.dumps(data), ex=30 * 24 * 3600)
 
         return {
+            "message": "Fetched Successfully",
             "success": True,
-            "postal_code_formate": postalCode,
-            "timeZones": timeZones,
-            "country_date_formate": (
-                country_date_formate.get("dateFormat")
-                if country_date_formate.get("success")
-                else country_date_formate.get("error")
-            ),
+            "data": {
+                "postal_code_formate": postalCode,
+                "timeZones": timeZones,
+                "country_date_formate": (
+                    country_date_formate.get("dateFormat")
+                    if country_date_formate.get("success")
+                    else country_date_formate.get("error")
+                ),
+            },
         }
 
     except Exception as e:
@@ -331,7 +357,7 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
             cache_reverse = order.lower() == "desc"
             sorted_cached_data.sort(key=lambda x: x["country_name"], reverse=cache_reverse)
 
-            return {"success": True, "data": sorted_cached_data}
+            return {"message": "Fetched Successfully", "success": True, "data": sorted_cached_data}
 
         url = os.getenv("REST_API_URL")
 
@@ -370,7 +396,7 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
         data.sort(key=lambda x: x["country_name"], reverse=reverse)
 
         await cache_database.set(cache_data_key, json.dumps(data), ex=30 * 24 * 3600)
-        return {"success": True, "data": data}
+        return {"message": "Fetched Successfully", "success": True, "data": data}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
