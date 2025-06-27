@@ -5,17 +5,16 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="supported-color-schemes" content="light dark" />
-
+    <meta name="color-scheme" content="light only" />
+    <meta name="supported-color-schemes" content="light only" />
     <title>New Client Inquiry Accrued</title>
 
-    <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900"
-      rel="stylesheet"
-      type="text/css" />
-    <!--<![endif]-->
     <style>
+      :root {
+        color-scheme: light only;
+        supported-color-schemes: light only;
+      }
+
       * {
         box-sizing: border-box;
       }
@@ -23,6 +22,7 @@
       body {
         margin: 0;
         padding: 0;
+        background-color: #ffffff !important;
       }
 
       a[x-apple-data-detectors] {
@@ -94,6 +94,11 @@
         }
       }
     </style>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900"
+      rel="stylesheet"
+      type="text/css" />
   </head>
 
   <body
