@@ -16,6 +16,7 @@ from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
 from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.organizations import orgRouter
+from routes.OrganizationSettings.OrganizationSettings import orgSettings
 from SqlModels.Models import BaseModel
 
 app = FastAPI(
@@ -51,6 +52,7 @@ app.include_router(imgRoute)
 app.include_router(configRoute)
 app.include_router(employee_router)
 app.include_router(clientInquires)
+app.include_router(orgSettings)
 
 
 # Basic health check route

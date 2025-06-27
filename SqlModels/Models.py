@@ -17,6 +17,7 @@ from SqlModels.HelperModel.ConfigModelUtils import (
     PermissionModule,
     ProjectStatus,
     RoleAssociatedPermissionModule,
+    OrganizationHolidaysSchema,
 )
 from SqlModels.HelperModel.OrganizationModelUtils import (
     OrganizationAboutInfo,
@@ -141,6 +142,9 @@ class ConfigModule(BaseModel):
 
     roles_and_permissions = relationship(
         "ConfigRoleModule", back_populates="config_module", cascade="all, delete"
+    )
+    organization_holidays = relationship(
+        "OrganizationHolidaysSchema", back_populates="config_module", cascade="all, delete"
     )
 
     organization_id = Column(
