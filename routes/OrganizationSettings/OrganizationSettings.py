@@ -6,12 +6,13 @@ from RateLimiting import limiter
 from dotenv import load_dotenv
 import os
 import json
-from sqlalchemy import func
+from sqlalchemy import func, asc, desc
 from SqlModels import Models
 from sqlalchemy.orm import joinedload
 from Helper.createModelInstance import cerate_model_instance
 from Helper.helper import model_to_filtered_dict
 from PydanticModels.OrganizationSettings.OrganizationSettings import AddEditHolidayPydanticModel
+from datetime import datetime
 
 orgSettings = APIRouter(prefix="/app/v1/org-setting", tags=["org-setting"])
 
@@ -243,12 +244,16 @@ async def AddEditHoliday(
                 personal_info, ["id", "first_name", "last_name"]
             )
 
+            current_date = datetime.utcnow()
+            custom_date = current_date.replace(year=data.year)
+
             holiday = Models.OrganizationHolidaysSchema(
                 holiday_name=data.holiday_name,
                 date=data.date,
                 source_type="user_created",
                 config_module_id=config_module.id,
                 created_by=json.dumps(created_by_user),
+                created_at=custom_date,
                 updated_by=None,
                 year=data.year,
             )
@@ -306,10 +311,14 @@ async def AddEditHoliday(
                 personal_info, ["id", "first_name", "last_name"]
             )
 
+            current_date = datetime.utcnow()
+            custom_date = current_date.replace(year=data.year)
+
             holiday.holiday_name = data.holiday_name
             holiday.date = data.date
             holiday.updated_by = json.dumps(updated_by_user)
             holiday.year = data.year
+            holiday.updated_at = custom_date
 
             db.commit()
             db.refresh(holiday)
@@ -336,9 +345,15 @@ async def Fetch_Holiday(
     db: db_dependencies,
     token: str = Depends(verify_token),
     year: str = Query(..., description="To Fetch The Holiday According To The year"),
+    order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
+    field_name: Optional[str] = Query(
+        None, description="This Is An Optional Field", alias="field_name"
+    ),
 ):
     try:
         year = int(year)
+        if not order:
+            order = "asc"
         #
         # *  We Will Firstly Check For The User's Authentication
         #
@@ -414,7 +429,28 @@ async def Fetch_Holiday(
             Models.OrganizationHolidaysSchema.config_module_id == config_module.id
         )
 
-        holidays = query_data.filter(Models.OrganizationHolidaysSchema.year == year)
+        column_field = getattr(Models.OrganizationHolidaysSchema, field_name, None)
+
+        if not column_field:
+            raise ValueError(f"{field_name} Not Found")
+
+        if order == "asc":
+
+            holidays = query_data.filter(Models.OrganizationHolidaysSchema.year == year).order_by(
+                asc(column_field)
+            )
+        elif order == "desc":
+            holidays = query_data.filter(Models.OrganizationHolidaysSchema.year == year).order_by(
+                desc(column_field)
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Invalid Input",
+                    "success": False,
+                },
+            )
 
         return {
             "success": True,

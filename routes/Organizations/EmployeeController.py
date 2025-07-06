@@ -1052,3 +1052,128 @@ async def fetch_all_employee(
                 "success": False,
             },
         )
+
+
+@employee_router.get("/fetch-employee", status_code=status.HTTP_200_OK)
+async def Fetch_Employee(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    query: str = Query(..., description="name Of The Person"),
+):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        query_data = db.query(Models.User).filter(
+            Models.User.organization_id == user.organization_id
+        )
+
+        query_data = query_data.join(Models.User.personal_info)
+
+        query_data = query_data.filter(
+            func.regexp_replace(
+                func.lower(
+                    func.regexp_replace(func.trim(Models.PersonalInfo.full_name), r"\s+", " ")
+                ),
+                r"\s+",
+                "",
+            ).ilike(f"%{query.lower().replace(' ', '')}%")
+        )
+
+        query_data = query_data.options(
+            joinedload(Models.User.personal_info),
+        )
+
+        employee_data = query_data.all()
+
+        _data = []
+
+        for employee in employee_data:
+            employee_dict = filter_fields(employee, fields=["account_status", "organization_id"])
+            personal_info = filter_fields(employee.personal_info) if employee.personal_info else {}
+            employee_info = (
+                filter_fields(employee.employee_info, fields=["-reporting_manager"])
+                if employee.employee_info
+                else {}
+            )
+
+            _data.append(
+                {
+                    "id": employee.id,
+                    **employee_dict,
+                    **filter_fields(
+                        personal_info,
+                        fields=["first_name", "full_name", "middle_name", "last_name"],
+                    ),
+                    **filter_fields(employee_info, fields=["employee_code"]),
+                }
+            )
+
+        return {
+            "message": "hello",
+            "success": True,
+            "data": _data,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Fetching All The Employee",
+                "error": str(e),
+                "success": False,
+            },
+        )

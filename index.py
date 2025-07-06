@@ -18,6 +18,7 @@ from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.organizations import orgRouter
 from routes.OrganizationSettings.OrganizationSettings import orgSettings
 from SqlModels.Models import BaseModel
+from routes.Organizations.FeedController import feedControl
 
 app = FastAPI(
     title="OrbitRMS",
@@ -53,6 +54,7 @@ app.include_router(configRoute)
 app.include_router(employee_router)
 app.include_router(clientInquires)
 app.include_router(orgSettings)
+app.include_router(feedControl)
 
 
 # Basic health check route
