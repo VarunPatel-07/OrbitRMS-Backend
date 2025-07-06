@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.sql import expression
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Enum
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
@@ -79,7 +79,10 @@ class User(BaseModel):
     reset_password_token = Column(String(255), nullable=True, default=None)
     password_created = Column(Boolean, nullable=False, default=False)
     organization_id = Column(CHAR(36), ForeignKey("organization.id"), nullable=False, index=True)
+
     organization = relationship("Organization", back_populates="employees")
+    post = relationship("OrganizationUpdates", back_populates="publisher")
+
     sessions = relationship("Sessions", back_populates="user")
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
@@ -113,6 +116,10 @@ class Organization(BaseModel):
 
     client_inquires = relationship(
         "ClientInquires", back_populates="organization", cascade="all, delete-orphan", uselist=False
+    )
+
+    org_updates = relationship(
+        "OrganizationUpdates", back_populates="organization", cascade="all, delete-orphan"
     )
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
@@ -206,3 +213,41 @@ class ClientInquiresData(BaseModel):
     )
 
     client_inquire = relationship("ClientInquires", back_populates="client_inquires_data")
+
+
+class OrganizationUpdates(BaseModel):
+    __tablename__ = "organization_updates"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+
+    images = Column(Text, nullable=True, default=None)
+    description = Column(Text, nullable=True, default=None)
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)
+
+    isCommentDisabled = Column(Boolean, default=False, nullable=True)
+
+    isLikeDisabled = Column(Boolean, default=False, nullable=True)
+
+    publisher = relationship("User", back_populates="post", cascade="all", uselist=False)
+
+    organization_id = Column(
+        CHAR(36),
+        ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+
+    source_type = Column(
+        Enum("default", "system", "user_created", name="source_type_enum"),
+        nullable=False,
+        default="system",
+    )
+
+    organization = relationship("Organization", back_populates="org_updates")
+
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )

@@ -273,17 +273,18 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
             )
         user = db.query(Models.User).filter(Models.User.id == employee_info.user_id).first()
 
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "user not found", "success": False},
+            )
+
         organization = (
             db.query(Models.Organization)
             .filter(Models.Organization.id == user.organization_id)
             .first()
         )
 
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "user not found", "success": False},
-            )
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -335,12 +336,12 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
         if existing_session:
             existing_session.updated_at = datetime.now(ZoneInfo("UTC"))
-            print("finger print found")
+            
             db.commit()
             db.refresh(existing_session)
             user_sessions = existing_session
         else:
-            print("finger print not found")
+            
             device_info = {
                 "ip_address": ip,
                 "browser": user_agent.browser.family,
