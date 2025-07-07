@@ -164,6 +164,15 @@ async def AddEditFeedPostController(
                     },
                 )
 
+            if not existing_post.user_id == user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={
+                        "message": "You Are Not Authorised",
+                        "success": False,
+                    },
+                )
+
             uploaded_file_url = []
 
             for img in new_images:
@@ -352,6 +361,99 @@ async def FetchTheOrganizationPost(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Error while Fetching Posts",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@feedControl.delete("/delete-post", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def HandelDeletePostFunction(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    id: str = Query(None, description="ID for delete operation"),
+):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        post = (
+            db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == id).first()
+        )
+
+        if not post:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Post With This Id Not Found",
+                    "success": False,
+                },
+            )
+
+        db.delete(post)
+        db.commit()
+
+        return {"success": True, "message": "Post Deleted Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Deleting a Post",
                 "error": str(e),
                 "success": False,
             },

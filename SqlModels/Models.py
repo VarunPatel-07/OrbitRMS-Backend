@@ -228,7 +228,7 @@ class OrganizationUpdates(BaseModel):
 
     isLikeDisabled = Column(Boolean, default=False, nullable=True)
 
-    publisher = relationship("User", back_populates="post", cascade="all", uselist=False)
+    publisher = relationship("User", back_populates="post", uselist=False)
 
     organization_id = Column(
         CHAR(36),

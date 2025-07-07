@@ -336,12 +336,12 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
         if existing_session:
             existing_session.updated_at = datetime.now(ZoneInfo("UTC"))
-            
+
             db.commit()
             db.refresh(existing_session)
             user_sessions = existing_session
         else:
-            
+
             device_info = {
                 "ip_address": ip,
                 "browser": user_agent.browser.family,
@@ -742,6 +742,94 @@ async def verify_meta_tag(request: Request, data: VerifyMetaTag):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Error Accrued While Verifying The Meta Tag",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.post("/logout", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def HandelLogoutApi(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        find_session = db.query(Models.Sessions).filter(Models.Sessions.id == session_id).first()
+
+        db.delete(find_session)
+        db.commit()
+
+        return {
+            "message": "Logout successfully",
+            "success": True,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable to log out the user at this moment.",
                 "success": False,
                 "error": str(e),
             },
