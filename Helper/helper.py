@@ -292,3 +292,9 @@ def validate_field(vale):
     if isinstance(vale, (list, Dict)) and len(vale) == 0:
         return False
     return True
+
+
+def generatePasswordResetToken():
+
+    token = secrets.token_urlsafe(32)
+    return token

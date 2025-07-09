@@ -128,6 +128,7 @@ async def AddEditFeedPostController(
                 isCommentDisabled=isCommentDisabled,
                 isLikeDisabled=isLikeDisabled,
                 organization_id=user.organization_id,
+                source_type="user_created",
             )
 
             db.add(post_data)

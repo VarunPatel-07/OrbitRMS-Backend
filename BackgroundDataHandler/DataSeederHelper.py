@@ -229,3 +229,13 @@ def department_data_seeder_helper_function(db, organization_id: str, data: Depar
     db.add(department)
     db.commit()
     db.refresh(department)
+
+
+def ClientInquiryInitiator(db, organization_id: str, api_key: str, api_secret: str):
+    create_client_inquires = Models.ClientInquires(
+        api_key=api_key, api_secrete=api_secret, organization_id=organization_id
+    )
+
+    db.add(create_client_inquires)
+    db.commit()
+    db.refresh(create_client_inquires)

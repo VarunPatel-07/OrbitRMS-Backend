@@ -39,3 +39,7 @@ class VerifyMetaTag(BaseModel):
     website_url: str
     meta_name: str
     meta_value: str
+
+
+class PasswordResetPydanticModel(BaseModel):
+    email: str

@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -20,7 +20,7 @@ from sqlalchemy.sql import func
 from user_agents import parse as parse_user_agent
 
 from Database.Database import db_dependencies
-from Email.HtmlEmailBody import VerifyEmailHtmlBody
+from Email.HtmlEmailBody import VerifyEmailHtmlBody, CreatePasswordHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
@@ -32,15 +32,19 @@ from Helper.helper import (
     urlsafe_data_encoding_function,
 )
 from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
+from Helper.helper import generatePasswordResetToken
 from Middleware.verifyToken import verify_token
 from PydanticModels.authentication.AuthenticationModels import (
     CreatePassword,
     RegisterOrganizationInfo,
     SignIn,
     VerifyMetaTag,
+    PasswordResetPydanticModel,
 )
 from RateLimiting import limiter
 from SqlModels import Models
+from Database.CacheDatabase import cache_database
+from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 
 load_dotenv(override=True)
 
@@ -173,20 +177,20 @@ async def create_organization(
 #
 # ? The Api To Create An Strong Password For You Organization
 #
-@authRoutes.post(path="/create-password", status_code=status.HTTP_201_CREATED)
+@authRoutes.post(path="/password/set-password", status_code=status.HTTP_201_CREATED)
 @limiter.limit(API_RATE_LIMITING)
 async def create_password(
     request: Request,
     db: db_dependencies,
     password: CreatePassword,
     user_id: str = Query(..., alias="user-id"),
+    token: str = Query(..., alias="token"),
+    type: str = Query(..., alias="type"),
 ):
     try:
         decrypted_user_id = urlsafe_data_decoding_function(user_id)
 
         user = db.query(Models.User).filter(Models.User.id == decrypted_user_id).first()
-
-        hash_password = hash_passwords(password.password)
 
         organization = (
             db.query(Models.Organization)
@@ -222,23 +226,41 @@ async def create_password(
                 },
             )
 
-        if not user.password_created:
+        decrypted_token = urlsafe_data_decoding_function(token)
+
+        compare_token = decrypted_token == user.reset_password_token
+
+        if compare_token:
+
+            check_password = verify_password(
+                plain_password=password.password, hashed_password=user.password
+            )
+
+            if check_password:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "New password must be different from the old one.",
+                        "success": False,
+                    },
+                )
+
+            hash_password = hash_passwords(password.password)
 
             user.password = hash_password
             user.password_created = True
+            user.reset_password_token = ""
             db.commit()
             db.refresh(user)
 
             return {
-                "message": "the password is created successfully",
+                "message": f"the password is {type} successfully",
                 "success": True,
-                "password_already_created": False,
             }
         else:
             return {
-                "message": "the password is already created",
-                "success": True,
-                "password_already_created": True,
+                "message": "This link is no longer valid. Please try again.",
+                "success": False,
             }
 
     except HTTPException as http_exception:
@@ -318,10 +340,21 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
                 detail={"message": "Invalid Email Or Password", "success": False},
             )
         ip = get_client_ip(request)
-        user_agent_string = request.headers.get("user-agent", "unknown")
-        user_agent = parse_user_agent(user_agent_string)
+        # Getting The Full UserAgent String
+        full_user_agent_string = request.headers.get("user-agent", "unknown")
 
-        device_fingerprint = f"{user_agent_string}-{ip}"
+        user_agent = parse_user_agent(full_user_agent_string)
+
+        # Now Getting The "sec_ch_ua" User Agent String
+
+        sec_ch_ua_string = request.headers.get("sec-ch-ua", "").lower()
+
+        browser = user_agent.browser.family
+
+        if "brave" in sec_ch_ua_string:
+            browser = "Brave"
+
+        device_fingerprint = f"{browser }|{user_agent.os.family}|{user_agent.device.family}|{ip}"
 
         hash_device_fingerprint = hash_fingerprint(device_fingerprint)
 
@@ -344,7 +377,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
             device_info = {
                 "ip_address": ip,
-                "browser": user_agent.browser.family,
+                "browser": browser,
                 "browser_version": user_agent.browser.version_string,
                 "os": user_agent.os.family,
                 "os_version": user_agent.os.version_string,
@@ -607,16 +640,20 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
             .filter(Models.User.id == user_id)
             .first()
         )
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": ("Unable To Find User With This ID"),
+                    "success": False,
+                },
+            )
 
-        if not user or not user.account_status:
+        if not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "Unable To Find User With This ID"
-                    ),
+                    "message": ("Account is deactivated. Access denied."),
                     "success": False,
                 },
             )
@@ -823,6 +860,96 @@ async def HandelLogoutApi(
             "message": "Logout successfully",
             "success": True,
         }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable to log out the user at this moment.",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.post("/password-reset/request")
+@limiter.limit(API_RATE_LIMITING)
+async def HandelPasswordReset(
+    request: Request,
+    db: db_dependencies,
+    data: PasswordResetPydanticModel,
+    background_task: BackgroundTasks,
+):
+    try:
+        email = data.email.lower().strip()
+        cache_key = f"password_reset-${email}"
+
+        count = await cache_database.incr(cache_key)
+
+        if count > MAX_RESET_ATTEMPTS:
+            return {
+                "message": "You’ve exceeded the number of password reset requests. Please try again later.",
+                "success": False,
+                "data": {
+                    "expiry_time": datetime.now(ZoneInfo("UTC"))
+                    + timedelta(seconds=RESET_TTL_SECONDS),
+                },
+            }
+
+        if count == 1:
+            await cache_database.expire(cache_key, RESET_TTL_SECONDS)
+
+        employee_info = (
+            db.query(Models.EmployeeInfo)
+            .filter(Models.EmployeeInfo.employee_email == data.email)
+            .first()
+        )
+        if not employee_info:
+
+            count = count + 1
+            return {
+                "message": "User Found",
+                "success": False,
+            }
+
+        user = db.query(Models.User).filter(Models.User.id == employee_info.user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "user not found", "success": False},
+            )
+
+        await cache_database.delete(cache_key)
+        encrypted_user_id = urlsafe_data_encoding_function(user.id)
+
+        reset_password_token = generatePasswordResetToken()
+
+        user.reset_password_token = reset_password_token
+
+        encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+
+        db.commit()
+        db.refresh(user)
+
+        email_data = {
+            "recever_email": data.email,
+            "subject": "Reset Your Password for Your OrbitRMS Account",
+            "body": CreatePasswordHtmlBody(
+                f"{FRONTEND_URL}/auth/reset-password?user-id={encrypted_user_id}&token={encrypted_token}"
+            ),
+        }
+
+        email_instance = EmailSchema(**email_data)
+
+        email_sender_function(email_instance, background_task)
+
+        return {
+            "message": "Mail Sent Successfully",
+            "success": True,
+        }
+
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:
