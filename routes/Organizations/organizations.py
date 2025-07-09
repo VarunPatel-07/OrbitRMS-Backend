@@ -1,5 +1,5 @@
 import os
-
+from Helper.helper import generatePasswordResetToken
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -12,12 +12,16 @@ from fastapi import (
 )
 from sqlalchemy.orm import joinedload
 
+from Helper.helper import generate_api_secrets_api_key
+
 from BackgroundDataHandler.initialDataSeeder import (
     department_data_initial_data_seeder,
     designation_initial_data_seeder,
     project_status_initial_data_seeder,
     roles_permission_initial_data_seeder_function,
 )
+from BackgroundDataHandler.DataSeederHelper import ClientInquiryInitiator
+
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import CreatePasswordHtmlBody
 from Helper.createModelInstance import cerate_model_instance
@@ -79,19 +83,34 @@ async def verify_organization(
             db.commit()
             db.refresh(organization)
 
-            user_info = (
-                db.query(Models.EmployeeInfo)
+            user = (
+                db.query(Models.User)
+                .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
                 .filter(Models.EmployeeInfo.employee_email == organization.primary_email)
                 .first()
             )
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={
+                        "message": "User Not Found",
+                        "success": False,
+                    },
+                )
 
-            encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
+            encrypted_user_id = urlsafe_data_encoding_function(user.id)
+
+            reset_password_token = generatePasswordResetToken()
+
+            user.reset_password_token = reset_password_token
+
+            encrypted_token = urlsafe_data_encoding_function(reset_password_token)
 
             email_data = {
-                "recever_email": user_info.employee_email,
+                "recever_email": organization.primary_email,
                 "subject": "Complete Your Account Setup – Create Your Password",
                 "body": CreatePasswordHtmlBody(
-                    f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}"
+                    f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}&token={encrypted_token}"
                 ),
             }
 
@@ -101,9 +120,13 @@ async def verify_organization(
 
             config_module = Models.ConfigModule()
             config_module.organization_id = decrypted_org_id
+
             db.add(config_module)
             db.commit()
             db.refresh(config_module)
+
+            db.commit()
+            db.refresh(user)
 
             background_task.add_task(
                 roles_permission_initial_data_seeder_function, db, decrypted_org_id
@@ -162,6 +185,7 @@ async def onboard_organization(
     request: Request,
     db: db_dependencies,
     data: OnboardingOrganization,
+    background_task: BackgroundTasks,
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
@@ -234,28 +258,13 @@ async def onboard_organization(
         db.add(organization_settings)
         db.commit()
 
+        api_key, api_secret = generate_api_secrets_api_key()
+
+        background_task.add_task(ClientInquiryInitiator, db, organization_id, api_key, api_secret)
+
         return {
             "message": f"successfully onboarded {data.general_info.organization_name} organization",
             "success": True,
-            "organization": {
-                "status": organization.status,
-                "organization_created": organization.organization_created,
-                "general_info": model_to_filtered_dict(
-                    updated_general_info, ["-id", "-organization_id"]
-                ),
-                "address": model_to_filtered_dict(address, ["-id", "-organization_id"]),
-                "contact_info": [
-                    model_to_filtered_dict(_contact_info, ["-id", "-organization_id"])
-                    for _contact_info in contact_info_arr
-                ],
-                "about_info": model_to_filtered_dict(about_info, ["-id", "-organization_id"]),
-                "organization_settings": model_to_filtered_dict(
-                    organization_settings, ["-id", "-organization_id"]
-                ),
-            },
-            "updated_user_info": model_to_filtered_dict(
-                updated_user_info, ["-id", "-organization_id"]
-            ),
         }
 
     except HTTPException as http_exception:

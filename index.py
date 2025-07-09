@@ -8,6 +8,7 @@ from Database.Database import DATABASE_ENGINE, database
 from Helper.helper import get_client_ip
 from RateLimiting import custom_rate_limit_handler, limiter
 
+
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
 from routes.ClientInquires.ClientInquires import clientInquires
@@ -19,6 +20,7 @@ from routes.Organizations.organizations import orgRouter
 from routes.OrganizationSettings.OrganizationSettings import orgSettings
 from SqlModels.Models import BaseModel
 from routes.Organizations.FeedController import feedControl
+from routes.ApiManager.ApiManager import ApiManager
 
 app = FastAPI(
     title="OrbitRMS",
@@ -55,6 +57,7 @@ app.include_router(employee_router)
 app.include_router(clientInquires)
 app.include_router(orgSettings)
 app.include_router(feedControl)
+app.include_router(ApiManager)
 
 
 # Basic health check route
