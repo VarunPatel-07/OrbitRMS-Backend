@@ -265,7 +265,7 @@ def client_form_field_initial_data_seeder(db, organization_id: str):
     try:
         with open(path, "r") as file_content:
 
-            data_list = json.loads(file_content)
+            data_list = json.load(file_content)
 
             if not isinstance(data_list, list):
                 raise ValueError("Expected a list of department")
