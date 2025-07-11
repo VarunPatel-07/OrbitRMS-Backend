@@ -1,0 +1,27 @@
+[
+  {
+    "field_name": "full_name",
+    "is_required_field": true,
+    "type": "string"
+  },
+  {
+    "field_name": "email",
+    "is_required_field": true,
+    "type": "string"
+  },
+  {
+    "field_name": "subscribe_newsletter",
+    "is_required_field": false,
+    "type": "boolean"
+  },
+  {
+    "field_name": "budget",
+    "is_required_field": false,
+    "type": "number"
+  },
+  {
+    "field_name": "tell_us_about_you",
+    "is_required_field": false,
+    "type": "string"
+  }
+]
