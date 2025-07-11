@@ -17,15 +17,6 @@ load_dotenv(override=True)
 
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
 
-APP_ENVIRONMENT = os.getenv("APP_ENVIRONMENT")
-
-
-def is_Production():
-    if APP_ENVIRONMENT == "Production":
-        return True
-    else:
-        return False
-
 
 def generate_full_name(first_name: str, last_name: str, middle_name: str = None) -> str:
     return f"{first_name} {middle_name} {last_name}"

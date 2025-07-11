@@ -1,5 +1,5 @@
 import os
-from typing import Optional, List
+from typing import List, Optional
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, HTTPException, status

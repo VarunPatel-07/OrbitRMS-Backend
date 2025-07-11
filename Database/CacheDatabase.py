@@ -5,10 +5,25 @@ from redis.asyncio import Redis
 
 load_dotenv(override=True)
 
-
-cached_redis_host = os.getenv("CACHED_DATABASE_HOST")
-
-cached_redis_port = os.getenv("CACHED_DATABASE_PORT")
+BACKEND_APP_ENVIRONMENT = os.getenv("BACKEND_APP_ENVIRONMENT")
 
 
-cache_database = Redis(host=cached_redis_host, port=cached_redis_port, decode_responses=True)
+CACHED_DATABASE_HOST = os.getenv("CACHED_DATABASE_HOST")
+
+CACHED_DATABASE_PORT = os.getenv("CACHED_DATABASE_PORT")
+
+CACHED_DATABASE_PASSWORD = os.getenv("CACHED_DATABASE_PASSWORD")
+
+
+if BACKEND_APP_ENVIRONMENT == "PRODUCTION":
+    cache_database = Redis(
+        host=CACHED_DATABASE_HOST,
+        port=CACHED_DATABASE_PORT,
+        password=CACHED_DATABASE_PASSWORD,
+        ssl=True,
+        decode_responses=True,
+    )
+else:
+    cache_database = Redis(
+        host=CACHED_DATABASE_HOST, port=CACHED_DATABASE_PORT, decode_responses=True
+    )

@@ -19,12 +19,15 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
 from user_agents import parse as parse_user_agent
 
+from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
+from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
-from Email.HtmlEmailBody import VerifyEmailHtmlBody, CreatePasswordHtmlBody
+from Email.HtmlEmailBody import CreatePasswordHtmlBody, VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
     filter_fields,
+    generatePasswordResetToken,
     get_client_ip,
     hash_fingerprint,
     model_to_filtered_dict,
@@ -32,19 +35,16 @@ from Helper.helper import (
     urlsafe_data_encoding_function,
 )
 from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
-from Helper.helper import generatePasswordResetToken
 from Middleware.verifyToken import verify_token
 from PydanticModels.authentication.AuthenticationModels import (
     CreatePassword,
+    PasswordResetPydanticModel,
     RegisterOrganizationInfo,
     SignIn,
     VerifyMetaTag,
-    PasswordResetPydanticModel,
 )
 from RateLimiting import limiter
 from SqlModels import Models
-from Database.CacheDatabase import cache_database
-from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 
 load_dotenv(override=True)
 
@@ -282,24 +282,50 @@ async def create_password(
 @authRoutes.post(path="/sign-in", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
+
     try:
-        employee_info = (
-            db.query(Models.EmployeeInfo)
+        cache_key = f"sign_in_attempt_{user_info.email}"
+        count = await cache_database.incr(cache_key) or 0
+        count = int(count)
+
+        if count == 1:
+            await cache_database.expire(cache_key, RESET_TTL_SECONDS)
+
+        if count > MAX_RESET_ATTEMPTS:
+            return {
+                "message": "Reset limit exceeded. Please wait.",
+                "success": False,
+                "data": {
+                    "expiry_time": datetime.now(ZoneInfo("UTC"))
+                    + timedelta(seconds=RESET_TTL_SECONDS),
+                },
+            }
+
+        user = (
+            db.query(Models.User)
+            .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
             .filter(Models.EmployeeInfo.employee_email == user_info.email)
             .first()
         )
-        if not employee_info:
+
+        if not user:
+
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": "Invalid Email Or Password", "success": False},
             )
-        user = db.query(Models.User).filter(Models.User.id == employee_info.user_id).first()
 
-        if not user:
+        check_password = verify_password(
+            plain_password=user_info.password, hashed_password=user.password
+        )
+
+        if not check_password:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "user not found", "success": False},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid Email Or Password", "success": False},
             )
+
+        await cache_database.delete(cache_key)
 
         organization = (
             db.query(Models.Organization)
@@ -330,15 +356,6 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
                 },
             )
 
-        check_password = verify_password(
-            plain_password=user_info.password, hashed_password=user.password
-        )
-
-        if not check_password:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid Email Or Password", "success": False},
-            )
         ip = get_client_ip(request)
         # Getting The Full UserAgent String
         full_user_agent_string = request.headers.get("user-agent", "unknown")
@@ -405,13 +422,20 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
         return {
             "message": "User Sign In Successfully",
             "success": True,
-            "authenticationToken": token,
-            "organization_created": organization.organization_created,
-            "organization_id": encrypted_org_id,
-            "organization_general_info": model_to_filtered_dict(
-                organization.general_info,
-                ["organization_name", "organization_profile_picture", "portal_url", "portal_slug"],
-            ),
+            "data": {
+                "authenticationToken": token,
+                "organization_created": organization.organization_created,
+                "organization_id": encrypted_org_id,
+                "organization_general_info": model_to_filtered_dict(
+                    organization.general_info,
+                    [
+                        "organization_name",
+                        "organization_profile_picture",
+                        "portal_url",
+                        "portal_slug",
+                    ],
+                ),
+            },
         }
 
     except HTTPException as http_exception:
@@ -889,7 +913,7 @@ async def HandelPasswordReset(
 
         if count > MAX_RESET_ATTEMPTS:
             return {
-                "message": "You’ve exceeded the number of password reset requests. Please try again later.",
+                "message": "Reset limit exceeded. Please wait.",
                 "success": False,
                 "data": {
                     "expiry_time": datetime.now(ZoneInfo("UTC"))

@@ -3,15 +3,23 @@ import math
 import os
 from typing import Optional
 from urllib.parse import unquote
+
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
+from Database.Database import db_dependencies
 from Email.HtmlEmailBody import NewClientInquiryAccruedMail
 from Helper.emailSender import EmailSchema, email_sender_function
-
-from Database.Database import db_dependencies
 from Helper.helper import (
     filter_fields,
     is_valid_type,
@@ -20,7 +28,6 @@ from Helper.helper import (
 from Middleware.verifyToken import verify_token
 from RateLimiting import limiter
 from SqlModels import Models
-
 
 from .ClientInquiresQueryFilter import apply_client_inquiry_query_filter
 
@@ -163,8 +170,6 @@ async def Fetch_Client_Inquires(
                 "error": str(e),
             },
         )
-
-
 
 
 @clientInquires.delete("/delete-inquire")

@@ -2,11 +2,10 @@ import uuid
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy.sql import expression
-
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Enum
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import expression
 
 from Database.Base import BaseModel
 from SqlModels.HelperModel.ConfigModelUtils import (
@@ -14,10 +13,10 @@ from SqlModels.HelperModel.ConfigModelUtils import (
     ConfigRoleModule,
     Department,
     Designations,
+    OrganizationHolidaysSchema,
     PermissionModule,
     ProjectStatus,
     RoleAssociatedPermissionModule,
-    OrganizationHolidaysSchema,
 )
 from SqlModels.HelperModel.OrganizationModelUtils import (
     OrganizationAboutInfo,

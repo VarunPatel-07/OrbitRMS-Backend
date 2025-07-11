@@ -2,7 +2,6 @@ import json
 import os
 import time
 import unicodedata
-from typing import Optional
 
 import httpx
 import requests
@@ -16,6 +15,7 @@ from RateLimiting import limiter
 load_dotenv(override=True)
 
 API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+GEONAME_API_USERNAME = os.getenv("GEONAME_API_USERNAME")
 
 
 async def fetch_data(url, retries=3, timeout=20):
@@ -140,7 +140,7 @@ async def GetCountryInfo(
                 },
             }
 
-        username = "emilys"
+        username = GEONAME_API_USERNAME
 
         country_url = f"http://api.geonames.org/searchJSON?country={country}&featureCode=ADM1&username={username}"
 
@@ -227,7 +227,7 @@ async def GetStateInfo(
                 },
             }
 
-        username = "emilys"
+        username = GEONAME_API_USERNAME
         cities_url = f"http://api.geonames.org/searchJSON?adminCode1={state_code}&country={country}&featureClass=P&username={username}"
 
         cities_data = await fetch_data(cities_url)
