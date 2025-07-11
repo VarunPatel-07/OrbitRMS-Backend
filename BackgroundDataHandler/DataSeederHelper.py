@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 
 from PydanticModels.ConfigModule.ConfigModule import (
+    ClientFormSchemaModel,
     Department,
     Designations,
     ProjectStatus,
@@ -229,6 +230,51 @@ def department_data_seeder_helper_function(db, organization_id: str, data: Depar
     db.add(department)
     db.commit()
     db.refresh(department)
+
+
+def client_form_filed_data_seeder_helper_function(
+    db, organization_id: str, data: ClientFormSchemaModel
+):
+    config_module = (
+        db.query(Models.ConfigModule)
+        .filter(Models.ConfigModule.organization_id == organization_id)
+        .first()
+    )
+
+    if not config_module:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "Config Module Not Found", "success": False},
+        )
+
+    existing_field = (
+        db.query(Models.ClientFormSchema)
+        .filter(func.lower(Models.ClientFormSchema.field_name) == func.lower(data.field_name))
+        .first()
+    )
+
+    if existing_field:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "Field With This Name Is Already Exist",
+                "success": False,
+            },
+        )
+
+    form_field = Models.ClientFormSchema(
+        field_name=data.field_name,
+        is_required_field=data.is_required_field,
+        type=data.type,
+        source_type="default",
+        config_module_id=config_module.id,
+        created_by=None,
+        updated_by=None,
+    )
+
+    db.add(form_field)
+    db.commit()
+    db.refresh(form_field)
 
 
 def ClientInquiryInitiator(db, organization_id: str, api_key: str, api_secret: str):

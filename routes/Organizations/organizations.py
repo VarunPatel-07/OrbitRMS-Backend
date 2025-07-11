@@ -18,6 +18,7 @@ from BackgroundDataHandler.initialDataSeeder import (
     designation_initial_data_seeder,
     project_status_initial_data_seeder,
     roles_permission_initial_data_seeder_function,
+    client_form_field_initial_data_seeder,
 )
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import CreatePasswordHtmlBody
@@ -133,6 +134,7 @@ async def verify_organization(
             background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(department_data_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(project_status_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
 
             return {
                 "message": "Organization Is Verified Successfully",

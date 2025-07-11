@@ -4,12 +4,14 @@ import os
 from fastapi import HTTPException, status
 
 from BackgroundDataHandler.DataSeederHelper import (
+    client_form_filed_data_seeder_helper_function,
     department_data_seeder_helper_function,
     designation_data_seeder_helper_function,
     project_status_data_seeder_helper_function,
     roles_permission_data_seeder_helper,
 )
 from PydanticModels.ConfigModule.ConfigModule import (
+    ClientFormSchemaModel,
     Department,
     Designations,
     ProjectStatus,
@@ -219,6 +221,70 @@ def department_data_initial_data_seeder(db, organization_id: str):
                 try:
                     department_data = Department(**each_data)
                     department_data_seeder_helper_function(db, organization_id, department_data)
+
+                except HTTPException as http_exception:
+                    raise http_exception
+                except Exception as e:
+
+                    raise ValueError(f"Invalid department data: {str(e)}")
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "Default department data file not found", "success": False},
+        )
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Invalid JSON format in data file", "success": False},
+        )
+
+    except ValueError as val_error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": f"Invalid data formate {str(val_error)}", "success": False},
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while seeding default Project Status data",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+def client_form_field_initial_data_seeder(db, organization_id: str):
+    base_url = os.path.dirname(__file__)
+    path = os.path.join(base_url, "data", "defaultClientFormFields.json")
+
+    try:
+        with open(path, "r") as file_content:
+
+            data_list = json.loads(file_content)
+
+            if not isinstance(data_list, list):
+                raise ValueError("Expected a list of department")
+
+            for form_field in data_list:
+                if not isinstance(form_field, dict):
+                    raise ValueError("Each department should be a dictionary")
+                if "field_name" not in form_field:
+                    raise ValueError("Missing 'field_name' in Client Form Field data")
+                if "is_required_field" not in form_field:
+                    raise ValueError("Missing 'is_required_field' in Client Form Field data")
+                if "type" not in form_field:
+                    raise ValueError("Missing 'type' in Client Form Field data")
+
+                try:
+                    form_field_data = ClientFormSchemaModel(**form_field)
+                    client_form_filed_data_seeder_helper_function(
+                        db, organization_id, form_field_data
+                    )
 
                 except HTTPException as http_exception:
                     raise http_exception
