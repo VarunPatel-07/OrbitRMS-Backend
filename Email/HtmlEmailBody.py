@@ -41,6 +41,22 @@ def CreatePasswordHtmlBody(url: str):
     return html_content
 
 
+def ResetPasswordHtmlBody(url: str):
+    base_url = os.path.dirname(__file__)
+    path = os.path.join(base_url, "Html", "reset-password.html")
+    with open(path, "r") as file:
+        html_content = file.read()
+
+        print(url)
+    html_content = (
+        (html_content.replace("{create_password_link}", url))
+        .replace("{facebook_url}", FACEBOOK_LINK)
+        .replace("{instagram_url}", INSTAGRAM_LINK)
+        .replace("{linked_in_url}", LINKEDIN_LINK)
+    )
+    return html_content
+
+
 def WelcomeMailForNewlyAddedEmployee(data: WelcomeEmployeeMailModel):
 
     ORBIT_CONTACT_EMAIL = os.getenv("ORBIT_CONTACT_EMAIL", "").strip()

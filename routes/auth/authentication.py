@@ -22,7 +22,7 @@ from user_agents import parse as parse_user_agent
 from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
-from Email.HtmlEmailBody import CreatePasswordHtmlBody, VerifyEmailHtmlBody
+from Email.HtmlEmailBody import ResetPasswordHtmlBody, VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
@@ -960,7 +960,7 @@ async def HandelPasswordReset(
         email_data = {
             "recever_email": data.email,
             "subject": "Reset Your Password for Your OrbitRMS Account",
-            "body": CreatePasswordHtmlBody(
+            "body": ResetPasswordHtmlBody(
                 f"{FRONTEND_URL}/auth/reset-password?user-id={encrypted_user_id}&token={encrypted_token}"
             ),
         }
