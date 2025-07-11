@@ -1,18 +1,22 @@
-from fastapi import APIRouter, status, HTTPException, Request, Depends, Query
-from Middleware.verifyToken import verify_token
-from Database.Database import db_dependencies
-from typing import Optional
-from RateLimiting import limiter
-from dotenv import load_dotenv
-import os
 import json
-from sqlalchemy import func, asc, desc
-from SqlModels import Models
+import os
+from datetime import datetime
+from typing import Optional
+
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import joinedload
+
+from Database.Database import db_dependencies
 from Helper.createModelInstance import cerate_model_instance
 from Helper.helper import model_to_filtered_dict
-from PydanticModels.OrganizationSettings.OrganizationSettings import AddEditHolidayPydanticModel
-from datetime import datetime
+from Middleware.verifyToken import verify_token
+from PydanticModels.OrganizationSettings.OrganizationSettings import (
+    AddEditHolidayPydanticModel,
+)
+from RateLimiting import limiter
+from SqlModels import Models
 
 orgSettings = APIRouter(prefix="/app/v1/org-setting", tags=["org-setting"])
 

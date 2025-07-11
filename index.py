@@ -1,3 +1,6 @@
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -7,7 +10,7 @@ from Database.CacheDatabase import cache_database
 from Database.Database import DATABASE_ENGINE, database
 from Helper.helper import get_client_ip
 from RateLimiting import custom_rate_limit_handler, limiter
-
+from routes.ApiManager.ApiManager import ApiManager
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -16,11 +19,14 @@ from routes.ConfigModule.ConfigModule import configRoute
 from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
 from routes.Organizations.EmployeeController import employee_router
+from routes.Organizations.FeedController import feedControl
 from routes.Organizations.organizations import orgRouter
 from routes.OrganizationSettings.OrganizationSettings import orgSettings
 from SqlModels.Models import BaseModel
-from routes.Organizations.FeedController import feedControl
-from routes.ApiManager.ApiManager import ApiManager
+
+load_dotenv(override=True)
+
+BACKEND_APP_ENVIRONMENT = os.getenv("BACKEND_APP_ENVIRONMENT")
 
 app = FastAPI(
     title="OrbitRMS",
@@ -85,6 +91,7 @@ async def root_health_check(request: Request):
             ),
             "cache_database": await cache_database.get("hello"),
             "ip": ip,
+            "ENVIRONMENT": BACKEND_APP_ENVIRONMENT,
         }
     else:
         return Response(
