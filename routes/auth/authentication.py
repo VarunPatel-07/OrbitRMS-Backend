@@ -1,170 +1,165 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import json
+import os
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
+import httpx
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql import func
+from user_agents import parse as parse_user_agent
+
+from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
+from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
+from Email.HtmlEmailBody import ResetPasswordHtmlBody, VerifyEmailHtmlBody
 from Helper.createModelInstance import cerate_model_instance
+from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
+    filter_fields,
+    generatePasswordResetToken,
+    get_client_ip,
+    hash_fingerprint,
     model_to_filtered_dict,
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
 )
 from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
 from Middleware.verifyToken import verify_token
-from PydanticModels.authentication.AuthenticationModels import CreatePassword, SignIn
-from PydanticModels.UserModels import User
+from PydanticModels.authentication.AuthenticationModels import (
+    CreatePassword,
+    PasswordResetPydanticModel,
+    RegisterOrganizationInfo,
+    SignIn,
+    VerifyMetaTag,
+)
+from RateLimiting import limiter
 from SqlModels import Models
+
+load_dotenv(override=True)
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
 authRoutes = APIRouter(prefix="/app/v1/auth", tags=["auth"])
 
 
-@authRoutes.post(path="/add-employee", status_code=status.HTTP_201_CREATED)
-async def add_employee(db: db_dependencies, user: User):
+#
+# ? The Api For The Sign UP And Creating a New Organization
+#
+@authRoutes.post("/sign-up", status_code=status.HTTP_201_CREATED)
+@limiter.limit(API_RATE_LIMITING)
+async def create_organization(
+    request: Request,
+    organization_info: RegisterOrganizationInfo,
+    db: db_dependencies,
+    background_task: BackgroundTasks,
+):
     try:
-        find_user = (
-            db.query(Models.EmployeeInfo)
-            .filter(Models.EmployeeInfo.employee_email == user.employee_info.employee_email)
+        find_organization = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(Models.OrganizationGeneralInfo.primary_email == organization_info.primary_email)
+            .first()
+        )
+        check_for_the_email_domain = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(
+                func.substring_index(Models.OrganizationGeneralInfo.primary_email, "@", -1)
+                == organization_info.primary_email.split("@")[1]
+            )
             .first()
         )
 
-        if find_user:
+        if check_for_the_email_domain:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "User With This Mail Already Exists",
+                    "message": "The Provided Email Domain Is Already In Use",
                     "success": False,
+                    "owner_email": find_organization.primary_email if find_organization else None,
                 },
             )
 
-        hashed_password = hash_passwords("Orbit@1234")
+        if find_organization:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "The Provided Email Is Already In Use",
+                    "success": False,
+                    "owner_email": find_organization.primary_email,
+                },
+            )
 
-        created_user = Models.User(password=hashed_password)
-        db.add(created_user)
+        create_org = Models.Organization(status=True)
+
+        db.add(create_org)
         db.commit()
+        db.refresh(create_org)
 
-        personal_info = cerate_model_instance(model=Models.PersonalInfo, data=user.personal_info)
-        personal_info.user_id = created_user.id
-
-        employee_info = cerate_model_instance(
-            model=Models.EmployeeInfo,
-            data=user.employee_info,
+        organization = cerate_model_instance(
+            model=Models.OrganizationGeneralInfo,
+            data=organization_info,
+            fields=["-country_info"],
         )
-        employee_info.user_id = created_user.id
-
-        personal_contact_info = cerate_model_instance(
-            model=Models.PersonalContactInfo,
-            data=user.personal_contact_info,
-        )
-        personal_contact_info.user_id = created_user.id
-
-        family_info = None
-
-        children_arr = []
-        if user.family_info.children:
-            family_info = Models.FamilyInfo(
-                father_name=user.family_info.father_name,
-                mother_name=user.family_info.mother_name,
-                marital_status=user.family_info.marital_status,
-                children=children_arr,  # Initial empty children list
-            )
-            family_info.user_id = created_user.id
-
-            db.add(family_info)
-            db.commit()
-            children_arr = [
-                Models.Children(
-                    name=child.name,
-                    gender=child.gender,
-                    date_of_birth=child.date_of_birth,
-                    family_id=family_info.id,  # Set the family_id for each child
-                )
-                for child in user.family_info.children
-            ]
-        else:
-            family_info = Models.FamilyInfo(
-                father_name=user.family_info.father_name,
-                mother_name=user.family_info.mother_name,
-                marital_status=user.family_info.marital_status,
-                children=children_arr,  # Initial empty children list
-            )
-            family_info.user_id = created_user.id
-
-            db.add(family_info)
-            db.commit()
-
-        address_info = cerate_model_instance(model=Models.Address, data=user.address, fields=[])
-        address_info.user_id = created_user.id
-
-        emergency_contact = [
-            Models.EmergencyContact(
-                full_name=contact.full_name,
-                contact_number=contact.contact_number,
-                user_id=created_user.id,
-            )
-            for contact in user.emergency_contact
-        ]
-
-        social_link = [
-            Models.SocialLinks(
-                icon=link.icon, name=link.name, link=link.link, user_id=created_user.id
-            )
-            for link in user.social_link
-        ]
-
-        children = []
-        if user.family_info.children:
-            children = [
-                {
-                    "name": child.name,
-                    "gender": child.gender,
-                    "date_of_birth": child.date_of_birth,
-                }
-                for child in children_arr
-            ]
-
-        emergency_contacts = [
-            {"full_name": item.full_name, "contact_number": item.contact_number}
-            for item in emergency_contact
-        ]
-        social_links = [
-            {"icon": item.icon, "name": item.name, "link": item.link} for item in social_link
-        ]
-
-        db.add(employee_info)
-        db.add(personal_info)
-        db.add(personal_contact_info)
-        db.add(address_info)
-        for child in children_arr:
-            db.add()(child)
-        for contact in emergency_contact:
-            db.add(contact)
-        for link in social_link:
-            db.add(link)
+        user_info = Models.User(password="")
+        user_info.organization_id = create_org.id
+        db.add(user_info)
         db.commit()
+        db.refresh(user_info)
+        user_employee_info = Models.EmployeeInfo(
+            status="Confirmed",
+            organization_name=organization_info.organization_name,
+            employee_code="",
+            department="",
+            designation="",
+            employee_email=organization_info.primary_email,
+        )
+        user_employee_info.user_id = user_info.id
+        db.add(user_employee_info)
+        db.commit()
+        db.refresh(user_employee_info)
+        organization.organization_id = create_org.id
 
-        user_info = {
-            "password": created_user.password,
-            "personal_info": model_to_filtered_dict(personal_info),
-            "employee_info": model_to_filtered_dict(employee_info),
-            "personal_contact_info": model_to_filtered_dict(personal_contact_info),
-            "family_info": {
-                "father_name": family_info.father_name,
-                "mother_name": family_info.mother_name,
-                "marital_status": family_info.marital_status,
-                "children": children,
-            },
-            "address_info": model_to_filtered_dict(address_info),
-            "emergency_contact": emergency_contacts,
-            "social_link": social_links,
+        organization.country_info = json.dumps(
+            organization_info.country_info.dict()
+            if hasattr(organization_info.country_info, "dict")
+            else organization_info.country_info
+        )
+
+        db.add(organization)
+        db.commit()
+        db.refresh(organization)
+
+        encrypted_org_id = urlsafe_data_encoding_function(create_org.id)
+
+        email_data = {
+            "recever_email": organization_info.primary_email,
+            "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
+            "body": VerifyEmailHtmlBody(
+                f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}"
+            ),
         }
 
-        # JWT token creation
-        token_data = {"sub": created_user.id}
-        token = create_jwt_token(data=token_data)
+        email_instance = EmailSchema(**email_data)
+
+        send_mail = email_sender_function(email_instance, background_task)
 
         return {
-            "message": "The User Is Registered Successfully",
-            "token": token,
             "success": True,
-            "user_info": user_info,
+            "title": "Organization Created",
+            "message": f"Your organization has been successfully created. A confirmation email with further details has been sent to {user_employee_info.employee_email}. Please check your inbox and follow the instructions to complete the setup.",
+            "email_status": send_mail,
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -179,41 +174,93 @@ async def add_employee(db: db_dependencies, user: User):
         )
 
 
-@authRoutes.post(path="/create-password", status_code=status.HTTP_201_CREATED)
+#
+# ? The Api To Create An Strong Password For You Organization
+#
+@authRoutes.post(path="/password/set-password", status_code=status.HTTP_201_CREATED)
+@limiter.limit(API_RATE_LIMITING)
 async def create_password(
+    request: Request,
     db: db_dependencies,
     password: CreatePassword,
     user_id: str = Query(..., alias="user-id"),
+    token: str = Query(..., alias="token"),
+    type: str = Query(..., alias="type"),
 ):
     try:
         decrypted_user_id = urlsafe_data_decoding_function(user_id)
 
         user = db.query(Models.User).filter(Models.User.id == decrypted_user_id).first()
 
-        hash_password = hash_passwords(password.password)
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
 
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"message": "user not found", "success": False},
             )
-        if not user.password_created:
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "organization not found", "success": False},
+            )
+        if not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "Account is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        if not organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        decrypted_token = urlsafe_data_decoding_function(token)
+
+        compare_token = decrypted_token == user.reset_password_token
+
+        if compare_token:
+
+            check_password = verify_password(
+                plain_password=password.password, hashed_password=user.password
+            )
+
+            if check_password:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "New password must be different from the old one.",
+                        "success": False,
+                    },
+                )
+
+            hash_password = hash_passwords(password.password)
 
             user.password = hash_password
             user.password_created = True
+            user.reset_password_token = ""
             db.commit()
             db.refresh(user)
 
             return {
-                "message": "the password is created successfully",
+                "message": f"the password is {type} successfully",
                 "success": True,
-                "password_already_created": False,
             }
         else:
             return {
-                "message": "the password is already created",
-                "success": True,
-                "password_already_created": True,
+                "message": "This link is no longer valid. Please try again.",
+                "success": False,
             }
 
     except HTTPException as http_exception:
@@ -229,31 +276,43 @@ async def create_password(
         )
 
 
+#
+# ? The Api To Sign-In in Your Organization
+#
 @authRoutes.post(path="/sign-in", status_code=status.HTTP_200_OK)
-async def sing_in(db: db_dependencies, user_info: SignIn):
-    try:
-        employee_info = (
-            db.query(Models.EmployeeInfo)
-            .filter(Models.EmployeeInfo.employee_email == user_info.email)
-            .first()
-        )
-        if not employee_info:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid Email Or Password", "success": False},
-            )
-        user = db.query(Models.User).filter(Models.User.id == employee_info.user_id).first()
+@limiter.limit(API_RATE_LIMITING)
+async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
+    try:
+        cache_key = f"sign_in_attempt_{user_info.email}"
+        count = await cache_database.incr(cache_key) or 0
+        count = int(count)
+
+        if count == 1:
+            await cache_database.expire(cache_key, RESET_TTL_SECONDS)
+
+        if count > MAX_RESET_ATTEMPTS:
+            return {
+                "message": "Reset limit exceeded. Please wait.",
+                "success": False,
+                "data": {
+                    "expiry_time": datetime.now(ZoneInfo("UTC"))
+                    + timedelta(seconds=RESET_TTL_SECONDS),
+                },
+            }
+
+        user = (
+            db.query(Models.User)
+            .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
+            .filter(Models.EmployeeInfo.employee_email == user_info.email)
             .first()
         )
 
         if not user:
+
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "user not found", "success": False},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid Email Or Password", "success": False},
             )
 
         check_password = verify_password(
@@ -265,7 +324,97 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": "Invalid Email Or Password", "success": False},
             )
-        sub = {"user_id": user.id}
+
+        await cache_database.delete(cache_key)
+
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "organization not found", "success": False},
+            )
+        if not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "Account is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        if not organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        ip = get_client_ip(request)
+        # Getting The Full UserAgent String
+        full_user_agent_string = request.headers.get("user-agent", "unknown")
+
+        user_agent = parse_user_agent(full_user_agent_string)
+
+        # Now Getting The "sec_ch_ua" User Agent String
+
+        sec_ch_ua_string = request.headers.get("sec-ch-ua", "").lower()
+
+        browser = user_agent.browser.family
+
+        if "brave" in sec_ch_ua_string:
+            browser = "Brave"
+
+        device_fingerprint = f"{browser }|{user_agent.os.family}|{user_agent.device.family}|{ip}"
+
+        hash_device_fingerprint = hash_fingerprint(device_fingerprint)
+
+        existing_session = (
+            db.query(Models.Sessions)
+            .filter(
+                Models.Sessions.fingerprint == hash_device_fingerprint,
+                Models.Sessions.user_id == user.id,
+            )
+            .first()
+        )
+
+        if existing_session:
+            existing_session.updated_at = datetime.now(ZoneInfo("UTC"))
+
+            db.commit()
+            db.refresh(existing_session)
+            user_sessions = existing_session
+        else:
+
+            device_info = {
+                "ip_address": ip,
+                "browser": browser,
+                "browser_version": user_agent.browser.version_string,
+                "os": user_agent.os.family,
+                "os_version": user_agent.os.version_string,
+                "device_type": user_agent.device.family,
+                "is_mobile": user_agent.is_mobile,
+                "is_tablet": user_agent.is_tablet,
+                "is_pc": user_agent.is_pc,
+                "is_bot": user_agent.is_bot,
+                "fingerprint": hash_device_fingerprint,
+            }
+            user_sessions = cerate_model_instance(
+                data=device_info, model=Models.Sessions, fields=["-user_id"]
+            )
+            user_sessions.user_id = user.id
+            db.add(user_sessions)
+            db.commit()
+            db.refresh(user_sessions)
+
+        sub = {"user_id": user.id, "session_id": user_sessions.id}
+
         token = create_jwt_token(data=sub)
 
         encrypted_org_id = urlsafe_data_encoding_function(organization.id)
@@ -273,9 +422,20 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
         return {
             "message": "User Sign In Successfully",
             "success": True,
-            "authenticationToken": token,
-            "organization_created": organization.organization_created,
-            "organization_id": encrypted_org_id,
+            "data": {
+                "authenticationToken": token,
+                "organization_created": organization.organization_created,
+                "organization_id": encrypted_org_id,
+                "organization_general_info": model_to_filtered_dict(
+                    organization.general_info,
+                    [
+                        "organization_name",
+                        "organization_profile_picture",
+                        "portal_url",
+                        "portal_slug",
+                    ],
+                ),
+            },
         }
 
     except HTTPException as http_exception:
@@ -284,14 +444,195 @@ async def sing_in(db: db_dependencies, user_info: SignIn):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
+                "error": str(e),
                 "message": "error accrued while signing in",
                 "success": False,
             },
         )
 
 
+#
+# ? The Api To Fetch All The Logged In Devices Of The User Your Organization
+#
+@authRoutes.get(path="/fetch-sessions", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_sessions(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        _data = [filter_fields(data) for data in user.sessions]
+
+        return {
+            "message": "user verified successfully",
+            "success": True,
+            "data": _data,
+            "current_session_id": session_id,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while verifying user",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+#
+# ? The Api To Delete An Specific Sessions
+#
+@authRoutes.delete(path="/delete-session", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_sessions(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    session_id: str = Query(..., alias="session_id"),
+):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        current_session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == current_session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        find_session = db.query(Models.Sessions).filter(Models.Sessions.id == session_id).first()
+
+        db.delete(find_session)
+        db.commit()
+
+        return {
+            "message": "Session Deleted successfully",
+            "success": True,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while verifying user",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+#
+# ? The Api To Verify The Organization
+#
 @authRoutes.get(path="/verify-user", status_code=status.HTTP_200_OK)
-async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
+async def verify_user(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
         if not token:
             raise HTTPException(
@@ -304,67 +645,97 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
 
         user_id = token["user_id"]
 
-        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+        session_id = token["session_id"]
 
+        user = (
+            db.query(Models.User)
+            .options(
+                joinedload(Models.User.personal_info),
+                joinedload(Models.User.employee_info),
+                joinedload(Models.User.organization).joinedload(Models.Organization.general_info),
+                joinedload(Models.User.organization).joinedload(Models.Organization.address),
+                joinedload(Models.User.organization).joinedload(Models.Organization.contact_info),
+                joinedload(Models.User.organization).joinedload(Models.Organization.about_info),
+                joinedload(Models.User.organization).joinedload(
+                    Models.Organization.organization_settings
+                ),
+                joinedload(Models.User.sessions),
+            )
+            .filter(Models.User.id == user_id)
+            .first()
+        )
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Unable To Find User With This ID",
+                    "message": ("Unable To Find User With This ID"),
                     "success": False,
                 },
             )
 
-        employee_info = (
-            db.query(Models.EmployeeInfo).filter(Models.EmployeeInfo.user_id == user_id).first()
-        )
+        if not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": ("Account is deactivated. Access denied."),
+                    "success": False,
+                },
+            )
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         organization = (
             db.query(Models.Organization)
             .filter(Models.Organization.id == user.organization_id)
             .first()
         )
-        organization_general_info = (
-            db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.organization_id == user.organization_id)
-            .first()
-        )
-        organization_address = (
-            db.query(Models.OrganizationAddress)
-            .filter(Models.OrganizationAddress.organization_id == user.organization_id)
-            .first()
-        )
+        if not organization or not organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Organization is deactivated. Access denied."
+                        if user.account_status
+                        else "Organization not found"
+                    ),
+                    "success": False,
+                },
+            )
 
-        organization_contact_info = (
-            db.query(Models.OrganizationContactInfo)
-            .filter(Models.OrganizationContactInfo.organization_id == user.organization_id)
-            .first()
-        )
+        organization = user.organization
 
-        organization_about_info = (
-            db.query(Models.OrganizationAboutInfo)
-            .filter(Models.OrganizationAboutInfo.organization_id == user.organization_id)
-            .first()
-        )
-
-        organization_settings = (
-            db.query(Models.OrganizationSettings)
-            .filter(Models.OrganizationSettings.organization_id == user.organization_id)
-            .first()
-        )
         return {
             "message": "user verified successfully",
             "success": True,
             "data": {
                 "user": {
-                    "employee_info": model_to_filtered_dict(employee_info),
+                    "employee_info": model_to_filtered_dict(user.employee_info),
+                    "personal_info": (
+                        model_to_filtered_dict(user.personal_info) if user.personal_info else None
+                    ),
                 },
                 "organization": {
                     "id": organization.id,
-                    "general_info": model_to_filtered_dict(organization_general_info),
-                    "address": model_to_filtered_dict(organization_address),
-                    "contact_info": model_to_filtered_dict(organization_contact_info),
-                    "about_info": model_to_filtered_dict(organization_about_info),
-                    "organization_settings": model_to_filtered_dict(organization_settings),
+                    "general_info": model_to_filtered_dict(organization.general_info),
+                    "address": model_to_filtered_dict(organization.address[0]),
+                    "contact_info": organization.contact_info,
+                    "about_info": model_to_filtered_dict(organization.about_info[0]),
+                    "organization_settings": model_to_filtered_dict(
+                        organization.organization_settings[0]
+                    ),
                     "status": organization.status,
                     "organization_created": organization.organization_created,
                     "created_at": organization.created_at,
@@ -379,6 +750,237 @@ async def verify_user(db: db_dependencies, token: str = Depends(verify_token)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "error while verifying user",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.post("/verify-meta-tag", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def verify_meta_tag(request: Request, data: VerifyMetaTag):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(data.website_url)
+            response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        meta_tag = soup.find("meta", attrs={"name": data.meta_name})
+
+        if not meta_tag:
+            return {
+                "data": {
+                    "meta_found": False,
+                    "expected_value": data.meta_value,
+                    "actual_value": "",
+                    "match": False,
+                },
+                "success": False,
+                "message": "Meta Tag Not Found",
+            }
+
+        if meta_tag and "content" in meta_tag.attrs:
+            actual_value = meta_tag.get("content", "")
+
+            verified = actual_value == data.meta_value
+
+            return {
+                "data": {
+                    "meta_found": True,
+                    "expected_value": data.meta_value,
+                    "actual_value": actual_value,
+                    "match": verified,
+                },
+                "success": True,
+                "message": "Meta Tag Verified Successfully",
+            }
+        return {"error": "Meta tag not found"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error Accrued While Verifying The Meta Tag",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.post("/logout", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def HandelLogoutApi(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        find_session = db.query(Models.Sessions).filter(Models.Sessions.id == session_id).first()
+
+        db.delete(find_session)
+        db.commit()
+
+        return {
+            "message": "Logout successfully",
+            "success": True,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable to log out the user at this moment.",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.post("/password-reset/request")
+@limiter.limit(API_RATE_LIMITING)
+async def HandelPasswordReset(
+    request: Request,
+    db: db_dependencies,
+    data: PasswordResetPydanticModel,
+    background_task: BackgroundTasks,
+):
+    try:
+        email = data.email.lower().strip()
+        cache_key = f"password_reset-${email}"
+
+        count = await cache_database.incr(cache_key)
+
+        if count > MAX_RESET_ATTEMPTS:
+            return {
+                "message": "Reset limit exceeded. Please wait.",
+                "success": False,
+                "data": {
+                    "expiry_time": datetime.now(ZoneInfo("UTC"))
+                    + timedelta(seconds=RESET_TTL_SECONDS),
+                },
+            }
+
+        if count == 1:
+            await cache_database.expire(cache_key, RESET_TTL_SECONDS)
+
+        employee_info = (
+            db.query(Models.EmployeeInfo)
+            .filter(Models.EmployeeInfo.employee_email == data.email)
+            .first()
+        )
+        if not employee_info:
+
+            count = count + 1
+            return {
+                "message": "User Found",
+                "success": False,
+            }
+
+        user = db.query(Models.User).filter(Models.User.id == employee_info.user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "user not found", "success": False},
+            )
+
+        await cache_database.delete(cache_key)
+        encrypted_user_id = urlsafe_data_encoding_function(user.id)
+
+        reset_password_token = generatePasswordResetToken()
+
+        user.reset_password_token = reset_password_token
+
+        encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+
+        db.commit()
+        db.refresh(user)
+
+        email_data = {
+            "recever_email": data.email,
+            "subject": "Reset Your Password for Your OrbitRMS Account",
+            "body": ResetPasswordHtmlBody(
+                f"{FRONTEND_URL}/auth/reset-password?user-id={encrypted_user_id}&token={encrypted_token}"
+            ),
+        }
+
+        email_instance = EmailSchema(**email_data)
+
+        email_sender_function(email_instance, background_task)
+
+        return {
+            "message": "Mail Sent Successfully",
+            "success": True,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable to log out the user at this moment.",
                 "success": False,
                 "error": str(e),
             },

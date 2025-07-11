@@ -1,0 +1,147 @@
+[
+  {
+    "role_name": "Administrator",
+    "description": "Test role with full permissions",
+    "permission_module": [
+      {
+        "module_label": "config_module",
+        "module_title": "Config Module",
+        "is_active": true,
+        "permissions": [
+          {
+            "label": "view",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "delete",
+            "is_allowed": true,
+            "show_input": false
+          }
+        ],
+        "sub_modules": [
+          {
+            "module_label": "project_status",
+            "module_title": "Project Status",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "department",
+            "module_title": "Department",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "designations",
+            "module_title": "Designations",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "roles_permission",
+            "module_title": "Roles & Permission",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          }
+        ]
+      },
+      {
+        "module_label": "dashboard",
+        "module_title": "Dashboard",
+        "is_active": true,
+        "permissions": [
+          {
+            "label": "view",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "delete",
+            "is_allowed": true,
+            "show_input": false
+          }
+        ],
+        "sub_modules": []
+      }
+    ]
+  }
+]

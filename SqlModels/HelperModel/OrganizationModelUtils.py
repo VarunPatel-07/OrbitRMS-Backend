@@ -17,6 +17,7 @@ class OrganizationGeneralInfo(BaseModel):
     primary_number = Column(String(255), nullable=False, default=None)
     country_info = Column(JSON, nullable=True)
     portal_url = Column(String(255), nullable=False, default=None)
+    portal_slug = Column(String(255), nullable=False, default=None)
     website_url = Column(String(255), nullable=True, default=None)
     is_meta_verified = Column(Boolean, nullable=False, default=False)
     meta_key = Column(String(255), nullable=False, default=None)

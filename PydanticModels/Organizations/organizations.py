@@ -13,27 +13,13 @@ class CountryInfo(BaseModel):
     country_code: str
 
 
-class RegisterOrganizationInfo(BaseModel):
-    organization_name: str
-    primary_email: str
-    portal_url: str
-    website_url: Optional[str] = None
-    primary_number: str
-    country_info: CountryInfo
-    is_meta_verified: bool = False
-    meta_key: str
-    meta_value: str
-    terms_accepted: bool = False
-    email_verified: bool = False
-    organization_profile_picture: Optional[str] = None
-
-
 class OrganizationGeneralInfo(BaseModel):
     organization_name: str
     primary_email: str
     primary_number: str
     country_info: Optional[dict] = None
     portal_url: str
+    portal_slug: str
     website_url: Optional[str] = None
     is_meta_verified: bool
     meta_key: str
@@ -100,7 +86,5 @@ class OnboardingOrganization(BaseModel):
         from_attributes = True
 
 
-class VerifyMetaTag(BaseModel):
-    website_url: str
-    meta_name: str
-    meta_value: str
+class AuthorizedRecipientEmail(BaseModel):
+    authorized_recipient: List[str]

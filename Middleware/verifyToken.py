@@ -18,6 +18,7 @@ def verify_token(token: str = Depends(oauth2_scheme)):
 
     try:
         payload = verify_jwt_token(token)
+
         return payload
     except ExpiredSignatureError:
         raise HTTPException(

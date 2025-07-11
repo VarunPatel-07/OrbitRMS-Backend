@@ -1,11 +1,13 @@
 import base64
+import hashlib
 import os
 import secrets
+import string
 from typing import Dict, List, Optional, Union
 
 from Crypto.Cipher import AES
 from dotenv import load_dotenv
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
 
@@ -25,7 +27,7 @@ def generate_full_name(first_name: str, last_name: str, middle_name: str = None)
 
 def generate_random_secret_key() -> str:
     generated_secret_key = secrets.token_urlsafe(16)
-    print(generated_secret_key)
+
     return generated_secret_key
 
 
@@ -190,35 +192,100 @@ def update_model_data(
     id_field: str = "id",
     filter_fields: list = None,
 ):
-    print(model_id)
-    print(updated_data)
-    print(id_field)
-    print(getattr(model, id_field))
+
     record = db.query(model).filter(getattr(model, id_field) == model_id).first()
 
-    updated_data_dict = updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
     if not record:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"{model.__name__} not found"
+        print(f"Record with {id_field}={model_id} not found")
+        return None
+    else:
+        updated_data_dict = (
+            updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
         )
-    if filter_fields:
-        include_field = set()
-        exclude_field = set()
+        if not isinstance(updated_data_dict, dict):
+            print(f"Expected updated_data to be a dict, but got {type(updated_data_dict)}")
+            return None
+        else:
 
-        for field in filter_fields:
-            if field.startswith("-"):
-                exclude_field.add(field.strip("-"))
-            else:
-                include_field.add(field)
-        updated_data = {
-            field: value
-            for field, value in updated_data_dict.items()
-            if (field in include_field and field not in exclude_field)
-        }
-    for field, value in updated_data_dict.items():
-        if hasattr(record, field) and value is not None:
-            setattr(record, field, value)
+            if filter_fields:
+                include_field = set()
+                exclude_field = set()
 
-    db.commit()
-    db.refresh(record)
-    return record
+                for field in filter_fields:
+                    if field.startswith("-"):
+                        exclude_field.add(field.strip("-"))
+                    else:
+                        include_field.add(field)
+                updated_data_dict = {
+                    field: value
+                    for field, value in updated_data_dict.items()
+                    if (field in include_field and field not in exclude_field)
+                }
+            for field, value in updated_data_dict.items():
+                if hasattr(record, field) and value is not None:
+                    setattr(record, field, value)
+
+            db.commit()
+            db.refresh(record)
+            return record
+
+
+def get_client_ip(request: Request) -> str:
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.headers.get("X-Real-IP", request.client.host)
+
+    return ip
+
+
+def hash_fingerprint(fingerprint: str) -> str:
+    return hashlib.sha256(fingerprint.encode()).hexdigest()
+
+
+def generate_api_secrets_api_key():
+    api_key = "api_" + "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(24)
+    )
+    api_secret = secrets.token_urlsafe(32)
+
+    return api_key, api_secret
+
+
+def is_valid_type(value, field_type):
+    try:
+        if field_type == "string":
+            return isinstance(value, str)
+        elif field_type == "boolean":
+            return isinstance(value, bool)
+        elif field_type == "number":
+            return isinstance(value, int)
+        elif field_type == "array":
+            return isinstance(value, List)
+        elif field_type == "object":
+            return isinstance(value, dict)
+        elif field_type == "array of string":
+            return isinstance(value, list) and all(isinstance(item, str) for item in value)
+        elif field_type == "array of object":
+            return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+
+        return False
+    except:
+        return False
+
+
+def validate_field(vale):
+    if vale is None:
+        return False
+    if isinstance(vale, str) and vale.strip() == "":
+        return False
+    if isinstance(vale, (list, Dict)) and len(vale) == 0:
+        return False
+    return True
+
+
+def generatePasswordResetToken():
+
+    token = secrets.token_urlsafe(32)
+    return token

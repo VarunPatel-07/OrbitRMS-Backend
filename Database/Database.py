@@ -6,7 +6,6 @@ from databases import Database
 from dotenv import load_dotenv
 from fastapi.params import Depends
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 
 load_dotenv(override=True)
@@ -20,7 +19,7 @@ DATABASE_ENGINE = create_engine(
     pool_pre_ping=True,
 )
 SessionLocal = sessionmaker(bind=DATABASE_ENGINE, autoflush=False, autocommit=False)
-BaseModel = declarative_base()
+
 
 # Async database connection for databases library
 database = Database(DATABASE_URL)

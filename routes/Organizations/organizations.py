@@ -1,27 +1,42 @@
-import json
 import os
 
-import httpx
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
-from sqlalchemy.sql import func
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
+from sqlalchemy.orm import joinedload
 
+from BackgroundDataHandler.DataSeederHelper import ClientInquiryInitiator
+from BackgroundDataHandler.initialDataSeeder import (
+    department_data_initial_data_seeder,
+    designation_initial_data_seeder,
+    project_status_initial_data_seeder,
+    roles_permission_initial_data_seeder_function,
+)
 from Database.Database import db_dependencies
-from Email.VerifyEmailHtmlBody import VerifyEmailHtmlBody
+from Email.HtmlEmailBody import CreatePasswordHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
+    filter_fields,
+    generate_api_secrets_api_key,
+    generatePasswordResetToken,
     model_to_filtered_dict,
     update_model_data,
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
 )
+from Middleware.verifyToken import verify_token
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
-    RegisterOrganizationInfo,
-    VerifyMetaTag,
 )
+from RateLimiting import limiter
 from SqlModels import Models
 
 load_dotenv(override=True)
@@ -29,189 +44,32 @@ load_dotenv(override=True)
 orgRouter = APIRouter(prefix="/app/v1/organization", tags=["organization"])
 
 
-FRONTEND_URL = os.getenv("FRONTEND_URL").encode()
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+
+API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
 
 
-@orgRouter.post("/sign-up", status_code=status.HTTP_201_CREATED)
-async def create_organization(
-    organization_info: RegisterOrganizationInfo,
-    db: db_dependencies,
-    background_task: BackgroundTasks,
-):
-    try:
-        find_organization = (
-            db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.primary_email == organization_info.primary_email)
-            .first()
-        )
-        check_for_the_email_domain = (
-            db.query(Models.OrganizationGeneralInfo)
-            .filter(
-                func.substring_index(Models.OrganizationGeneralInfo.primary_email, "@", -1)
-                == organization_info.primary_email.split("@")[1]
-            )
-            .first()
-        )
-
-        if check_for_the_email_domain:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "message": "The Provided Email Domain Is Already In Use",
-                    "success": False,
-                    "owner_email": find_organization.primary_email if find_organization else None,
-                },
-            )
-
-        if find_organization:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "message": "The Provided Email Is Already In Use",
-                    "success": False,
-                    "owner_email": find_organization.primary_email,
-                },
-            )
-
-        create_org = Models.Organization(status=True)
-
-        db.add(create_org)
-        db.commit()
-        db.refresh(create_org)
-
-        organization = cerate_model_instance(
-            model=Models.OrganizationGeneralInfo,
-            data=organization_info,
-            fields=["-country_info"],
-        )
-        user_info = Models.User(password="")
-        user_info.organization_id = create_org.id
-        db.add(user_info)
-        db.commit()
-        db.refresh(user_info)
-        user_employee_info = Models.EmployeeInfo(
-            status="Active",
-            organization_name=organization_info.organization_name,
-            employee_code="",
-            department="",
-            designation="",
-            reporting_to={},
-            employee_role="",
-            employee_email=organization_info.primary_email,
-        )
-        user_employee_info.user_id = user_info.id
-        db.add(user_employee_info)
-        db.commit()
-        db.refresh(user_employee_info)
-        organization.organization_id = create_org.id
-
-        organization.country_info = json.dumps(
-            organization_info.country_info.dict()
-            if hasattr(organization_info.country_info, "dict")
-            else organization_info.country_info
-        )
-
-        db.add(organization)
-        db.commit()
-        db.refresh(organization)
-
-        config_module = Models.ConfigModule()
-        config_module.organization_id = create_org.id
-        db.add(config_module)
-        db.commit()
-        db.refresh(config_module)
-
-        encrypted_org_id = urlsafe_data_encoding_function(create_org.id)
-
-        email_data = {
-            "recever_email": organization_info.primary_email,
-            "subject": "hello from the test mail",
-            "body": VerifyEmailHtmlBody(
-                f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}"
-            ),
-        }
-
-        email_instance = EmailSchema(**email_data)
-
-        send_mail = email_sender_function(email_instance, background_task)
-
-        return {
-            "success": True,
-            "title": "Organization Created",
-            "message": f"Your organization has been successfully created. A confirmation email with further details has been sent to {user_employee_info.employee_email}. Please check your inbox and follow the instructions to complete the setup.",
-            "email_status": send_mail,
-        }
-    except HTTPException as http_exception:
-        raise http_exception
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Error Accrued While Adding Employee",
-                "success": False,
-                "error": str(e),
-            },
-        )
-
-
-@orgRouter.post("/verify-meta-tag", status_code=status.HTTP_200_OK)
-async def verify_meta_tag(data: VerifyMetaTag):
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(data.website_url)
-            response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        meta_tag = soup.find("meta", attrs={"name": data.meta_name})
-
-        if not meta_tag:
-            return {
-                "meta_found": False,
-                "expected_value": data.meta_value,
-                "actual_value": "",
-                "match": False,
-                "success": False,
-            }
-
-        if meta_tag and "content" in meta_tag.attrs:
-            actual_value = meta_tag.get("content", "")
-
-            verified = actual_value == data.meta_value
-
-            return {
-                "meta_found": True,
-                "expected_value": data.meta_value,
-                "actual_value": actual_value,
-                "match": verified,
-                "success": True,
-            }
-        return {"error": "Meta tag not found"}
-
-    except HTTPException as http_exception:
-        raise http_exception
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Error Accrued While Verifying The Meta Tag",
-                "success": False,
-                "error": str(e),
-            },
-        )
+#
+#
+# ? ------------ Api To Verify The Organization ---------------------
+#
+#
 
 
 @orgRouter.get("/verify-organization", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def verify_organization(
+    request: Request,
     db: db_dependencies,
     background_task: BackgroundTasks,
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
-        decrypted_data = urlsafe_data_decoding_function(organization_id)
+        decrypted_org_id = urlsafe_data_decoding_function(organization_id)
 
         organization = (
             db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.organization_id == decrypted_data)
+            .filter(Models.OrganizationGeneralInfo.organization_id == decrypted_org_id)
             .first()
         )
         if not organization:
@@ -224,19 +82,34 @@ async def verify_organization(
             db.commit()
             db.refresh(organization)
 
-            user_info = (
-                db.query(Models.EmployeeInfo)
+            user = (
+                db.query(Models.User)
+                .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
                 .filter(Models.EmployeeInfo.employee_email == organization.primary_email)
                 .first()
             )
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={
+                        "message": "User Not Found",
+                        "success": False,
+                    },
+                )
 
-            encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
+            encrypted_user_id = urlsafe_data_encoding_function(user.id)
+
+            reset_password_token = generatePasswordResetToken()
+
+            user.reset_password_token = reset_password_token
+
+            encrypted_token = urlsafe_data_encoding_function(reset_password_token)
 
             email_data = {
-                "recever_email": user_info.employee_email,
-                "subject": "hello from the test mail",
-                "body": VerifyEmailHtmlBody(
-                    f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}"
+                "recever_email": organization.primary_email,
+                "subject": "Complete Your Account Setup – Create Your Password",
+                "body": CreatePasswordHtmlBody(
+                    f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}&token={encrypted_token}"
                 ),
             }
 
@@ -244,10 +117,29 @@ async def verify_organization(
 
             email_sender_function(email_instance, background_task)
 
+            config_module = Models.ConfigModule()
+            config_module.organization_id = decrypted_org_id
+
+            db.add(config_module)
+            db.commit()
+            db.refresh(config_module)
+
+            db.commit()
+            db.refresh(user)
+
+            background_task.add_task(
+                roles_permission_initial_data_seeder_function, db, decrypted_org_id
+            )
+            background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(department_data_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(project_status_initial_data_seeder, db, decrypted_org_id)
+
             return {
                 "message": "Organization Is Verified Successfully",
                 "success": True,
-                "alreadyVerified": False,
+                "data": {
+                    "alreadyVerified": False,
+                },
             }
         else:
             user_info = (
@@ -261,7 +153,9 @@ async def verify_organization(
             return {
                 "message": "Organization already Verified",
                 "success": True,
-                "alreadyVerified": True,
+                "data": {
+                    "alreadyVerified": True,
+                },
             }
 
     except HTTPException as http_exception:
@@ -277,15 +171,24 @@ async def verify_organization(
         )
 
 
+#
+#
+# ? ------------ Api For The Onboarding An Organization ---------------------
+#
+#
+
+
 @orgRouter.post("/onboard-organization", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def onboard_organization(
+    request: Request,
     db: db_dependencies,
     data: OnboardingOrganization,
+    background_task: BackgroundTasks,
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
         organization_id = urlsafe_data_decoding_function(organization_id)
-        print(organization_id)
         organization = (
             db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
         )
@@ -354,28 +257,13 @@ async def onboard_organization(
         db.add(organization_settings)
         db.commit()
 
+        api_key, api_secret = generate_api_secrets_api_key()
+
+        background_task.add_task(ClientInquiryInitiator, db, organization_id, api_key, api_secret)
+
         return {
             "message": f"successfully onboarded {data.general_info.organization_name} organization",
             "success": True,
-            "organization": {
-                "status": organization.status,
-                "organization_created": organization.organization_created,
-                "general_info": model_to_filtered_dict(
-                    updated_general_info, ["-id", "-organization_id"]
-                ),
-                "address": model_to_filtered_dict(address, ["-id", "-organization_id"]),
-                "contact_info": [
-                    model_to_filtered_dict(_contact_info, ["-id", "-organization_id"])
-                    for _contact_info in contact_info_arr
-                ],
-                "about_info": model_to_filtered_dict(about_info, ["-id", "-organization_id"]),
-                "organization_settings": model_to_filtered_dict(
-                    organization_settings, ["-id", "-organization_id"]
-                ),
-            },
-            "updated_user_info": model_to_filtered_dict(
-                updated_user_info, ["-id", "-organization_id"]
-            ),
         }
 
     except HTTPException as http_exception:
@@ -390,9 +278,19 @@ async def onboard_organization(
         )
 
 
+#
+#
+# ? ------------ Api To Fetch The Organization Info ---------------------
+#
+#
+
+
 @orgRouter.get("/fetch-organization-info", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def fetch_organization_info(
-    db: db_dependencies, organization_id: str = Query(..., alias="organization_id")
+    request: Request,
+    db: db_dependencies,
+    organization_id: str = Query(..., alias="organization_id"),
 ):
     try:
 
@@ -480,3 +378,123 @@ async def fetch_organization_info(
                 "success": False,
             },
         )
+
+
+#
+#
+# ? ------------ Api To Fetch The Reporting Managers ---------------------
+#
+#
+
+
+@orgRouter.get("/fetch-reporting-manager", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_reporting_manager(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
+    try:
+        #
+        # *  We Will Firstly Check For The User's Authentication
+        #
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+
+        fetch_all_users = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.personal_info))
+            .filter(Models.User.organization_id == user.organization_id)
+            .all()
+        )
+
+        return {
+            "success": True,
+            "data": [
+                (
+                    {
+                        **filter_fields(
+                            each_user.personal_info,
+                            ["last_name", "first_name", "middle_name", "user_id"],
+                        ),
+                        "full_name": f"{each_user.personal_info.first_name or ''} {each_user.personal_info.middle_name or ''} {each_user.personal_info.last_name or ''}".strip(),
+                    }
+                    if not getattr(each_user.personal_info, "full_name", "")
+                    else filter_fields(
+                        each_user.personal_info,
+                        ["last_name", "first_name", "middle_name", "user_id", "full_name"],
+                    )
+                )
+                for each_user in fetch_all_users
+                if each_user.personal_info
+            ],
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while fetching All The Reporting Manager",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+#
+#
+# ? ------------ Api To Fetch The Info Of The Organization ---------------------
+#
+#
