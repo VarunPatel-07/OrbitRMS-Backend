@@ -22,6 +22,7 @@ from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.FeedController import feedControl
 from routes.Organizations.organizations import orgRouter
 from routes.OrganizationSettings.OrganizationSettings import orgSettings
+from routes.Admin.Auth.authentication import adminAuthRoute
 from SqlModels.Models import BaseModel
 
 load_dotenv(override=True)
@@ -64,6 +65,7 @@ app.include_router(clientInquires)
 app.include_router(orgSettings)
 app.include_router(feedControl)
 app.include_router(ApiManager)
+app.include_router(adminAuthRoute)
 
 
 # Basic health check route

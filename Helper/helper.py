@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
+import random
+
 
 from Database.Database import db_dependencies
 
@@ -289,3 +291,13 @@ def generatePasswordResetToken():
 
     token = secrets.token_urlsafe(32)
     return token
+
+
+def generateAdminSignature():
+    token = secrets.token_urlsafe(16)
+    return token
+
+
+def generateAdminAccessCode(length: int):
+    otp = "".join(random.choices(string.digits, k=length))
+    return otp
