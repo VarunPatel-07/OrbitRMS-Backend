@@ -350,13 +350,10 @@ async def getCountryFormats(request: Request, country_code: str = Query(..., ali
 @limiter.limit(API_RATE_LIMITING)
 async def fetchAllTheCountryData(request: Request, order: str = Query("asc", alias="order")):
     try:
-        cache_data_key = "AllCountryCachedDataKey"
+        cache_data_key = "AllCountryCachedDataKey_order_" + order.lower()
         cache_data = await cache_database.get(cache_data_key)
         if cache_data:
             sorted_cached_data = json.loads(cache_data)
-            cache_reverse = order.lower() == "desc"
-            sorted_cached_data.sort(key=lambda x: x["country_name"], reverse=cache_reverse)
-
             return {"message": "Fetched Successfully", "success": True, "data": sorted_cached_data}
 
         url = os.getenv("REST_API_URL")

@@ -92,4 +92,19 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-alembic.ini
+
+migrations/*/.env
+*.env
+
+# Alembic configuration (keep this in version control)
+# !alembic.ini
+
+# Alembic-specific ignores
+migrations/*/versions/*.py
+!migrations/*/versions/__init__.py
+
+# Environment-specific ignores
+*.env.local
+*.env.*.local
+.env.staging
+.env.production

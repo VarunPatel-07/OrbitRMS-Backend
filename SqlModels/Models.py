@@ -36,6 +36,16 @@ from SqlModels.HelperModel.UserModelUtils import (
     Sessions,
     SocialLinks,
 )
+from SqlModels.HelperModel.AdminModelHelperUtils import OrbitAdminSessions
+
+
+class Admin(BaseModel):
+    __tablename__ = "orbit_admin"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    email = Column(String(255), nullable=False, default=None)
+    password = Column(String(255), nullable=False)
+    admin_sessions = relationship("OrbitAdminSessions", back_populates="admin")
 
 
 class User(BaseModel):

@@ -99,3 +99,21 @@ def NewClientInquiryAccruedMail(url: str, organization_name: str):
     )
 
     return html_content
+
+
+def NewAdminLoginGeneratedOtp(Otp_Code: str):
+    ORBIT_CONTACT_EMAIL = os.getenv("ORBIT_CONTACT_EMAIL", "").strip()
+
+    base_url = os.path.dirname(__file__)
+    path = os.path.join(base_url, "Html", "admin-access-code.html")
+    with open(path, "r") as file:
+        html_content = file.read()
+    html_content = (
+        (html_content.replace("{OTP_Code}", Otp_Code))
+        .replace("{orbit_contact_emil}", ORBIT_CONTACT_EMAIL)
+        .replace("{facebook_url}", FACEBOOK_LINK)
+        .replace("{instagram_url}", INSTAGRAM_LINK)
+        .replace("{linked_in_url}", LINKEDIN_LINK)
+    )
+
+    return html_content
