@@ -2,9 +2,10 @@ import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
-from sqlalchemy import create_engine, pool
+
 from alembic import context
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, pool
 
 load_dotenv()
 # Add project root to Python path

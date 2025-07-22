@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import os
+import random
 import secrets
 import string
 from typing import Dict, List, Optional, Union
@@ -10,8 +11,6 @@ from dotenv import load_dotenv
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
-import random
-
 
 from Database.Database import db_dependencies
 

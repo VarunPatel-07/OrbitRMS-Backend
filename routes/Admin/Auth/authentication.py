@@ -1,39 +1,52 @@
-from fastapi import APIRouter, status, HTTPException, BackgroundTasks, Request, Query
-from RateLimiting import limiter
 import os
-from dotenv import load_dotenv
-from Database.Database import db_dependencies
-from PydanticModels.Admin.AdminAuthenticationModel import AdminSignInPayload, AdminVerifyOTP
-from SqlModels import Models
-from Helper.jwtHelper import verify_password, hash_passwords, create_jwt_token
-from ErrorMessages.AuthErrorMessage import (
-    ADMIN_SIGN_IN_INVALID_CREDENTIALS,
-    ADMIN_RESET_LIMIT_EXCEEDED,
-    ADMIN_SIGN_IN_SUCCESS_MESSAGE,
-    ADMIN_SIGN_IN_ERROR_MESSAGE,
-    ADMIN_NOT_FOUND,
-    INSUFFICIENT_DATA,
-    ADMIN_OTP_VERIFY_SUCCESS_MESSAGE,
-    INVALID_OTP,
-)
-from Database.CacheDatabase import cache_database
-from Helper.createModelInstance import cerate_model_instance
-from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+from dotenv import load_dotenv
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
+from sqlalchemy.orm import joinedload
+from user_agents import parse as parse_user_agent
+
+from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
+from Database.CacheDatabase import cache_database
+from Database.Database import db_dependencies
+from Email.HtmlEmailBody import NewAdminLoginGeneratedOtp
+from ErrorMessages.AuthErrorMessage import (
+    ADMIN_NOT_FOUND,
+    ADMIN_OTP_VERIFY_SUCCESS_MESSAGE,
+    ADMIN_RESET_LIMIT_EXCEEDED,
+    ADMIN_SIGN_IN_ERROR_MESSAGE,
+    ADMIN_SIGN_IN_INVALID_CREDENTIALS,
+    ADMIN_SIGN_IN_SUCCESS_MESSAGE,
+    INSUFFICIENT_DATA,
+    INVALID_OTP,
+)
+from Helper.createModelInstance import cerate_model_instance
+from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
     generateAdminAccessCode,
     generateAdminSignature,
-    urlsafe_data_encoding_function,
-    urlsafe_data_decoding_function,
     get_client_ip,
     hash_fingerprint,
+    urlsafe_data_decoding_function,
+    urlsafe_data_encoding_function,
 )
-from user_agents import parse as parse_user_agent
-from Email.HtmlEmailBody import NewAdminLoginGeneratedOtp
-from Helper.emailSender import EmailSchema, email_sender_function
-
-from Database.CacheDatabase import cache_database
+from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
+from Middleware.verifyToken import verify_token
+from PydanticModels.Admin.AdminAuthenticationModel import (
+    AdminSignInPayload,
+    AdminVerifyOTP,
+)
+from RateLimiting import limiter
+from SqlModels import Models
 
 load_dotenv(override=True)
 
@@ -314,5 +327,66 @@ async def Admin_Panel_Verify_OTP_Function(
                 "message": ADMIN_SIGN_IN_ERROR_MESSAGE,
                 "success": False,
                 "error": str(e),
+            },
+        )
+
+
+@adminAuthRoute.get("/verify-user", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def Admin_Panel_Verify_User_Function(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
+        return {
+            "message": "Admin verified successfully",
+            "success": True,
+            "data": {
+                "admin_id": admin.id,
+                "email": admin.email,
+            },
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Verifying Admin",
+                "error": str(e),
+                "success": False,
             },
         )

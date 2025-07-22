@@ -14,11 +14,11 @@ from sqlalchemy.orm import joinedload
 
 from BackgroundDataHandler.DataSeederHelper import ClientInquiryInitiator
 from BackgroundDataHandler.initialDataSeeder import (
+    client_form_field_initial_data_seeder,
     department_data_initial_data_seeder,
     designation_initial_data_seeder,
     project_status_initial_data_seeder,
     roles_permission_initial_data_seeder_function,
-    client_form_field_initial_data_seeder,
 )
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import CreatePasswordHtmlBody
@@ -299,7 +299,16 @@ async def fetch_organization_info(
         organization_id = urlsafe_data_decoding_function(organization_id)
 
         organization = (
-            db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
+            db.query(Models.Organization)
+            .options(
+                joinedload(Models.Organization.general_info),
+                joinedload(Models.Organization.address),
+                joinedload(Models.Organization.contact_info),
+                joinedload(Models.Organization.about_info),
+                joinedload(Models.Organization.organization_settings),
+            )
+            .filter(Models.Organization.id == organization_id)
+            .first()
         )
 
         if not organization:
@@ -311,60 +320,21 @@ async def fetch_organization_info(
                 },
             )
 
-        organization_general_info = (
-            db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.organization_id == organization.id)
-            .first()
-        )
-        organization_address = (
-            db.query(Models.OrganizationAddress)
-            .filter(Models.OrganizationAddress.organization_id == organization.id)
-            .first()
-        )
-
-        contact_info = (
-            db.query(Models.OrganizationContactInfo)
-            .filter(Models.OrganizationContactInfo.organization_id == organization.id)
-            .first()
-        )
-        about_info = (
-            db.query(Models.OrganizationAboutInfo)
-            .filter(Models.OrganizationAboutInfo.organization_id == organization.id)
-            .first()
-        )
-        organization_settings = (
-            db.query(Models.OrganizationSettings)
-            .filter(Models.OrganizationSettings.organization_id == organization.id)
-            .first()
-        )
-
         return {
             "success": True,
             "data": {
-                "general_info": (
-                    model_to_filtered_dict(organization_general_info, ["-id", "-organization_id"])
-                    if organization_general_info
-                    else ""
+                "general_info": filter_fields(
+                    organization.general_info, ["-id", "-organization_id"]
                 ),
-                "address": (
-                    model_to_filtered_dict(organization_address, ["-id", "-organization_id"])
-                    if organization_address
-                    else ""
+                "address": filter_fields(organization.address[0], ["-id", "-organization_id"]),
+                "contact_info": filter_fields(
+                    organization.contact_info[0], ["-id", "-organization_id"]
                 ),
-                "contact_info": (
-                    model_to_filtered_dict(contact_info, ["-id", "-organization_id"])
-                    if contact_info
-                    else ""
+                "about_info": filter_fields(
+                    organization.about_info[0], ["-id", "-organization_id"]
                 ),
-                "about_info": (
-                    model_to_filtered_dict(about_info, ["-id", "-organization_id"])
-                    if about_info
-                    else ""
-                ),
-                "organization_settings": (
-                    model_to_filtered_dict(organization_settings, ["-id", "-organization_id"])
-                    if organization_settings
-                    else ""
+                "organization_settings": filter_fields(
+                    organization.organization_settings[0], ["-id", "-organization_id"]
                 ),
             },
         }

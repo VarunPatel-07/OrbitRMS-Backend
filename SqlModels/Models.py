@@ -8,6 +8,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import expression
 
 from Database.Base import BaseModel
+from SqlModels.HelperModel.AdminModelHelperUtils import OrbitAdminSessions
 from SqlModels.HelperModel.ConfigModelUtils import (
     ClientFormSchema,
     ConfigRoleModule,
@@ -36,7 +37,6 @@ from SqlModels.HelperModel.UserModelUtils import (
     Sessions,
     SocialLinks,
 )
-from SqlModels.HelperModel.AdminModelHelperUtils import OrbitAdminSessions
 
 
 class Admin(BaseModel):
