@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from Database.Database import db_dependencies
 from Helper.createModelInstance import cerate_model_instance
-from Helper.helper import model_to_filtered_dict
+from Helper.helper import model_to_filtered_dict, filter_fields
 from Middleware.verifyToken import verify_token
 from PydanticModels.OrganizationSettings.OrganizationSettings import (
     AddEditHolidayPydanticModel,
@@ -108,18 +108,21 @@ async def FetchTheInfoOfTheOrganization(
             "message": "Info Fetched Successfully",
             "success": True,
             "data": {
-                "id": organization.id,
-                "general_info": model_to_filtered_dict(organization.general_info),
-                "address": model_to_filtered_dict(organization.address[0]),
-                "contact_info": organization.contact_info,
-                "about_info": model_to_filtered_dict(organization.about_info[0]),
-                "organization_settings": model_to_filtered_dict(
-                    organization.organization_settings[0]
+                **model_to_filtered_dict(organization),
+                "general_info": filter_fields(
+                    organization.general_info, ["-id", "-organization_id"]
                 ),
-                "status": organization.status,
-                "organization_created": organization.organization_created,
-                "created_at": organization.created_at,
-                "updated_at": organization.updated_at,
+                "address": filter_fields(organization.address[0], ["-id", "-organization_id"]),
+                "contact_info": [
+                    filter_fields(contact_info, ["-id", "-organization_id"])
+                    for contact_info in organization.contact_info
+                ],
+                "about_info": filter_fields(
+                    organization.about_info[0], ["-id", "-organization_id"]
+                ),
+                "organization_settings": filter_fields(
+                    organization.organization_settings[0], ["-id", "-organization_id"]
+                ),
             },
         }
 

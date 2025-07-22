@@ -43,12 +43,17 @@ def apply_query_filter(query, filters):
                 conditions.append(Models.PersonalInfo.full_name.ilike(f"{value}%"))
             if operator == "ends_with":
                 conditions.append(Models.PersonalInfo.full_name.ilike(f"%{value}"))
-        if field_name == "status":
+
+        if field_name == "account_status":
             if operator == "equals" or operator == "is":
                 if value == "Active":
                     conditions.append(Models.User.account_status == True)
                 elif value == "Inactive":
                     conditions.append(Models.User.account_status == False)
+
+        if field_name == "status":
+            if operator == "is":
+                conditions.append(Models.EmployeeInfo.status.ilike(f"%{value}%"))
 
         if field_name == "employee_type":
             if operator == "equals" or operator == "is":

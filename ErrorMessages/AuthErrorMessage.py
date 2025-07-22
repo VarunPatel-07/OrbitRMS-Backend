@@ -16,7 +16,7 @@ ADMIN_SIGN_IN_INVALID_CREDENTIALS = "Invalid Admin Email Or Password"
 ADMIN_ACCOUNT_INACTIVE = "Admin account is deactivated. Access denied."
 ADMIN_NOT_FOUND = "Admin not found"
 ADMIN_RESET_LIMIT_EXCEEDED = "Reset limit exceeded. Please wait."
-INVALID_OTP ='Invalid or expired OTP'
+INVALID_OTP = "Invalid or expired OTP"
 
-ADMIN_OTP_VERIFY_SUCCESS_MESSAGE="Admin OTP Verify Successfully"
+ADMIN_OTP_VERIFY_SUCCESS_MESSAGE = "Admin OTP Verify Successfully"
 INSUFFICIENT_DATA = "Insufficient Data"

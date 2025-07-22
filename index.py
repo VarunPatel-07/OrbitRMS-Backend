@@ -10,6 +10,7 @@ from Database.CacheDatabase import cache_database
 from Database.Database import DATABASE_ENGINE, database
 from Helper.helper import get_client_ip
 from RateLimiting import custom_rate_limit_handler, limiter
+from routes.Admin.Auth.authentication import adminAuthRoute
 from routes.ApiManager.ApiManager import ApiManager
 
 # from routes.Organizations.organizations import organization_router
@@ -22,7 +23,7 @@ from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.FeedController import feedControl
 from routes.Organizations.organizations import orgRouter
 from routes.OrganizationSettings.OrganizationSettings import orgSettings
-from routes.Admin.Auth.authentication import adminAuthRoute
+from routes.Admin.Organization.organization import adminOrgRoute
 from SqlModels.Models import BaseModel
 
 load_dotenv(override=True)
@@ -66,6 +67,7 @@ app.include_router(orgSettings)
 app.include_router(feedControl)
 app.include_router(ApiManager)
 app.include_router(adminAuthRoute)
+app.include_router(adminOrgRoute)
 
 
 # Basic health check route
