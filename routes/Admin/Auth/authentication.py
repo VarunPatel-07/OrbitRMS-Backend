@@ -1,5 +1,6 @@
+import math
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -15,7 +16,11 @@ from fastapi import (
 from sqlalchemy.orm import joinedload
 from user_agents import parse as parse_user_agent
 
-from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
+from Constant.constant import (
+    MAX_RESET_ATTEMPTS,
+    RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME,
+    RESET_TTL_SECONDS,
+)
 from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import NewAdminLoginGeneratedOtp
@@ -184,12 +189,28 @@ async def Admin_Panel_Sign_In_Function(
 
         email_sender_function(email_instance, background_task)
 
+        otp_expiry_key = f"{admin_signature}_otp_expiry"
+        otp_resend_available_at = await cache_database.get(otp_expiry_key)
+        otp_expiry_time: datetime
+
+        if not otp_resend_available_at:
+
+            otp_expiry_time = datetime.now(ZoneInfo("UTC")) + timedelta(
+                seconds=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME
+            )
+            await cache_database.set(
+                otp_expiry_key, otp_expiry_time.isoformat(), ex=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME
+            )
+        else:
+            otp_expiry_time = datetime.fromisoformat(otp_resend_available_at)
+
         return {
             "message": ADMIN_SIGN_IN_SUCCESS_MESSAGE,
             "success": True,
             "data": {
                 "admin_signature": admin_signature,
                 "id": encrypted_admin_id,
+                "resend_available_at": otp_expiry_time,
             },
         }
 
@@ -206,7 +227,7 @@ async def Admin_Panel_Sign_In_Function(
         )
 
 
-@adminAuthRoute.post("/verify-otp", status_code=status.HTTP_200_OK)
+@adminAuthRoute.post("/otp/verify-otp", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def Admin_Panel_Verify_OTP_Function(
     request: Request,
@@ -233,16 +254,18 @@ async def Admin_Panel_Verify_OTP_Function(
 
         cache_database_key = f"admin_otp_{decrypted_admin_id}_{signature}"
         stored_hash = await cache_database.get(cache_database_key)
-
-        if stored_hash and verify_password(data.otp, stored_hash):
-            # success: delete OTP key and proceed
-            await cache_database.delete(cache_database_key)
-        else:
-            # invalid or expired
+        if not stored_hash:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"message": INVALID_OTP, "success": False},
             )
+        if not verify_password(data.otp, stored_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": INVALID_OTP, "success": False},
+            )
+
+        await cache_database.delete(cache_database_key)
 
         ip = get_client_ip(request)
         # Getting The Full UserAgent String
@@ -310,6 +333,13 @@ async def Admin_Panel_Verify_OTP_Function(
 
         token = create_jwt_token(data=sub)
 
+        otp_expiry_key = f"{signature}_otp_expiry"
+        otp_expiry = await cache_database.get(otp_expiry_key)
+
+        if otp_expiry:
+
+            await cache_database.delete(otp_expiry_key)
+
         return {
             "message": ADMIN_OTP_VERIFY_SUCCESS_MESSAGE,
             "success": True,
@@ -332,9 +362,7 @@ async def Admin_Panel_Verify_OTP_Function(
 
 
 @adminAuthRoute.get("/verify-user", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
 async def Admin_Panel_Verify_User_Function(
-    request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
 ):
@@ -388,5 +416,101 @@ async def Admin_Panel_Verify_User_Function(
                 "message": "error while Verifying Admin",
                 "error": str(e),
                 "success": False,
+            },
+        )
+
+
+@adminAuthRoute.post("/otp/re-send-otp", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def Re_Send_Admin_Panel_Access_Otp(
+    request: Request,
+    db: db_dependencies,
+    background_task: BackgroundTasks,
+    id: str = Query(..., alias="id"),
+    signature: str = Query(..., alias="signature"),
+):
+    try:
+        url_decoded_admin_id = urlsafe_data_decoding_function(id)
+
+        admin = db.query(Models.Admin).filter(Models.Admin.id == url_decoded_admin_id).first()
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Invalid Credential", "success": False},
+            )
+
+        otp_expiry_key = f"{signature}_otp_expiry"
+
+        otp_resend_available_at = await cache_database.get(otp_expiry_key)
+
+        if otp_resend_available_at:
+            otp_expiry_time_left = datetime.fromisoformat(otp_resend_available_at)
+
+            time_left = math.floor(
+                (otp_expiry_time_left - datetime.now(timezone.utc)).total_seconds()
+            )
+
+            if time_left > 60:
+                time_left = math.ceil(time_left / 60)
+
+            if time_left > 0:
+                return {
+                    "message": f"Please Try After {time_left}{'s'if time_left>60 else 'm'}",
+                    "success": False,
+                    "data": {
+                        "resend_available_at": otp_expiry_time_left,
+                    },
+                }
+        else:
+
+            cache_database_key = f"admin_otp_{admin.id}_{signature}"
+
+            otp_code = generateAdminAccessCode(6)
+
+            hashed_otp_code = hash_passwords(otp_code)
+
+            await cache_database.set(cache_database_key, hashed_otp_code, ex=600)
+
+            email_data = {
+                "recever_email": ORBITRMS_OWNER_EMAIL,
+                "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
+                "body": NewAdminLoginGeneratedOtp(otp_code),
+            }
+
+            email_instance = EmailSchema(**email_data)
+
+            email_sender_function(email_instance, background_task)
+
+            otp_expiry_time: datetime
+
+            if not otp_resend_available_at:
+
+                otp_expiry_time = datetime.now(ZoneInfo("UTC")) + timedelta(
+                    seconds=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME
+                )
+                await cache_database.set(
+                    otp_expiry_key,
+                    otp_expiry_time.isoformat(),
+                    ex=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME,
+                )
+
+            return {
+                "message": ADMIN_SIGN_IN_SUCCESS_MESSAGE,
+                "success": True,
+                "data": {
+                    "resend_available_at": otp_expiry_time,
+                },
+            }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ADMIN_SIGN_IN_ERROR_MESSAGE,
+                "success": False,
+                "error": str(e),
             },
         )
