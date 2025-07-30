@@ -1105,7 +1105,6 @@ async def Fetch_Employee(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
             )
 
         query_data = db.query(Models.User).filter(
@@ -1154,7 +1153,7 @@ async def Fetch_Employee(
             )
 
         return {
-            "message": "hello",
+            "message": "Employee Fetched Successfully",
             "success": True,
             "data": _data,
         }
