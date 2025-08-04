@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-
+from fastapi.encoders import jsonable_encoder
 import httpx
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -634,6 +634,19 @@ async def fetch_sessions(
 @authRoutes.get(path="/verify-user", status_code=status.HTTP_200_OK)
 async def verify_user(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
+                },
+            )
+
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
