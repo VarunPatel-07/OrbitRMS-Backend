@@ -3,6 +3,7 @@ aiosmtplib==3.0.2
 alembic==1.14.0
 annotated-types==0.7.0
 anyio==4.8.0
+APScheduler==3.11.0
 arrow==1.2.3
 babel==2.17.0
 bcrypt==4.2.1
@@ -77,6 +78,7 @@ SQLAlchemy==2.0.36
 starlette==0.41.3
 typer==0.15.1
 typing_extensions==4.12.2
+tzlocal==5.3.1
 ua-parser==1.0.1
 ua-parser-builtins==0.18.0.post1
 urllib3==2.3.0

@@ -1,5 +1,6 @@
 import os
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,7 @@ from Database.Database import DATABASE_ENGINE, database
 from Helper.helper import get_client_ip
 from RateLimiting import custom_rate_limit_handler, limiter
 from routes.Admin.Auth.authentication import adminAuthRoute
+from routes.Admin.MaintenanceModeManager.MaintenanceModeManager import MaintenanceMode
 from routes.Admin.Organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.Admin.Organization.organization import adminOrgRoute
 from routes.ApiManager.ApiManager import ApiManager
@@ -25,6 +27,7 @@ from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.FeedController import feedControl
 from routes.Organizations.organizations import orgRouter
 from routes.OrganizationSettings.OrganizationSettings import orgSettings
+from Schedulers.MaintenanceModeScheduler import ping_maintenance_mode_scheduler
 from SqlModels.Models import BaseModel
 
 load_dotenv(override=True)
@@ -70,6 +73,23 @@ app.include_router(ApiManager)
 app.include_router(adminAuthRoute)
 app.include_router(adminOrgRoute)
 app.include_router(adminOrgEmpControl)
+app.include_router(MaintenanceMode)
+
+
+scheduler = BackgroundScheduler()
+
+
+@app.on_event("startup")
+async def initializing_scheduler_event():
+    scheduler.add_job(ping_maintenance_mode_scheduler, "interval", minutes=1)
+    scheduler.start()
+    print("[Scheduler Started] Maintenance Mode Check is active.")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    scheduler.shutdown()
+    print("[Scheduler Stopped]")
 
 
 # Basic health check route

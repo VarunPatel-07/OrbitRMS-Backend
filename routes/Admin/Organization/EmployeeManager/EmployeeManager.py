@@ -262,66 +262,148 @@ async def Fetch_Employee_Details(
         )
 
         return {
-            "message": "user verified successfully",
+            "message": "Employee Details Fetched SuccessFully",
             "success": True,
-            "data": {
-                **filter_fields(
-                    employee_data,
-                    fields=[
-                        "-password",
-                        "-personal_info",
-                        "-personal_contact_info",
-                        "-family_info",
-                        "-employee_info",
-                    ],
-                ),
-                "employee_info": {
-                    **filter_fields(employee_data.employee_info, fields=["-reporting_manager"]),
-                    "reporting_manager": (
-                        {
-                            **filter_fields(
-                                employee_data.employee_info.reporting_manager,
-                                fields=["id"],
-                            ),
-                            **(
-                                filter_fields(
-                                    employee_data.employee_info.reporting_manager.personal_info,
-                                    fields=[
-                                        "-id",
-                                        "first_name",
-                                        "last_name",
-                                        "middle_name",
-                                        "profile_picture",
-                                        "profile_picture_bg",
-                                        "full_name",
-                                        "gender",
-                                    ],
-                                )
-                                if employee_data.employee_info.reporting_manager
-                                and employee_data.employee_info.reporting_manager.personal_info
-                                else {}
-                            ),
-                        }
-                        if employee_data.employee_info
-                        and employee_data.employee_info.reporting_manager
+            "data": (
+                {
+                    **filter_fields(
+                        employee_data,
+                        fields=[
+                            "-password",
+                            "-personal_info",
+                            "-personal_contact_info",
+                            "-family_info",
+                            "-employee_info",
+                        ],
+                    ),
+                    "employee_info": {
+                        **filter_fields(employee_data.employee_info, fields=["-reporting_manager"]),
+                        "reporting_manager": (
+                            {
+                                **filter_fields(
+                                    employee_data.employee_info.reporting_manager,
+                                    fields=["id"],
+                                ),
+                                **(
+                                    filter_fields(
+                                        employee_data.employee_info.reporting_manager.personal_info,
+                                        fields=[
+                                            "-id",
+                                            "first_name",
+                                            "last_name",
+                                            "middle_name",
+                                            "profile_picture",
+                                            "profile_picture_bg",
+                                            "full_name",
+                                            "gender",
+                                        ],
+                                    )
+                                    if employee_data.employee_info.reporting_manager
+                                    and employee_data.employee_info.reporting_manager.personal_info
+                                    else {}
+                                ),
+                            }
+                            if employee_data.employee_info
+                            and employee_data.employee_info.reporting_manager
+                            else {}
+                        ),
+                    },
+                    "personal_info": (
+                        filter_fields(employee_data.personal_info)
+                        if employee_data.personal_info
                         else {}
                     ),
-                },
-                "personal_info": (
-                    filter_fields(employee_data.personal_info)
-                    if employee_data.personal_info
-                    else {}
-                ),
-                "personal_contact_info": (
-                    filter_fields(employee_data.personal_contact_info[0])
-                    if employee_data.personal_contact_info
-                    else {}
-                ),
-                "family_info": (
-                    filter_fields(employee_data.family_info[0]) if employee_data.family_info else {}
-                ),
-            },
+                    "personal_contact_info": (
+                        filter_fields(employee_data.personal_contact_info[0])
+                        if employee_data.personal_contact_info
+                        else {}
+                    ),
+                    "family_info": (
+                        filter_fields(employee_data.family_info[0])
+                        if employee_data.family_info
+                        else {}
+                    ),
+                }
+                if employee_data
+                else None
+            ),
         }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Verifying Admin",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@adminOrgEmpControl.put(path="/disable-employee", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def name(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    employee_id: str = Query(..., alias="employee_id"),
+    organization_id: str = Query(..., alias="organization_id"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
+        employee = db.query(Models.User).filter(Models.User.id == employee_id).first()
+
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "User Not Found", "success": False},
+            )
+
+        if not employee.organization_id == organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "User's org ID does not match.", "success": False},
+            )
+
+        employee.account_status = True if not employee.account_status else False
+
+        db.commit()
+        db.refresh(employee)
+
+        return {"message": "User's Account Status Updated SuccessFully", "success": False}
 
     except HTTPException as http_exception:
         raise http_exception

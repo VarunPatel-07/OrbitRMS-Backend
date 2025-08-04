@@ -48,6 +48,48 @@ class Admin(BaseModel):
     admin_sessions = relationship("OrbitAdminSessions", back_populates="admin")
 
 
+class MaintenanceLog(BaseModel):
+    __tablename__ = "maintenance_logs"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    started_at = Column(DateTime, nullable=True)
+    ended_at = Column(DateTime, nullable=True)
+    started_by = Column(String(255), nullable=False)
+    ended_by = Column(String(255), nullable=True)
+
+    type = Column(Enum("manual", "scheduled", name="maintenance_type"), default="manual")
+    status = Column(
+        Enum("scheduled", "active", "completed", "cancelled", name="maintenance_status"),
+        default="active",
+    )
+
+    cancellation_reason = Column(Text, nullable=True, default=None)
+
+    reason = Column(Text, nullable=True, default=None)
+
+    message = Column(Text, nullable=True, default=None)
+
+    maintenance_mode_id = Column(CHAR(36), ForeignKey("maintenance_mode.id"))
+    maintenance_mode = relationship("MaintenanceMode", back_populates="maintenance_mode_logs")
+
+
+class MaintenanceMode(BaseModel):
+    __tablename__ = "maintenance_mode"
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    is_active = Column(Boolean, default=False)
+    message = Column(Text, nullable=True, default=None)
+
+    maintenance_mode_logs = relationship("MaintenanceLog", back_populates="maintenance_mode")
+
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
+    updated_by = Column(String(255))
+
+
 class User(BaseModel):
     __tablename__ = "users"
 
