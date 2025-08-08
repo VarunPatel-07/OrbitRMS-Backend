@@ -1,27 +1,33 @@
+import json
+import math
 import os
 from datetime import datetime
+from typing import Optional
+from urllib.parse import unquote
 from zoneinfo import ZoneInfo
-import math
+
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from typing import Optional
 from sqlalchemy.orm import joinedload
-from urllib.parse import unquote
-import json
+
 from Database.Database import db_dependencies
 from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
 from Helper.helper import (
     model_to_filtered_dict,
+    parse_date,
     parse_iso_datetime,
     validate_time_difference,
 )
 from Middleware.verifyToken import verify_token
 from PydanticModels.Admin.AdminAuthenticationModel import (
     MaintenanceModeData,
+    MaintenanceModeMessageData,
+    ScheduleMaintenanceModeCancellationData,
     ScheduleMaintenanceModeData,
 )
 from RateLimiting import limiter
 from SqlModels import Models
+
 from .MaintenanceModeQueryFilter import MaintenanceModeQueryFilter
 
 load_dotenv(override=True)
@@ -222,21 +228,48 @@ async def Maintenance_Mode_Schedule_Toggler(
             )
         maintenance_mode = db.query(Models.MaintenanceMode).first()
 
-        if type == "activate":
-            maintenance_logs = (
-                db.query(Models.MaintenanceLog)
-                .filter(Models.MaintenanceLog.status == "active")
-                .all()
+        start_date = parse_date(maintenance_mode_data.started_at)
+        end_date = parse_date(maintenance_mode_data.ended_at)
+
+        print("start_date", start_date)
+
+        print("end_date", end_date)
+
+        if start_date > end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Enter Valid Date Difference",
+                    "success": False,
+                },
             )
 
-            if maintenance_logs:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "A maintenance session is already in progress. Please complete it before starting another.",
-                        "success": False,
-                    },
-                )
+        if (
+            validate_time_difference(
+                maintenance_mode_data.started_at, maintenance_mode_data.ended_at
+            )
+            <= 30
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Start and end time must be at least 30 minutes apart.",
+                    "success": False,
+                },
+            )
+
+        maintenance_logs = (
+            db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.status == "active").all()
+        )
+
+        if maintenance_logs:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "A maintenance session is already in progress. Please complete it before starting another.",
+                    "success": False,
+                },
+            )
 
         if maintenance_mode:
 
@@ -334,6 +367,17 @@ async def Toggle_Maintenance_Mode(
             "data": {
                 **model_to_filtered_dict(maintenance_mode),
                 "status": maintenance_logs.status if maintenance_logs else "inActive",
+                "scheduler_info": (
+                    {
+                        "started_at": maintenance_logs.started_at,
+                        "started_by": maintenance_logs.started_by,
+                        "ended_at": maintenance_logs.ended_at,
+                        "ended_by": maintenance_logs.ended_by,
+                        "id": maintenance_logs.id,
+                    }
+                    if maintenance_logs
+                    else None
+                ),
             },
         }
     except HTTPException as http_exception:
@@ -358,6 +402,7 @@ async def Fetch_ALL_Maintenance_Mode_History(
     page: int = Query(..., alias="page"),
     limit: int = Query(..., alias="limit"),
     filter: Optional[str] = Query(None),
+    order: str = Query("desc", alias="order"),
 ):
     try:
         if not token:
@@ -417,6 +462,10 @@ async def Fetch_ALL_Maintenance_Mode_History(
         query_data = query_data.offset(start).limit(end)
 
         maintenance_logs = query_data.all()
+
+        maintenance_logs = sorted(
+            maintenance_logs, key=lambda x: x.created_at, reverse=(order.lower() == "desc")
+        )
 
         return {
             "message": "Organizations fetched successfully",
@@ -538,7 +587,7 @@ async def Edit_Scheduler_Info(
 async def Edit_Scheduler_Info(
     request: Request,
     db: db_dependencies,
-    maintenance_mode_data: ScheduleMaintenanceModeData,
+    maintenance_mode_data: ScheduleMaintenanceModeCancellationData,
     token: str = Depends(verify_token),
     id: str = Query(..., alias="id"),
 ):
@@ -594,6 +643,81 @@ async def Edit_Scheduler_Info(
         return {
             "message": "scheduler Updated Successfully",
             "success": True,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while toggling Maintenance Mode",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@MaintenanceMode.put("/edit/save-message", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def Save_Message(
+    request: Request,
+    db: db_dependencies,
+    maintenance_mode_data: MaintenanceModeMessageData,
+    token: str = Depends(verify_token),
+    id: str = Query(..., alias="id"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
+        maintenance_mode = (
+            db.query(Models.MaintenanceMode).filter(Models.MaintenanceMode.id == id).first()
+        )
+
+        if not maintenance_mode:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "No Such Maintenance Mode Found", "success": False},
+            )
+
+        maintenance_mode.message = maintenance_mode_data.message
+
+        db.commit()
+
+        return {
+            "message": "Message Updated Successfully",
+            "success": True,
+            "data": {"message": maintenance_mode.message},
         }
 
     except HTTPException as http_exception:

@@ -43,3 +43,7 @@ class VerifyMetaTag(BaseModel):
 
 class PasswordResetPydanticModel(BaseModel):
     email: str
+
+
+class ResendVerificationMail(BaseModel):
+    email: str

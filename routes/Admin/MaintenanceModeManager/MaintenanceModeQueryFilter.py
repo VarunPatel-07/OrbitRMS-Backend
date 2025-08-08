@@ -1,7 +1,8 @@
 import json
+from datetime import datetime
 
 from sqlalchemy import and_, func, or_
-from datetime import datetime
+
 from SqlModels import Models
 
 

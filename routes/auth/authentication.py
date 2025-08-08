@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from fastapi.encoders import jsonable_encoder
+
 import httpx
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -15,6 +15,7 @@ from fastapi import (
     Request,
     status,
 )
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
 from user_agents import parse as parse_user_agent
@@ -40,6 +41,7 @@ from PydanticModels.authentication.AuthenticationModels import (
     CreatePassword,
     PasswordResetPydanticModel,
     RegisterOrganizationInfo,
+    ResendVerificationMail,
     SignIn,
     VerifyMetaTag,
 )
@@ -634,7 +636,14 @@ async def fetch_sessions(
 @authRoutes.get(path="/verify-user", status_code=status.HTTP_200_OK)
 async def verify_user(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
-
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
         maintenance_mode = db.query(Models.MaintenanceMode).first()
 
         if maintenance_mode and maintenance_mode.is_active:
@@ -644,15 +653,6 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
                     "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
                 },
             )
 
@@ -730,6 +730,8 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
 
         organization = user.organization
 
+        encrypted_org_id = urlsafe_data_encoding_function(organization.id)
+
         return {
             "message": "user verified successfully",
             "success": True,
@@ -742,12 +744,28 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                 },
                 "organization": {
                     "id": organization.id,
-                    "general_info": model_to_filtered_dict(organization.general_info),
-                    "address": model_to_filtered_dict(organization.address[0]),
-                    "contact_info": organization.contact_info,
-                    "about_info": model_to_filtered_dict(organization.about_info[0]),
-                    "organization_settings": model_to_filtered_dict(
-                        organization.organization_settings[0]
+                    "general_info": (
+                        model_to_filtered_dict(organization.general_info)
+                        if organization.general_info
+                        else None
+                    ),
+                    "address": (
+                        model_to_filtered_dict(organization.address[0])
+                        if organization.address
+                        else None
+                    ),
+                    "contact_info": (
+                        organization.contact_info if organization.contact_info else None
+                    ),
+                    "about_info": (
+                        model_to_filtered_dict(organization.about_info[0])
+                        if organization.about_info
+                        else None
+                    ),
+                    "organization_settings": (
+                        model_to_filtered_dict(organization.organization_settings[0])
+                        if organization.organization_settings
+                        else None
                     ),
                     "status": organization.status,
                     "organization_created": organization.organization_created,
@@ -755,6 +773,7 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                     "updated_at": organization.updated_at,
                 },
             },
+            "encrypted_org_id": encrypted_org_id if not organization.organization_created else None,
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -994,6 +1013,167 @@ async def HandelPasswordReset(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable to log out the user at this moment.",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.get("/maintenance/check-maintenance-mode")
+@limiter.limit(API_RATE_LIMITING)
+async def Check_For_The_Maintenance_Mode(
+    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                },
+            )
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Maintenance Mode Is Active Now",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
+                },
+            )
+        user_id = token["user_id"]
+
+        session_id = token["session_id"]
+
+        user = (
+            db.query(Models.User)
+            .options(
+                joinedload(Models.User.organization).joinedload(Models.Organization.general_info),
+            )
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": ("Unable To Find User With This ID"),
+                    "success": False,
+                },
+            )
+
+        if not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": ("Account is deactivated. Access denied."),
+                    "success": False,
+                },
+            )
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        if not any(session.id == session_id for session in user.sessions):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+        if not organization or not organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Organization is deactivated. Access denied."
+                        if user.account_status
+                        else "Organization not found"
+                    ),
+                    "success": False,
+                },
+            )
+        organization = user.organization
+
+        return {
+            "message": "user verified successfully",
+            "success": True,
+            "data": {"portal_slug": organization.general_info.portal_slug},
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while verifying user",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.post("/resend-verification-mail", status_code=status.HTTP_201_CREATED)
+@limiter.limit(API_RATE_LIMITING)
+async def create_organization(
+    request: Request,
+    db: db_dependencies,
+    background_task: BackgroundTasks,
+    data: ResendVerificationMail,
+):
+    try:
+
+        organization_info = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(Models.OrganizationGeneralInfo.primary_email == data.email)
+            .first()
+        )
+
+        if not organization_info:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "No Such Organization Found",
+                    "success": False,
+                },
+            )
+
+        encrypted_org_id = urlsafe_data_encoding_function(organization_info.organization_id)
+
+        email_data = {
+            "recever_email": organization_info.primary_email,
+            "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
+            "body": VerifyEmailHtmlBody(
+                f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}"
+            ),
+        }
+
+        email_instance = EmailSchema(**email_data)
+
+        email_sender_function(email_instance, background_task)
+
+        return {"success": True, "message": "Email Send Successfully"}
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error Accrued While Adding Employee",
                 "success": False,
                 "error": str(e),
             },

@@ -1,8 +1,8 @@
 """automated-migration
 
-Revision ID: 17223d4d4040
+Revision ID: ee80f70cc1f1
 Revises:
-Create Date: 2025-07-16 19:38:05.592202
+Create Date: 2025-08-07 18:04:49.693296
 
 """
 
@@ -13,7 +13,7 @@ from alembic import op
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision: str = "17223d4d4040"
+revision: str = "ee80f70cc1f1"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -33,6 +33,24 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_address_id"), "address", ["id"], unique=False)
+    op.create_table(
+        "maintenance_mode",
+        sa.Column("id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("is_active", sa.Boolean(), nullable=True),
+        sa.Column("message", sa.Text(), nullable=True),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.Column("updated_by", sa.String(length=255), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_maintenance_mode_id"), "maintenance_mode", ["id"], unique=False)
+    op.create_table(
+        "orbit_admin",
+        sa.Column("id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("email", sa.String(length=255), nullable=False),
+        sa.Column("password", sa.String(length=255), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_orbit_admin_id"), "orbit_admin", ["id"], unique=False)
     op.create_table(
         "organization",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -70,6 +88,56 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_config_module_id"), "config_module", ["id"], unique=False)
+    op.create_table(
+        "maintenance_logs",
+        sa.Column("id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("started_at", sa.DateTime(), nullable=True),
+        sa.Column("ended_at", sa.DateTime(), nullable=True),
+        sa.Column("started_by", sa.String(length=255), nullable=False),
+        sa.Column("ended_by", sa.String(length=255), nullable=True),
+        sa.Column("type", sa.Enum("manual", "scheduled", name="maintenance_type"), nullable=True),
+        sa.Column(
+            "status",
+            sa.Enum("scheduled", "active", "completed", "cancelled", name="maintenance_status"),
+            nullable=True,
+        ),
+        sa.Column("cancellation_reason", sa.Text(), nullable=True),
+        sa.Column("reason", sa.Text(), nullable=True),
+        sa.Column("message", sa.Text(), nullable=True),
+        sa.Column("maintenance_mode_id", mysql.CHAR(length=36), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["maintenance_mode_id"],
+            ["maintenance_mode.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_maintenance_logs_id"), "maintenance_logs", ["id"], unique=False)
+    op.create_table(
+        "orbit_admin_session",
+        sa.Column("id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("ip_address", sa.String(length=255), nullable=True),
+        sa.Column("browser", sa.String(length=255), nullable=True),
+        sa.Column("browser_version", sa.String(length=255), nullable=True),
+        sa.Column("os", sa.String(length=255), nullable=True),
+        sa.Column("os_version", sa.String(length=255), nullable=True),
+        sa.Column("device_type", sa.String(length=255), nullable=True),
+        sa.Column("is_mobile", sa.Boolean(), nullable=True),
+        sa.Column("is_tablet", sa.Boolean(), nullable=True),
+        sa.Column("is_pc", sa.Boolean(), nullable=True),
+        sa.Column("is_bot", sa.Boolean(), nullable=True),
+        sa.Column("fingerprint", sa.String(length=500), nullable=True),
+        sa.Column("admin_signature", sa.String(length=255), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.Column("admin_id", mysql.CHAR(length=36), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["admin_id"], ["orbit_admin.id"], onupdate="CASCADE", ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_orbit_admin_session_id"), "orbit_admin_session", ["id"], unique=False)
     op.create_table(
         "organization_about_info",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -191,29 +259,9 @@ def upgrade() -> None:
     op.create_index(op.f("ix_users_id"), "users", ["id"], unique=False)
     op.create_index(op.f("ix_users_organization_id"), "users", ["organization_id"], unique=False)
     op.create_table(
-        "client_form_schema",
-        sa.Column("id", mysql.CHAR(length=36), nullable=False),
-        sa.Column("field_name", sa.String(length=255), nullable=False),
-        sa.Column("is_required_field", sa.Boolean(), nullable=False),
-        sa.Column("type", sa.String(length=255), nullable=False),
-        sa.Column(
-            "source_type",
-            sa.Enum("default", "user_created", name="source_type_enum"),
-            nullable=False,
-        ),
-        sa.Column("config_module_id", mysql.CHAR(length=36), nullable=False),
-        sa.Column("created_by", mysql.JSON(), nullable=True),
-        sa.Column("updated_by", mysql.JSON(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_client_form_schema_id"), "client_form_schema", ["id"], unique=False)
-    op.create_table(
         "client_inquires_data",
+        sa.Column("form_id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("form_name", sa.String(length=255), nullable=False),
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
         sa.Column("data", mysql.JSON(), nullable=True),
         sa.Column("client_inquire_id", mysql.CHAR(length=36), nullable=False),
@@ -221,6 +269,8 @@ def upgrade() -> None:
             ["client_inquire_id"], ["client_inquires.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("form_id"),
+        sa.UniqueConstraint("form_name"),
     )
     op.create_index(
         op.f("ix_client_inquires_data_id"), "client_inquires_data", ["id"], unique=False
@@ -328,6 +378,29 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_family_info_id"), "family_info", ["id"], unique=False)
+    op.create_table(
+        "inquiry_form_schema",
+        sa.Column("id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("form_id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("form_name", sa.String(length=255), nullable=False),
+        sa.Column("status", sa.Boolean(), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column(
+            "source_type",
+            sa.Enum("default", "user_created", name="source_type_enum"),
+            nullable=False,
+        ),
+        sa.Column("config_module_id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("created_by", mysql.JSON(), nullable=True),
+        sa.Column("updated_by", mysql.JSON(), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_inquiry_form_schema_id"), "inquiry_form_schema", ["id"], unique=False)
     op.create_table(
         "organization_holidays",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -530,6 +603,31 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_employee_info_id"), "employee_info", ["id"], unique=False)
     op.create_table(
+        "inquiry_form_fields",
+        sa.Column("id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("field_name", sa.String(length=255), nullable=False),
+        sa.Column("is_required_field", sa.Boolean(), nullable=False),
+        sa.Column("type", sa.String(length=255), nullable=False),
+        sa.Column(
+            "source_type",
+            sa.Enum("default", "user_created", name="source_type_enum"),
+            nullable=False,
+        ),
+        sa.Column("inquiry_form_schema_id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("created_by", mysql.JSON(), nullable=True),
+        sa.Column("updated_by", mysql.JSON(), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["inquiry_form_schema_id"],
+            ["inquiry_form_schema.id"],
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_inquiry_form_fields_id"), "inquiry_form_fields", ["id"], unique=False)
+    op.create_table(
         "permission_modules",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
         sa.Column("label", sa.String(length=255), nullable=False),
@@ -552,6 +650,8 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index(op.f("ix_permission_modules_id"), table_name="permission_modules")
     op.drop_table("permission_modules")
+    op.drop_index(op.f("ix_inquiry_form_fields_id"), table_name="inquiry_form_fields")
+    op.drop_table("inquiry_form_fields")
     op.drop_index(op.f("ix_employee_info_id"), table_name="employee_info")
     op.drop_table("employee_info")
     op.drop_index(op.f("ix_emergency_contacts_id"), table_name="emergency_contacts")
@@ -576,6 +676,8 @@ def downgrade() -> None:
     op.drop_table("organization_updates")
     op.drop_index(op.f("ix_organization_holidays_id"), table_name="organization_holidays")
     op.drop_table("organization_holidays")
+    op.drop_index(op.f("ix_inquiry_form_schema_id"), table_name="inquiry_form_schema")
+    op.drop_table("inquiry_form_schema")
     op.drop_index(op.f("ix_family_info_id"), table_name="family_info")
     op.drop_table("family_info")
     op.drop_index(op.f("ix_config_role_module_id"), table_name="config_role_module")
@@ -590,8 +692,6 @@ def downgrade() -> None:
     op.drop_table("config_model_department")
     op.drop_index(op.f("ix_client_inquires_data_id"), table_name="client_inquires_data")
     op.drop_table("client_inquires_data")
-    op.drop_index(op.f("ix_client_form_schema_id"), table_name="client_form_schema")
-    op.drop_table("client_form_schema")
     op.drop_index(op.f("ix_users_organization_id"), table_name="users")
     op.drop_index(op.f("ix_users_id"), table_name="users")
     op.drop_table("users")
@@ -605,12 +705,20 @@ def downgrade() -> None:
     op.drop_table("organization_address")
     op.drop_index(op.f("ix_organization_about_info_id"), table_name="organization_about_info")
     op.drop_table("organization_about_info")
+    op.drop_index(op.f("ix_orbit_admin_session_id"), table_name="orbit_admin_session")
+    op.drop_table("orbit_admin_session")
+    op.drop_index(op.f("ix_maintenance_logs_id"), table_name="maintenance_logs")
+    op.drop_table("maintenance_logs")
     op.drop_index(op.f("ix_config_module_id"), table_name="config_module")
     op.drop_table("config_module")
     op.drop_index(op.f("ix_client_inquires_id"), table_name="client_inquires")
     op.drop_table("client_inquires")
     op.drop_index(op.f("ix_organization_id"), table_name="organization")
     op.drop_table("organization")
+    op.drop_index(op.f("ix_orbit_admin_id"), table_name="orbit_admin")
+    op.drop_table("orbit_admin")
+    op.drop_index(op.f("ix_maintenance_mode_id"), table_name="maintenance_mode")
+    op.drop_table("maintenance_mode")
     op.drop_index(op.f("ix_address_id"), table_name="address")
     op.drop_table("address")
     # ### end Alembic commands ###

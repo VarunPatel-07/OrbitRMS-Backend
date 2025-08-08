@@ -14,7 +14,8 @@ from fastapi import (
     Request,
     status,
 )
-from sqlalchemy import func
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
 from Database.Database import db_dependencies
@@ -23,8 +24,10 @@ from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
     filter_fields,
     is_valid_type,
+    model_to_filtered_dict,
     validate_field,
 )
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
 from RateLimiting import limiter
 from SqlModels import Models
@@ -47,60 +50,13 @@ clientInquires = APIRouter(prefix="/app/v1/client-inquires", tags=["clientInquir
 async def Fetch_Client_Inquires(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     page: int = Query(..., alias="page"),
     limit: int = Query(..., alias="limit"),
     filter: Optional[str] = Query(None),
+    form_id: str = Query(..., alias="form_id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         client_inquires = (
             db.query(Models.ClientInquires)
@@ -120,7 +76,10 @@ async def Fetch_Client_Inquires(
             )
 
         query_data = db.query(Models.ClientInquiresData).filter(
-            Models.ClientInquiresData.client_inquire_id == client_inquires.id
+            and_(
+                Models.ClientInquiresData.client_inquire_id == client_inquires.id,
+                Models.ClientInquiresData.form_id == form_id,
+            )
         )
         total_data = 0
 
@@ -132,8 +91,8 @@ async def Fetch_Client_Inquires(
 
         if filter_data:
             query_data = apply_client_inquiry_query_filter(query_data, filter_data)
-            total_data = len(query_data)
-            query_data = query_data[start:end]
+            total_data = query_data.count()
+            query_data = query_data.offset(start).limit(end)
 
         else:
             total_data = query_data.count()
@@ -148,6 +107,8 @@ async def Fetch_Client_Inquires(
                     **filter_fields(_data.data, ["-client_inquire_id", "-id"]),
                     "client_inquire_id": _data.client_inquire_id,
                     "id": _data.id,
+                    "form_id": _data.form_id,
+                    "form_name": _data.form_name,
                 }
                 for _data in query_data
             ],
@@ -187,6 +148,18 @@ async def DeleteClientInquire(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 
@@ -263,8 +236,10 @@ async def submit_inquiry(
     payload: dict,
     api_key: str = Query(..., alias="api_key"),
     api_secret: str = Query(..., alias="api_secret"),
+    form_id: str = Query(..., alias="form_id"),
 ):
     try:
+
         client_inquires = (
             db.query(Models.ClientInquires).filter(Models.ClientInquires.api_key == api_key).first()
         )
@@ -330,9 +305,30 @@ async def submit_inquiry(
                     "success": False,
                 },
             )
+        form_schema = (
+            db.query(Models.InquiryFormSchema)
+            .filter(
+                and_(
+                    Models.InquiryFormSchema.config_module_id == config_module.id,
+                    Models.InquiryFormSchema.form_id == form_id,
+                )
+            )
+            .first()
+        )
+
+        if not form_schema:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Invalid Form Type",
+                    "extra_form_field": extra_form_field,
+                    "success": False,
+                },
+            )
+
         form_fields = (
-            db.query(Models.ClientFormSchema)
-            .filter(Models.ClientFormSchema.config_module_id == config_module.id)
+            db.query(Models.InquiryFormFields)
+            .filter(Models.InquiryFormFields.inquiry_form_schema_id == form_schema.id)
             .all()
         )
 
@@ -413,14 +409,17 @@ async def submit_inquiry(
             )
 
         client_inquiry_data = Models.ClientInquiresData(
-            data=payload, client_inquire_id=client_inquires.id
+            form_id=form_schema.form_id,
+            form_name=form_schema.form_name,
+            data=payload,
+            client_inquire_id=client_inquires.id,
         )
 
         db.add(client_inquiry_data)
         db.commit()
         db.refresh(client_inquiry_data)
 
-        if client_inquires.email_notification:
+        if client_inquires.email_notification and client_inquires.authorized_recipient_emails:
 
             email_data = {
                 "recever_email": json.loads(client_inquires.authorized_recipient_emails),

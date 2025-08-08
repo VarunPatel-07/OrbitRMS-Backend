@@ -14,6 +14,7 @@ from fastapi import (
     Request,
     status,
 )
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql import func
 
@@ -24,7 +25,7 @@ from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
     filter_fields,
     generatePasswordResetToken,
-    update_model_data,
+    model_to_filtered_dict,
     urlsafe_data_encoding_function,
 )
 from Helper.jwtHelper import hash_passwords
@@ -77,6 +78,18 @@ async def handel_add_user_function(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 
@@ -390,6 +403,18 @@ async def handel_fetch_profile_info(
                 },
             )
 
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
+                },
+            )
+
         user_id = token["user_id"]
 
         session_id = token["session_id"]
@@ -553,6 +578,18 @@ async def edit_employee_profile(
                 },
             )
 
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
+                },
+            )
+
         user_id = token["user_id"]
 
         session_id = token["session_id"]
@@ -678,7 +715,7 @@ async def edit_employee_profile(
         existing_contacts = {
             str(c.id): c
             for c in db.query(Models.EmergencyContact)
-            .filter(Models.EmergencyContact.contact_id == employee.id)
+            .filter(Models.EmergencyContact.contact_id == employee.personal_contact_info[0].id)
             .all()
         }
 
@@ -686,10 +723,12 @@ async def edit_employee_profile(
         contacts_to_add = []
 
         for contact in data.personal_contact_info.emergency_contacts:
-            if contact.id and str(contact.id) in existing_contacts:
+
+            if contact.id and contact.id in existing_contacts:
                 contacts_to_update.append(contact)
             else:
                 contacts_to_add.append(contact)
+
         if contacts_to_update:
             db.bulk_update_mappings(
                 Models.EmergencyContact,
@@ -705,9 +744,9 @@ async def edit_employee_profile(
                 [
                     {
                         **_contact.dict(exclude={"contact_id", "id"}),
-                        "contact_id": employee_id.id,
+                        "contact_id": employee.personal_contact_info[0].id,
                     }
-                    for _contact in contacts_to_update
+                    for _contact in contacts_to_add
                 ],
             )
 
@@ -882,6 +921,18 @@ async def fetch_all_employee(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 
@@ -1063,6 +1114,18 @@ async def Fetch_Employee(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 
