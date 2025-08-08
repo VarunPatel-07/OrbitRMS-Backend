@@ -80,7 +80,7 @@ adminAuthRoute = APIRouter(prefix="/app/v1/admin/auth", tags=["admin"])
 
 #         hash_password = hash_passwords(ADMIN_PASSWORD)
 
-#         admin = Models.Admin(email=ADMIN_EMAIL, password=hash_password, admin_signature="")
+#         admin = Models.Admin(email=ADMIN_EMAIL, password=hash_password)
 
 #         db.add(admin)
 #         db.commit()

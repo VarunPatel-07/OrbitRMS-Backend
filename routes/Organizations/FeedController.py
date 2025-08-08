@@ -16,6 +16,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import joinedload
 
@@ -63,6 +64,18 @@ async def AddEditFeedPostController(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 
@@ -241,6 +254,18 @@ async def FetchTheOrganizationPost(
                 },
             )
 
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
+                },
+            )
+
         user_id = token["user_id"]
 
         session_id = token["session_id"]
@@ -388,6 +413,18 @@ async def HandelDeletePostFunction(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 

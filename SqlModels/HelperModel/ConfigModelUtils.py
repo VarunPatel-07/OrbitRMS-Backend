@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     Table,
+    Text,
 )
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
@@ -184,8 +185,43 @@ class PermissionModule(BaseModel):
     )
 
 
-class ClientFormSchema(BaseModel):
-    __tablename__ = "client_form_schema"
+class InquiryFormSchema(BaseModel):
+    __tablename__ = "inquiry_form_schema"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+
+    form_id = Column(CHAR(36), nullable=False, unique=True)
+    form_name = Column(String(255), nullable=False, unique=True)
+
+    status = Column(Boolean, nullable=False, default=True)
+    description = Column(Text, nullable=True, default=None)
+
+    source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
+
+    config_module_id = Column(
+        CHAR(36),
+        ForeignKey("config_module.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+    config_module = relationship("ConfigModule", back_populates="inquiry_form_schema")
+
+    inquiry_form_fields = relationship(
+        "InquiryFormFields", back_populates="inquiry_form_schema", cascade="all, delete"
+    )
+
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
+
+
+class InquiryFormFields(BaseModel):
+    __tablename__ = "inquiry_form_fields"
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 
@@ -194,12 +230,13 @@ class ClientFormSchema(BaseModel):
     type = Column(String(255), nullable=False)
 
     source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
-    config_module_id = Column(
+
+    inquiry_form_schema_id = Column(
         CHAR(36),
-        ForeignKey("config_module.id", ondelete="CASCADE", onupdate="CASCADE"),
+        ForeignKey("inquiry_form_schema.id", ondelete="CASCADE", onupdate="CASCADE"),
         nullable=False,
     )
-    config_module = relationship("ConfigModule", back_populates="client_form_schema")
+    inquiry_form_schema = relationship("InquiryFormSchema", back_populates="inquiry_form_fields")
 
     # created At UpdatedAt Field
     created_by = Column(JSON, nullable=True)

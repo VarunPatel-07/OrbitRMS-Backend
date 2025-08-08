@@ -5,6 +5,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import joinedload
 
@@ -39,6 +40,18 @@ async def FetchTheInfoOfTheOrganization(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 
@@ -157,6 +170,18 @@ async def AddEditHoliday(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 
@@ -373,6 +398,18 @@ async def Fetch_Holiday(
                 },
             )
 
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
+                },
+            )
+
         user_id = token["user_id"]
 
         session_id = token["session_id"]
@@ -496,6 +533,18 @@ async def delete_project_status(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 

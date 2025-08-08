@@ -4,9 +4,11 @@ import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
 
 from Database.Database import db_dependencies
+from Helper.helper import model_to_filtered_dict
 from Middleware.verifyToken import verify_token
 from RateLimiting import limiter
 from SqlModels import Models
@@ -47,6 +49,18 @@ async def ImageUploadation(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 

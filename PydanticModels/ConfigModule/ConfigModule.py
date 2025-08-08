@@ -24,6 +24,13 @@ class ClientFormSchemaModel(BaseModel):
     type: str
 
 
+class InquiryFormSchemaSchemaModel(BaseModel):
+    form_id: str
+    form_name: str
+    description: str
+    status: bool
+
+
 class PermissionModule(BaseModel):
     label: str
     is_allowed: bool

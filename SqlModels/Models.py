@@ -10,10 +10,11 @@ from sqlalchemy.sql import expression
 from Database.Base import BaseModel
 from SqlModels.HelperModel.AdminModelHelperUtils import OrbitAdminSessions
 from SqlModels.HelperModel.ConfigModelUtils import (
-    ClientFormSchema,
     ConfigRoleModule,
     Department,
     Designations,
+    InquiryFormFields,
+    InquiryFormSchema,
     OrganizationHolidaysSchema,
     PermissionModule,
     ProjectStatus,
@@ -71,6 +72,14 @@ class MaintenanceLog(BaseModel):
 
     maintenance_mode_id = Column(CHAR(36), ForeignKey("maintenance_mode.id"))
     maintenance_mode = relationship("MaintenanceMode", back_populates="maintenance_mode_logs")
+
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
 
 
 class MaintenanceMode(BaseModel):
@@ -194,8 +203,8 @@ class ConfigModule(BaseModel):
         "Designations", back_populates="config_module", cascade="all, delete"
     )
 
-    client_form_schema = relationship(
-        "ClientFormSchema", back_populates="config_module", cascade="all, delete"
+    inquiry_form_schema = relationship(
+        "InquiryFormSchema", back_populates="config_module", cascade="all, delete"
     )
 
     roles_and_permissions = relationship(
@@ -252,6 +261,10 @@ class ClientInquires(BaseModel):
 class ClientInquiresData(BaseModel):
 
     __tablename__ = "client_inquires_data"
+
+    form_id = Column(CHAR(36), nullable=False, unique=False, default=None)
+
+    form_name = Column(String(255), nullable=False, unique=False, default=None)
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
 

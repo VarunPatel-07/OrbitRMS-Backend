@@ -22,3 +22,11 @@ class ScheduleMaintenanceModeData(BaseModel):
     reason: str
     started_at: str
     ended_at: str
+
+
+class ScheduleMaintenanceModeCancellationData(BaseModel):
+    reason: str
+
+
+class MaintenanceModeMessageData(BaseModel):
+    message: str

@@ -10,6 +10,7 @@ from fastapi import (
     Request,
     status,
 )
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
 
 from BackgroundDataHandler.DataSeederHelper import ClientInquiryInitiator
@@ -134,7 +135,7 @@ async def verify_organization(
             background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(department_data_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(project_status_initial_data_seeder, db, decrypted_org_id)
-            background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
+            # background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
 
             return {
                 "message": "Organization Is Verified Successfully",
@@ -323,18 +324,32 @@ async def fetch_organization_info(
         return {
             "success": True,
             "data": {
-                "general_info": filter_fields(
-                    organization.general_info, ["-id", "-organization_id"]
+                "general_info": (
+                    filter_fields(organization.general_info, ["-id", "-organization_id"])
+                    if organization.general_info
+                    else None
                 ),
-                "address": filter_fields(organization.address[0], ["-id", "-organization_id"]),
-                "contact_info": filter_fields(
-                    organization.contact_info[0], ["-id", "-organization_id"]
+                "address": (
+                    filter_fields(organization.address[0], ["-id", "-organization_id"])
+                    if organization.address
+                    else None
                 ),
-                "about_info": filter_fields(
-                    organization.about_info[0], ["-id", "-organization_id"]
+                "contact_info": (
+                    filter_fields(organization.contact_info[0], ["-id", "-organization_id"])
+                    if organization.contact_info
+                    else None
                 ),
-                "organization_settings": filter_fields(
-                    organization.organization_settings[0], ["-id", "-organization_id"]
+                "about_info": (
+                    filter_fields(organization.about_info[0], ["-id", "-organization_id"])
+                    if organization.about_info
+                    else None
+                ),
+                "organization_settings": (
+                    filter_fields(
+                        organization.organization_settings[0], ["-id", "-organization_id"]
+                    )
+                    if organization.organization_settings
+                    else None
                 ),
             },
         }
@@ -374,6 +389,18 @@ async def fetch_reporting_manager(
                 detail={
                     "message": "Unauthorized: Missing or invalid auth token",
                     "success": False,
+                },
+            )
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if maintenance_mode and maintenance_mode.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Unauthorized: Missing or invalid auth token",
+                    "success": False,
+                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
 
