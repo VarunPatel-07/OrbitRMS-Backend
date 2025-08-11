@@ -21,7 +21,7 @@ from SqlModels.Models import BaseModel
 
 class ProjectStatus(BaseModel):
     __tablename__ = "config_model_project_status"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     status_name = Column(String(255), nullable=False)
     source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
@@ -45,7 +45,7 @@ class ProjectStatus(BaseModel):
 
 class Department(BaseModel):
     __tablename__ = "config_model_department"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     department_name = Column(String(255), nullable=False)
     source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
@@ -68,7 +68,7 @@ class Department(BaseModel):
 
 class Designations(BaseModel):
     __tablename__ = "config_model_designations"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     designations_name = Column(String(255), nullable=False)
     source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
@@ -95,7 +95,7 @@ class Designations(BaseModel):
 class ConfigRoleModule(BaseModel):
     __tablename__ = "config_role_module"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     role_name = Column(String(255), nullable=False)
     description = Column(String(355), nullable=False)
@@ -138,7 +138,7 @@ class ConfigRoleModule(BaseModel):
 class RoleAssociatedPermissionModule(BaseModel):
     __tablename__ = "config_role_associated_permissions"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     module_label = Column(String(255), nullable=False)
     module_title = Column(String(255), nullable=False)
@@ -168,7 +168,7 @@ class RoleAssociatedPermissionModule(BaseModel):
 class PermissionModule(BaseModel):
     __tablename__ = "permission_modules"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     label = Column(String(255), nullable=False)
     is_allowed = Column(Boolean, nullable=False, default=False)
@@ -188,7 +188,7 @@ class PermissionModule(BaseModel):
 class InquiryFormSchema(BaseModel):
     __tablename__ = "inquiry_form_schema"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     form_id = Column(CHAR(36), nullable=False, unique=True)
     form_name = Column(String(255), nullable=False, unique=True)
@@ -223,7 +223,7 @@ class InquiryFormSchema(BaseModel):
 class InquiryFormFields(BaseModel):
     __tablename__ = "inquiry_form_fields"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     field_name = Column(String(255), nullable=False)
     is_required_field = Column(Boolean, nullable=False, default=True)
@@ -252,7 +252,7 @@ class InquiryFormFields(BaseModel):
 
 class OrganizationHolidaysSchema(BaseModel):
     __tablename__ = "organization_holidays"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     holiday_name = Column(String(255), nullable=False)
     date = Column(DateTime, nullable=True, default=None)

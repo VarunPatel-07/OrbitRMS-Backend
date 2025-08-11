@@ -4,14 +4,10 @@ import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy.orm import joinedload
 
 from Database.Database import db_dependencies
-from Helper.helper import model_to_filtered_dict
-from Middleware.verifyToken import verify_token
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from RateLimiting import limiter
-from SqlModels import Models
 
 load_dotenv(override=True)
 
@@ -36,78 +32,9 @@ async def ImageUploadation(
     request: Request,
     db: db_dependencies,
     file: UploadFile = File(...),
-    token: str = Depends(verify_token),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
 
         file_bytes = await file.read()
 

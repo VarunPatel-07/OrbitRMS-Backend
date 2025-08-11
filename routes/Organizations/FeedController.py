@@ -20,9 +20,12 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import joinedload
 
+from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
 from Helper.helper import filter_fields, model_to_filtered_dict
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
+from PydanticModels.Organizations.FeedControllerPydenticModal import FeedCommentData
 from RateLimiting import limiter
 from SqlModels import Models
 
@@ -46,80 +49,15 @@ async def AddEditFeedPostController(
     request: Request,
     db: db_dependencies,
     type: str = Query(..., description="The Type Must Be Add or Edit"),
-    token: str = Depends(verify_token),
     description: str = File(...),
     isCommentDisabled: bool = File(...),
     isLikeDisabled: bool = File(...),
     new_images: List[UploadFile] = File(default=[]),
     existing_images: List[str] = Form(default=[]),
     id: Optional[str] = Query(None, description="ID for edit operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         if type not in ["add", "edit"]:
             raise HTTPException(
@@ -180,7 +118,7 @@ async def AddEditFeedPostController(
                     },
                 )
 
-            if not existing_post.user_id == user_id:
+            if not existing_post.user_id == user.id:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={
@@ -233,80 +171,15 @@ async def AddEditFeedPostController(
 async def FetchTheOrganizationPost(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
     field_name: Optional[str] = Query(
         None, description="This Is An Optional Field", alias="field_name"
     ),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
         if not order:
             order = "asc"
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         query_data = (
             db.query(Models.OrganizationUpdates)
@@ -365,6 +238,11 @@ async def FetchTheOrganizationPost(
                 else {}
             )
 
+            likes_info_array = []
+
+            for like in data.likes:
+                likes_info_array.append(like.user_id)
+
             _data.append(
                 {
                     "publisher": {
@@ -372,6 +250,8 @@ async def FetchTheOrganizationPost(
                         "id": data.publisher.id,
                         **publisher_employee_info,
                     },
+                    "likes": likes_info_array,
+                    "comments": data.comments,
                     **post_info,
                 }
             )
@@ -400,75 +280,11 @@ async def FetchTheOrganizationPost(
 async def HandelDeletePostFunction(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     id: str = Query(None, description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
 
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
         post = (
             db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == id).first()
         )
@@ -486,6 +302,216 @@ async def HandelDeletePostFunction(
         db.commit()
 
         return {"success": True, "message": "Post Deleted Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Deleting a Post",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@feedControl.put("/like/toggle", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def HandelLikeUnlikePostFunction(
+    request: Request,
+    db: db_dependencies,
+    post_id: str = Query(..., alias="post-id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        user_like_redis_key = f"user:{user.id}:liked_posts"
+        post_like_count_key = f"post:{post_id}:likes"
+
+        existing_like = await cache_database.sismember(user_like_redis_key, post_id)
+
+        if existing_like:
+
+            await cache_database.srem(user_like_redis_key, post_id)
+            await cache_database.decr(post_like_count_key)
+
+            event = {"post_id": post_id, "user_id": user.id, "action": "unlike"}
+            await cache_database.rpush("likes_queue", json.dumps(event))
+
+            return {
+                "message": "Like removed",
+                "success": True,
+                "data": {"liked": False, "action": "unlike"},
+            }
+
+        await cache_database.sadd(user_like_redis_key, post_id)
+        await cache_database.incr(post_like_count_key)
+
+        event = {"post_id": post_id, "user_id": user.id, "action": "like"}
+
+        await cache_database.rpush("likes_queue", json.dumps(event))
+
+        return {
+            "message": "Like registered",
+            "success": True,
+            "data": {"liked": True, "action": "like"},
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Deleting a Post",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@feedControl.put("/comment/toggle", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def HandelLikeUnlikePostFunction(
+    request: Request,
+    db: db_dependencies,
+    data: FeedCommentData,
+    post_id: str = Query(..., alias="post-id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        user_comment_redis_key = f"user:{user.id}:comment_on_post"
+        post_comment_count_key = f"post:{post_id}:comment"
+
+        await cache_database.sadd(user_comment_redis_key, post_id)
+        await cache_database.incr(post_comment_count_key)
+
+        event = {
+            "post_id": post_id,
+            "user_id": user.id,
+            "comment": data.comment,
+            "is_replay": False,
+        }
+
+        await cache_database.rpush("comment_queue", json.dumps(event))
+
+        return {
+            "message": "Comment registered",
+            "success": True,
+            "data": {"commented": True, **event},
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Deleting a Post",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@feedControl.put("/comment/toggle", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def FetchLikesAndComment(
+    request: Request,
+    db: db_dependencies,
+    post_id: str = Query(..., alias="post-id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    type: str = Query(..., alias="type"),
+):
+    try:
+        if type not in ["like", "comment"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={"message": "Only Like Or Comment Is Allowed", "success": False},
+            )
+
+        query_option = (
+            joinedload(Models.OrganizationUpdates.likes).joinedload(Models.FeedLikes.user)
+            if type == "like"
+            else joinedload(Models.OrganizationUpdates.comment).joinedload(Models.FeedComments.user)
+        )
+
+        query_data = (
+            db.query(Models.OrganizationUpdates)
+            .options(query_option)
+            .filter(Models.OrganizationUpdates.id == post_id)
+            .first()
+        )
+
+        if type == "like":
+
+            likes_info_array = []
+
+            for like in query_data.likes:
+
+                like_personal_info = (
+                    filter_fields(
+                        like.user.personal_info,
+                        ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
+                    )
+                    if like.user
+                    else {}
+                )
+
+                like_employee_info = (
+                    filter_fields(
+                        like.user.employee_info,
+                        ["department", "designation", "employee_code"],
+                    )
+                    if like.user
+                    else {}
+                )
+
+                likes_info_array.append(
+                    {**like_personal_info, "id": like.user_id, **like_employee_info}
+                )
+            return {
+                "message": "Likes Fetched Successfully",
+                "success": True,
+                "data": likes_info_array,
+            }
+        else:
+
+            comment_info_array = []
+
+            query_data = query_data.option(
+                joinedload(Models.OrganizationUpdates.comment).joinedload(Models.FeedComments.user),
+            )
+
+            for comment in query_data.comment:
+
+                comment_personal_info = (
+                    filter_fields(
+                        comment.user.personal_info,
+                        ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
+                    )
+                    if comment.user
+                    else {}
+                )
+
+                comment_employee_info = (
+                    filter_fields(
+                        comment.user.employee_info,
+                        ["department", "designation", "employee_code"],
+                    )
+                    if comment.user
+                    else {}
+                )
+
+                comment_info_array.append(
+                    {**comment_personal_info, "id": comment.user_id, **comment_employee_info}
+                )
+
+            return {
+                "message": "Comments Fetched Successfully",
+                "success": True,
+                "data": comment_info_array,
+            }
 
     except HTTPException as http_exception:
         raise http_exception

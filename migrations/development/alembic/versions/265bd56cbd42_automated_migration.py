@@ -1,8 +1,8 @@
 """automated-migration
 
-Revision ID: ee80f70cc1f1
+Revision ID: 265bd56cbd42
 Revises:
-Create Date: 2025-08-07 18:04:49.693296
+Create Date: 2025-08-12 00:31:26.704790
 
 """
 
@@ -13,7 +13,7 @@ from alembic import op
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision: str = "ee80f70cc1f1"
+revision: str = "265bd56cbd42"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -32,7 +32,6 @@ def upgrade() -> None:
         sa.Column("country_code", sa.String(length=255), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_address_id"), "address", ["id"], unique=False)
     op.create_table(
         "maintenance_mode",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -42,7 +41,6 @@ def upgrade() -> None:
         sa.Column("updated_by", sa.String(length=255), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_maintenance_mode_id"), "maintenance_mode", ["id"], unique=False)
     op.create_table(
         "orbit_admin",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -50,7 +48,6 @@ def upgrade() -> None:
         sa.Column("password", sa.String(length=255), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_orbit_admin_id"), "orbit_admin", ["id"], unique=False)
     op.create_table(
         "organization",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -60,7 +57,6 @@ def upgrade() -> None:
         sa.Column("organization_created", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_organization_id"), "organization", ["id"], unique=False)
     op.create_table(
         "client_inquires",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -75,7 +71,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_client_inquires_id"), "client_inquires", ["id"], unique=False)
     op.create_table(
         "config_module",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -87,7 +82,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_config_module_id"), "config_module", ["id"], unique=False)
     op.create_table(
         "maintenance_logs",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -113,7 +107,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_maintenance_logs_id"), "maintenance_logs", ["id"], unique=False)
     op.create_table(
         "orbit_admin_session",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -137,7 +130,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_orbit_admin_session_id"), "orbit_admin_session", ["id"], unique=False)
     op.create_table(
         "organization_about_info",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -149,9 +141,6 @@ def upgrade() -> None:
             ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_organization_about_info_id"), "organization_about_info", ["id"], unique=False
     )
     op.create_table(
         "organization_address",
@@ -168,9 +157,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_organization_address_id"), "organization_address", ["id"], unique=False
-    )
     op.create_table(
         "organization_contact_info",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -182,9 +168,6 @@ def upgrade() -> None:
             ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_organization_contact_info_id"), "organization_contact_info", ["id"], unique=False
     )
     op.create_table(
         "organization_general_info",
@@ -208,9 +191,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_organization_general_info_id"), "organization_general_info", ["id"], unique=False
-    )
     op.create_table(
         "organization_settings",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -224,9 +204,6 @@ def upgrade() -> None:
             ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_organization_settings_id"), "organization_settings", ["id"], unique=False
     )
     op.create_table(
         "users",
@@ -256,7 +233,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_users_id"), "users", ["id"], unique=False)
     op.create_index(op.f("ix_users_organization_id"), "users", ["organization_id"], unique=False)
     op.create_table(
         "client_inquires_data",
@@ -269,11 +245,6 @@ def upgrade() -> None:
             ["client_inquire_id"], ["client_inquires.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("form_id"),
-        sa.UniqueConstraint("form_name"),
-    )
-    op.create_index(
-        op.f("ix_client_inquires_data_id"), "client_inquires_data", ["id"], unique=False
     )
     op.create_table(
         "config_model_department",
@@ -294,9 +265,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_config_model_department_id"), "config_model_department", ["id"], unique=False
-    )
     op.create_table(
         "config_model_designations",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -315,9 +283,6 @@ def upgrade() -> None:
             ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_config_model_designations_id"), "config_model_designations", ["id"], unique=False
     )
     op.create_table(
         "config_model_project_status",
@@ -338,12 +303,6 @@ def upgrade() -> None:
             ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_config_model_project_status_id"),
-        "config_model_project_status",
-        ["id"],
-        unique=False,
     )
     op.create_table(
         "config_role_module",
@@ -366,7 +325,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_config_role_module_id"), "config_role_module", ["id"], unique=False)
     op.create_table(
         "family_info",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -377,7 +335,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_family_info_id"), "family_info", ["id"], unique=False)
     op.create_table(
         "inquiry_form_schema",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -399,8 +356,9 @@ def upgrade() -> None:
             ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("form_id"),
+        sa.UniqueConstraint("form_name"),
     )
-    op.create_index(op.f("ix_inquiry_form_schema_id"), "inquiry_form_schema", ["id"], unique=False)
     op.create_table(
         "organization_holidays",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -422,17 +380,14 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_organization_holidays_id"), "organization_holidays", ["id"], unique=False
-    )
     op.create_table(
         "organization_updates",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
         sa.Column("images", sa.Text(), nullable=True),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("user_id", mysql.CHAR(length=36), nullable=False),
         sa.Column("isCommentDisabled", sa.Boolean(), nullable=True),
         sa.Column("isLikeDisabled", sa.Boolean(), nullable=True),
+        sa.Column("user_id", mysql.CHAR(length=36), nullable=False),
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
         sa.Column(
             "source_type",
@@ -451,9 +406,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_organization_updates_id"), "organization_updates", ["id"], unique=False
-    )
-    op.create_index(
         op.f("ix_organization_updates_user_id"), "organization_updates", ["user_id"], unique=False
     )
     op.create_table(
@@ -465,9 +417,6 @@ def upgrade() -> None:
         sa.Column("user_id", mysql.CHAR(length=36), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_personal_contact_info_id"), "personal_contact_info", ["id"], unique=False
     )
     op.create_table(
         "personal_info",
@@ -486,7 +435,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_personal_info_id"), "personal_info", ["id"], unique=False)
     op.create_table(
         "session",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -507,7 +455,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_session_id"), "session", ["id"], unique=False)
     op.create_table(
         "social_link",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -519,7 +466,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_social_link_id"), "social_link", ["id"], unique=False)
     op.create_table(
         "children",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -532,7 +478,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_children_id"), "children", ["id"], unique=False)
     op.create_table(
         "config_role_associated_permissions",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -552,12 +497,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_config_role_associated_permissions_id"),
-        "config_role_associated_permissions",
-        ["id"],
-        unique=False,
-    )
     op.create_table(
         "emergency_contacts",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -571,7 +510,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_emergency_contacts_id"), "emergency_contacts", ["id"], unique=False)
     op.create_table(
         "employee_info",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -601,7 +539,27 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id"),
     )
-    op.create_index(op.f("ix_employee_info_id"), "employee_info", ["id"], unique=False)
+    op.create_table(
+        "feed_likes",
+        sa.Column("id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("user_id", mysql.CHAR(length=36), nullable=False),
+        sa.Column("organization_update_id", mysql.CHAR(length=36), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["organization_update_id"], ["organization_updates.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_feed_likes_organization_update_id"),
+        "feed_likes",
+        ["organization_update_id"],
+        unique=False,
+    )
+    op.create_index(op.f("ix_feed_likes_user_id"), "feed_likes", ["user_id"], unique=False)
     op.create_table(
         "inquiry_form_fields",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -626,7 +584,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_inquiry_form_fields_id"), "inquiry_form_fields", ["id"], unique=False)
     op.create_table(
         "permission_modules",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -642,83 +599,47 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_permission_modules_id"), "permission_modules", ["id"], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_index(op.f("ix_permission_modules_id"), table_name="permission_modules")
     op.drop_table("permission_modules")
-    op.drop_index(op.f("ix_inquiry_form_fields_id"), table_name="inquiry_form_fields")
     op.drop_table("inquiry_form_fields")
-    op.drop_index(op.f("ix_employee_info_id"), table_name="employee_info")
+    op.drop_index(op.f("ix_feed_likes_user_id"), table_name="feed_likes")
+    op.drop_index(op.f("ix_feed_likes_organization_update_id"), table_name="feed_likes")
+    op.drop_table("feed_likes")
     op.drop_table("employee_info")
-    op.drop_index(op.f("ix_emergency_contacts_id"), table_name="emergency_contacts")
     op.drop_table("emergency_contacts")
-    op.drop_index(
-        op.f("ix_config_role_associated_permissions_id"),
-        table_name="config_role_associated_permissions",
-    )
     op.drop_table("config_role_associated_permissions")
-    op.drop_index(op.f("ix_children_id"), table_name="children")
     op.drop_table("children")
-    op.drop_index(op.f("ix_social_link_id"), table_name="social_link")
     op.drop_table("social_link")
-    op.drop_index(op.f("ix_session_id"), table_name="session")
     op.drop_table("session")
-    op.drop_index(op.f("ix_personal_info_id"), table_name="personal_info")
     op.drop_table("personal_info")
-    op.drop_index(op.f("ix_personal_contact_info_id"), table_name="personal_contact_info")
     op.drop_table("personal_contact_info")
     op.drop_index(op.f("ix_organization_updates_user_id"), table_name="organization_updates")
-    op.drop_index(op.f("ix_organization_updates_id"), table_name="organization_updates")
     op.drop_table("organization_updates")
-    op.drop_index(op.f("ix_organization_holidays_id"), table_name="organization_holidays")
     op.drop_table("organization_holidays")
-    op.drop_index(op.f("ix_inquiry_form_schema_id"), table_name="inquiry_form_schema")
     op.drop_table("inquiry_form_schema")
-    op.drop_index(op.f("ix_family_info_id"), table_name="family_info")
     op.drop_table("family_info")
-    op.drop_index(op.f("ix_config_role_module_id"), table_name="config_role_module")
     op.drop_table("config_role_module")
-    op.drop_index(
-        op.f("ix_config_model_project_status_id"), table_name="config_model_project_status"
-    )
     op.drop_table("config_model_project_status")
-    op.drop_index(op.f("ix_config_model_designations_id"), table_name="config_model_designations")
     op.drop_table("config_model_designations")
-    op.drop_index(op.f("ix_config_model_department_id"), table_name="config_model_department")
     op.drop_table("config_model_department")
-    op.drop_index(op.f("ix_client_inquires_data_id"), table_name="client_inquires_data")
     op.drop_table("client_inquires_data")
     op.drop_index(op.f("ix_users_organization_id"), table_name="users")
-    op.drop_index(op.f("ix_users_id"), table_name="users")
     op.drop_table("users")
-    op.drop_index(op.f("ix_organization_settings_id"), table_name="organization_settings")
     op.drop_table("organization_settings")
-    op.drop_index(op.f("ix_organization_general_info_id"), table_name="organization_general_info")
     op.drop_table("organization_general_info")
-    op.drop_index(op.f("ix_organization_contact_info_id"), table_name="organization_contact_info")
     op.drop_table("organization_contact_info")
-    op.drop_index(op.f("ix_organization_address_id"), table_name="organization_address")
     op.drop_table("organization_address")
-    op.drop_index(op.f("ix_organization_about_info_id"), table_name="organization_about_info")
     op.drop_table("organization_about_info")
-    op.drop_index(op.f("ix_orbit_admin_session_id"), table_name="orbit_admin_session")
     op.drop_table("orbit_admin_session")
-    op.drop_index(op.f("ix_maintenance_logs_id"), table_name="maintenance_logs")
     op.drop_table("maintenance_logs")
-    op.drop_index(op.f("ix_config_module_id"), table_name="config_module")
     op.drop_table("config_module")
-    op.drop_index(op.f("ix_client_inquires_id"), table_name="client_inquires")
     op.drop_table("client_inquires")
-    op.drop_index(op.f("ix_organization_id"), table_name="organization")
     op.drop_table("organization")
-    op.drop_index(op.f("ix_orbit_admin_id"), table_name="orbit_admin")
     op.drop_table("orbit_admin")
-    op.drop_index(op.f("ix_maintenance_mode_id"), table_name="maintenance_mode")
     op.drop_table("maintenance_mode")
-    op.drop_index(op.f("ix_address_id"), table_name="address")
     op.drop_table("address")
     # ### end Alembic commands ###

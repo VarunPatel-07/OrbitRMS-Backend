@@ -29,6 +29,7 @@ from Helper.helper import (
     urlsafe_data_encoding_function,
 )
 from Helper.jwtHelper import hash_passwords
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
 from PydanticModels.HelperPydanticModel import WelcomeEmployeeMailModel
 from PydanticModels.Organizations.AddEditEmployeePydanticModal import (
@@ -65,79 +66,10 @@ async def handel_add_user_function(
     db: db_dependencies,
     data: AddEditUserProfileModel,
     background_task: BackgroundTasks,
-    token: str = Depends(verify_token),
     organization_id: str = Query(..., alias="organization-id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
 
         organization_info = (
             db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
@@ -222,6 +154,14 @@ async def handel_add_user_function(
         # * Now We Are Validating The Reporting Manager And If It Exists Then We Will Add The Employee Info
         # * If Not Then We Will Raise An HTTP Exception
 
+        if not data.employee_info.reporting_to or not getattr(
+            data.employee_info.reporting_to, "id", None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Reporting manager is required", "success": False},
+            )
+
         reporting_to_user = (
             db.query(Models.User)
             .filter(Models.User.id == data.employee_info.reporting_to.id)
@@ -260,9 +200,7 @@ async def handel_add_user_function(
         db.add(personal_contact_info)
         db.flush()
 
-        emergency_contact_array = [
-            emergency_contact for emergency_contact in data.personal_contact_info.emergency_contacts
-        ]
+        emergency_contact_array = list(data.personal_contact_info.emergency_contacts or [])
 
         if emergency_contact_array:
             db.bulk_insert_mappings(
@@ -289,7 +227,7 @@ async def handel_add_user_function(
 
         if data.family_info.marital_status in alignable_for_child_info:
 
-            children_array = [each_child for each_child in data.family_info.children]
+            children_array = list(data.family_info.children or [])
 
             if children_array:
 
@@ -323,7 +261,7 @@ async def handel_add_user_function(
             new_user.permanent_address_id = permanent_address.id
 
         social_links_array = []
-        for link in data.social_link:
+        for link in data.social_link or []:
             if link.name and link.link and link.icon:
                 social_links_array.append(link)
         if social_links_array:
@@ -387,79 +325,10 @@ async def handel_add_user_function(
 async def handel_fetch_profile_info(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     employee_id: str = Query(..., alias="employee_id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
 
         employee_data = (
             db.query(Models.User)
@@ -533,7 +402,7 @@ async def handel_fetch_profile_info(
                     else {}
                 ),
                 "personal_contact_info": (
-                    filter_fields(employee_data.personal_contact_info[0])
+                    filter_fields(employee_data.personal_contact_info)
                     if employee_data.personal_contact_info
                     else {}
                 ),
@@ -562,78 +431,10 @@ async def edit_employee_profile(
     request: Request,
     db: db_dependencies,
     data: AddEditUserProfileModel,
-    token: str = Depends(verify_token),
     employee_id: str = Query(..., alias="employee-id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-            #
-            # *  Once The User Is Authenticated Then We Will Move Further
-            #
 
         employee = (
             db.query(Models.User)
@@ -704,18 +505,30 @@ async def edit_employee_profile(
 
         personal_contact_info_data = data.personal_contact_info.dict(exclude={"emergency_contacts"})
 
+        contact_info_id = None
+
         if employee.personal_contact_info:
             db.query(Models.PersonalContactInfo).filter_by(user_id=employee.id).update(
                 personal_contact_info_data
             )
 
+            contact_info_id = employee.personal_contact_info.id
+            print("in the if")
+
         else:
-            db.add(Models.PersonalContactInfo(user_id=employee.id, **personal_contact_info_data))
+            new_personal_contact_info = Models.PersonalContactInfo(
+                user_id=employee.id, **personal_contact_info_data
+            )
+            db.add(new_personal_contact_info)
+            db.flush()
+            contact_info_id = new_personal_contact_info.id
+
+        print("contact_info_id", contact_info_id)
 
         existing_contacts = {
             str(c.id): c
             for c in db.query(Models.EmergencyContact)
-            .filter(Models.EmergencyContact.contact_id == employee.personal_contact_info[0].id)
+            .filter(Models.EmergencyContact.contact_id == contact_info_id)
             .all()
         }
 
@@ -744,7 +557,7 @@ async def edit_employee_profile(
                 [
                     {
                         **_contact.dict(exclude={"contact_id", "id"}),
-                        "contact_id": employee.personal_contact_info[0].id,
+                        "contact_id": contact_info_id,
                     }
                     for _contact in contacts_to_add
                 ],
@@ -905,82 +718,12 @@ async def edit_employee_profile(
 async def fetch_all_employee(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     page: int = Query(..., alias="page"),
     limit: int = Query(..., alias="limit"),
     filter: Optional[str] = Query(None),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
 
         filter_data = ""
         if filter:
@@ -1101,75 +844,10 @@ async def fetch_all_employee(
 async def Fetch_Employee(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     query: str = Query(..., description="name Of The Person"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        maintenance_mode = db.query(Models.MaintenanceMode).first()
-
-        if maintenance_mode and maintenance_mode.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                    "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-            )
-
         query_data = db.query(Models.User).filter(
             Models.User.organization_id == user.organization_id
         )

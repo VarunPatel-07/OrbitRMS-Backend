@@ -21,6 +21,8 @@ from SqlModels.HelperModel.ConfigModelUtils import (
     RoleAssociatedPermissionModule,
 )
 from SqlModels.HelperModel.OrganizationModelUtils import (
+    FeedComments,
+    FeedLikes,
     OrganizationAboutInfo,
     OrganizationAddress,
     OrganizationContactInfo,
@@ -43,7 +45,7 @@ from SqlModels.HelperModel.UserModelUtils import (
 class Admin(BaseModel):
     __tablename__ = "orbit_admin"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String(255), nullable=False, default=None)
     password = Column(String(255), nullable=False)
     admin_sessions = relationship("OrbitAdminSessions", back_populates="admin")
@@ -52,7 +54,7 @@ class Admin(BaseModel):
 class MaintenanceLog(BaseModel):
     __tablename__ = "maintenance_logs"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     started_at = Column(DateTime, nullable=True)
     ended_at = Column(DateTime, nullable=True)
     started_by = Column(String(255), nullable=False)
@@ -84,7 +86,7 @@ class MaintenanceLog(BaseModel):
 
 class MaintenanceMode(BaseModel):
     __tablename__ = "maintenance_mode"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     is_active = Column(Boolean, default=False)
     message = Column(Text, nullable=True, default=None)
 
@@ -102,7 +104,7 @@ class MaintenanceMode(BaseModel):
 class User(BaseModel):
     __tablename__ = "users"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     personal_info = relationship("PersonalInfo", back_populates="user", uselist=False)
 
@@ -118,7 +120,9 @@ class User(BaseModel):
         back_populates="reporting_manager",
     )
 
-    personal_contact_info = relationship("PersonalContactInfo", back_populates="user")
+    personal_contact_info = relationship(
+        "PersonalContactInfo", back_populates="user", uselist=False
+    )
     family_info = relationship("FamilyInfo", back_populates="user")
     same_as_current_address = Column(Boolean, nullable=False, default=True)
 
@@ -143,6 +147,9 @@ class User(BaseModel):
     organization = relationship("Organization", back_populates="employees")
     post = relationship("OrganizationUpdates", back_populates="publisher")
 
+    feed_likes = relationship("FeedLikes", back_populates="user")
+    feed_comments = relationship("FeedComments", back_populates="user")
+
     sessions = relationship("Sessions", back_populates="user")
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
@@ -157,7 +164,7 @@ class User(BaseModel):
 class Organization(BaseModel):
     __tablename__ = "organization"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     general_info = relationship(
         "OrganizationGeneralInfo", back_populates="organization", uselist=False
@@ -194,7 +201,7 @@ class Organization(BaseModel):
 
 class ConfigModule(BaseModel):
     __tablename__ = "config_module"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     project_status = relationship(
         "ProjectStatus", back_populates="config_module", cascade="all, delete"
     )
@@ -234,7 +241,7 @@ class ConfigModule(BaseModel):
 class ClientInquires(BaseModel):
     __tablename__ = "client_inquires"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     api_key = Column(String(255), nullable=False)
     api_secrete = Column(String(255), nullable=False)
@@ -266,7 +273,7 @@ class ClientInquiresData(BaseModel):
 
     form_name = Column(String(255), nullable=False, unique=False, default=None)
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     data = Column(JSON, nullable=True, default=None)
 
@@ -282,16 +289,23 @@ class ClientInquiresData(BaseModel):
 class OrganizationUpdates(BaseModel):
     __tablename__ = "organization_updates"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     images = Column(Text, nullable=True, default=None)
     description = Column(Text, nullable=True, default=None)
-    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)
 
     isCommentDisabled = Column(Boolean, default=False, nullable=True)
 
     isLikeDisabled = Column(Boolean, default=False, nullable=True)
 
+    likes = relationship("FeedLikes", back_populates="organization_updates", cascade="all, delete")
+
+    comments = relationship(
+        "FeedComments", back_populates="organization_updates", cascade="all, delete"
+    )
+
+    # comments = relationship("FeedComments", back_populates="organization_updates", cascade="all, delete")
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)
     publisher = relationship("User", back_populates="post", uselist=False)
 
     organization_id = Column(
