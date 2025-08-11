@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
@@ -10,7 +10,7 @@ from SqlModels.Models import BaseModel
 class OrganizationGeneralInfo(BaseModel):
     __tablename__ = "organization_general_info"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     organization_name = Column(String(255), nullable=False, default=None)
     primary_email = Column(String(255), nullable=False, default=None)
@@ -35,7 +35,7 @@ class OrganizationGeneralInfo(BaseModel):
 
 class OrganizationAddress(BaseModel):
     __tablename__ = "organization_address"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     address = Column(String(255), nullable=True, default=None)
     city = Column(String(255), nullable=True, default=None)
@@ -53,7 +53,7 @@ class OrganizationAddress(BaseModel):
 
 class OrganizationContactInfo(BaseModel):
     __tablename__ = "organization_contact_info"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     phone_number = Column(String(255), nullable=True, default=None)
     company_email = Column(String(255), nullable=True, default=None)
@@ -69,7 +69,7 @@ class OrganizationContactInfo(BaseModel):
 
 class OrganizationAboutInfo(BaseModel):
     __tablename__ = "organization_about_info"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     about = Column(String(255), nullable=True, default=None)
     established_science = Column(DateTime, nullable=True)
@@ -86,7 +86,7 @@ class OrganizationAboutInfo(BaseModel):
 class OrganizationSettings(BaseModel):
     __tablename__ = "organization_settings"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     email_domain_slug = Column(String(255), nullable=True, default=None)
     employee_code_prefix = Column(String(255), nullable=True, default=None)
@@ -100,3 +100,42 @@ class OrganizationSettings(BaseModel):
         nullable=False,
     )
     organization = relationship("Organization", back_populates="organization_settings")
+
+
+class FeedLikes(BaseModel):
+    __tablename__ = "feed_likes"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)
+    user = relationship("User", back_populates="feed_likes", uselist=False)
+
+    organization_update_id = Column(
+        CHAR(36),
+        ForeignKey("organization_updates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization_updates = relationship("OrganizationUpdates", back_populates="likes")
+
+
+class FeedComments(BaseModel):
+
+    __tablename__ = "feed_comments"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    is_replay = Column(Boolean, nullable=False, default=False)
+
+    comment = Column(Text, nullable=True, default=None)
+
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)
+    user = relationship("User", back_populates="feed_comments", uselist=False)
+
+    organization_update_id = Column(
+        CHAR(36),
+        ForeignKey("organization_updates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization_updates = relationship("OrganizationUpdates", back_populates="comments")

@@ -12,7 +12,7 @@ from SqlModels.Models import BaseModel
 class OrbitAdminSessions(BaseModel):
     __tablename__ = "orbit_admin_session"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     ip_address = Column(String(255), nullable=True, default=None)
     browser = Column(String(255), nullable=True, default=None)
     browser_version = Column(String(255), nullable=True, default=None)

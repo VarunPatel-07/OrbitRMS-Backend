@@ -12,7 +12,7 @@ from SqlModels.Models import BaseModel
 # main
 class PersonalInfo(BaseModel):
     __tablename__ = "personal_info"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo: add the new field about
 
@@ -37,7 +37,7 @@ class PersonalInfo(BaseModel):
 class EmployeeInfo(BaseModel):
     __tablename__ = "employee_info"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo: change the reporting to from storing the json to storing the reference to the reporting to manager id
 
@@ -69,7 +69,7 @@ class EmployeeInfo(BaseModel):
 
 class EmergencyContact(BaseModel):
     __tablename__ = "emergency_contacts"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     emergency_contact_name = Column(String(255), nullable=False, default=None)
     emergency_contact_number = Column(String(255), nullable=False, default=None)
@@ -82,7 +82,7 @@ class EmergencyContact(BaseModel):
 class PersonalContactInfo(BaseModel):
     __tablename__ = "personal_contact_info"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo Change the field name form alternative_contact to emergency_contact As a Json and It contain two field emergency_contact_number and emergency_contact_name
 
@@ -104,7 +104,7 @@ class PersonalContactInfo(BaseModel):
 class Children(BaseModel):
     __tablename__ = "children"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     child_name = Column(String(255), nullable=True, default=None)
     child_date_of_birth = Column(DateTime, nullable=True, default=None)
 
@@ -114,7 +114,7 @@ class Children(BaseModel):
 
 class FamilyInfo(BaseModel):
     __tablename__ = "family_info"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo we will also add the children info like name and dob as a array of the children
 
@@ -134,7 +134,7 @@ class FamilyInfo(BaseModel):
 class Address(BaseModel):
     __tablename__ = "address"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     address = Column(String(255), nullable=False, default=None)
     country = Column(String(255), nullable=False, default=None)
@@ -146,7 +146,7 @@ class Address(BaseModel):
 
 class SocialLinks(BaseModel):
     __tablename__ = "social_link"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     icon = Column(Text, nullable=True, default=None)
     name = Column(String(255), nullable=True, default=None)
@@ -163,7 +163,7 @@ class SocialLinks(BaseModel):
 class Sessions(BaseModel):
     __tablename__ = "session"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     ip_address = Column(String(255), nullable=True, default=None)
     browser = Column(String(255), nullable=True, default=None)
     browser_version = Column(String(255), nullable=True, default=None)

@@ -1,3 +1,5 @@
+import asyncio
+import json
 import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -6,9 +8,10 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.orm import Session
 
 from Database.CacheDatabase import cache_database
-from Database.Database import DATABASE_ENGINE, database
+from Database.Database import DATABASE_ENGINE, SessionLocal, database
 from Helper.helper import get_client_ip
 from RateLimiting import custom_rate_limit_handler, limiter
 from routes.Admin.Auth.authentication import adminAuthRoute
@@ -27,6 +30,8 @@ from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.FeedController import feedControl
 from routes.Organizations.organizations import orgRouter
 from routes.OrganizationSettings.OrganizationSettings import orgSettings
+from Schedulers.BulkCommentFeeder import BulkCommentFeeder
+from Schedulers.BulkLikeFeeder import BulkLikeFeeder
 from Schedulers.MaintenanceModeScheduler import ping_maintenance_mode_scheduler
 from SqlModels.Models import BaseModel
 
@@ -84,6 +89,25 @@ async def initializing_scheduler_event():
     scheduler.add_job(ping_maintenance_mode_scheduler, "interval", minutes=1)
     scheduler.start()
     print("[Scheduler Started] Maintenance Mode Check is active.")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    On app startup, launch the background worker task
+    """
+    asyncio.create_task(worker_task())
+
+
+async def worker_task():
+    """
+    Background task to process likes from Redis queue
+    """
+    db: Session = SessionLocal()
+
+    while True:
+        await BulkLikeFeeder(db)
+        await BulkCommentFeeder(db)
 
 
 @app.on_event("shutdown")
