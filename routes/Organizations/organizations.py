@@ -136,7 +136,7 @@ async def verify_organization(
             background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(department_data_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(project_status_initial_data_seeder, db, decrypted_org_id)
-            # background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
 
             return {
                 "message": "Organization Is Verified Successfully",
@@ -153,6 +153,7 @@ async def verify_organization(
             )
 
             encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
+
             # todo need to add email
             return {
                 "message": "Organization already Verified",

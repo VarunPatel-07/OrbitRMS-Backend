@@ -1,5 +1,5 @@
 import logging
-import os
+from Config.EnvConfig import EnvConfig
 from typing import Annotated
 
 from databases import Database
@@ -11,9 +11,8 @@ from sqlalchemy.orm import Session, sessionmaker
 load_dotenv(override=True)
 
 
-DATABASE_URL = os.getenv("DATABASE_CONNECTION_STRING")
 DATABASE_ENGINE = create_engine(
-    DATABASE_URL,
+    EnvConfig.DATABASE_CONNECTION_STRING,
     pool_size=10,
     max_overflow=5,
     pool_pre_ping=True,
@@ -22,7 +21,7 @@ SessionLocal = sessionmaker(bind=DATABASE_ENGINE, autoflush=False, autocommit=Fa
 
 
 # Async database connection for databases library
-database = Database(DATABASE_URL)
+database = Database(EnvConfig.DATABASE_CONNECTION_STRING)
 
 
 def get_db():

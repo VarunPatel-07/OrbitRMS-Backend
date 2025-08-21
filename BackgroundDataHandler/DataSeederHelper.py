@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import func, and_
 
 from PydanticModels.ConfigModule.ConfigModule import (
     ClientFormSchemaModel,
+    InquiryFormSchemaSchemaModel,
     Department,
     Designations,
     ProjectStatus,
@@ -233,7 +234,10 @@ def department_data_seeder_helper_function(db, organization_id: str, data: Depar
 
 
 def client_form_filed_data_seeder_helper_function(
-    db, organization_id: str, data: ClientFormSchemaModel
+    db,
+    organization_id: str,
+    form_schema_data: InquiryFormSchemaSchemaModel,
+    form_fields_arr: List[ClientFormSchemaModel],
 ):
     config_module = (
         db.query(Models.ConfigModule)
@@ -248,8 +252,15 @@ def client_form_filed_data_seeder_helper_function(
         )
 
     existing_field = (
-        db.query(Models.ClientFormSchema)
-        .filter(func.lower(Models.ClientFormSchema.field_name) == func.lower(data.field_name))
+        db.query(Models.InquiryFormSchema)
+        .filter(
+            and_(
+                func.lower(Models.InquiryFormSchema.form_id)
+                == func.lower(form_schema_data.form_id),
+                func.lower(Models.InquiryFormSchema.form_name)
+                == func.lower(form_schema_data.form_name),
+            )
+        )
         .first()
     )
 
@@ -262,19 +273,34 @@ def client_form_filed_data_seeder_helper_function(
             },
         )
 
-    form_field = Models.ClientFormSchema(
-        field_name=data.field_name,
-        is_required_field=data.is_required_field,
-        type=data.type,
+    inquiry_form = Models.InquiryFormSchema(
+        form_id=form_schema_data.form_id,
+        form_name=form_schema_data.form_name,
+        status=form_schema_data.status,
+        description=form_schema_data.description,
         source_type="default",
         config_module_id=config_module.id,
         created_by=None,
         updated_by=None,
     )
 
-    db.add(form_field)
+    db.add(inquiry_form)
+    db.flush()
+
+    for form_field in form_fields_arr:
+        db.add(
+            Models.InquiryFormFields(
+                field_name=form_field.field_name,
+                is_required_field=form_field.is_required_field,
+                type=form_field.type,
+                source_type="user_created",
+                inquiry_form_schema_id=inquiry_form.id,
+                created_by=None,
+                updated_by=None,
+            )
+        )
+
     db.commit()
-    db.refresh(form_field)
 
 
 def ClientInquiryInitiator(db, organization_id: str, api_key: str, api_secret: str):

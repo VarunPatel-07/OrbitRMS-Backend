@@ -40,6 +40,7 @@ from SqlModels.HelperModel.UserModelUtils import (
     Sessions,
     SocialLinks,
 )
+from SqlModels.HelperModel.SocialMediaModule import SocialMediaAccount, SocialMediaPosts
 
 
 class Admin(BaseModel):
@@ -187,6 +188,19 @@ class Organization(BaseModel):
 
     org_updates = relationship(
         "OrganizationUpdates", back_populates="organization", cascade="all, delete-orphan"
+    )
+
+    social_media_accounts = relationship(
+        "SocialMediaAccount",
+        back_populates="organization",
+        uselist=True,
+        cascade="all, delete-orphan",
+    )
+    social_media_posts = relationship(
+        "SocialMediaPosts",
+        back_populates="organization",
+        uselist=True,
+        cascade="all, delete-orphan",
     )
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
