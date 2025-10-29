@@ -6,7 +6,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import and_, asc, desc, func
+from sqlalchemy import and_, or_, asc, desc, func
 from sqlalchemy.orm import joinedload
 
 from Database.CacheDatabase import cache_database
@@ -1333,7 +1333,7 @@ async def Add_Edit_Roles_Permissions(
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:
-        db.rollback()  # ✅ Ensure rollback in case of error
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -1510,7 +1510,7 @@ async def Add_Edit_Inquiry_Form_Schema(
         )
 
         query = db.query(Models.InquiryFormSchema).filter(
-            and_(
+            or_(
                 func.lower(Models.InquiryFormSchema.form_id) == func.lower(data.form_id),
                 func.lower(Models.InquiryFormSchema.form_name) == func.lower(data.form_name),
             )
@@ -1521,11 +1521,13 @@ async def Add_Edit_Inquiry_Form_Schema(
                 Models.InquiryFormSchema.id != id,
             )
 
-        if query.first():
+        existing_form = query.first()
+
+        if existing_form:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Form With This Name Or FormId Is Already Exist",
+                    "message": "Form Schema Already Exist",
                     "success": False,
                 },
             )
@@ -1553,6 +1555,8 @@ async def Add_Edit_Inquiry_Form_Schema(
                 form_name=data.form_name,
                 status=data.status,
                 description=data.description,
+                authorized_recipient_emails=json.dumps(data.authorized_recipient_emails),
+                email_notification=data.email_notification,
                 source_type="user_created",
                 config_module_id=config_module.id,
                 created_by=json.dumps(created_updated_by_user),
@@ -1589,6 +1593,9 @@ async def Add_Edit_Inquiry_Form_Schema(
             inquiry_form.status = data.status
             inquiry_form.description = data.description
             inquiry_form.updated_by = json.dumps(created_updated_by_user)
+            inquiry_form.authorized_recipient_emails = json.dumps(data.authorized_recipient_emails)
+
+            inquiry_form.email_notification = data.email_notification
 
             db.commit()
 
@@ -1601,6 +1608,56 @@ async def Add_Edit_Inquiry_Form_Schema(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Add , Edit Field Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.put(
+    path="/inquiry_form_schema/toggle/email-notification", status_code=status.HTTP_200_OK
+)
+@limiter.limit(API_RATE_LIMITING)
+async def delete_designation(
+    request: Request,
+    db: db_dependencies,
+    id: str = Query(..., description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+
+        cache_data_key = f"organization_inquiry_form_schema_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        inquiry_form = (
+            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
+        )
+
+        if not inquiry_form:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Form Not Found", "success": False},
+            )
+
+        inquiry_form.email_notification = True if not inquiry_form.email_notification else False
+
+        db.commit()
+
+        status = "enabled" if inquiry_form.email_notification else "disabled"
+
+        return {"success": True, "message": f"Email notifications have been {status} successfully."}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Delete Status Right Now",
                 "success": False,
                 "error": str(e),
             },

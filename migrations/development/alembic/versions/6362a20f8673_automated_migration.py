@@ -1,19 +1,19 @@
 """automated-migration
 
-Revision ID: 2accbfadd751
-Revises: eeb7a4a4986e
-Create Date: 2025-08-16 11:38:00.074559
+Revision ID: 6362a20f8673
+Revises: b9e455ca4c15
+Create Date: 2025-09-20 15:40:50.371209
 
 """
-
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
-revision: str = "2accbfadd751"
-down_revision: Union[str, None] = "eeb7a4a4986e"
+revision: str = '6362a20f8673'
+down_revision: Union[str, None] = 'b9e455ca4c15'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

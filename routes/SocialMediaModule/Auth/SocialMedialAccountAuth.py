@@ -1,17 +1,22 @@
-from fastapi import APIRouter, Request, Query, status, HTTPException
-from ..SocialMediaModuleHelper.UserValidatorFunction import UserValidatorFunction
+import base64
+import json
+import logging
+from datetime import datetime, timedelta
+from urllib.parse import quote, unquote
+
+from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import and_, asc, desc, func
 from sqlalchemy.orm import joinedload
+
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from RateLimiting import limiter
-from Config.EnvConfig import EnvConfig
-from ..Services.FacebookService import FacebookService
-from fastapi.responses import RedirectResponse
-from urllib.parse import quote, unquote
-from datetime import datetime, timedelta
 from SqlModels import Models
-import logging
-import json
+
+from ..Services.FacebookService import FacebookService
+from ..Services.TwitterService import TwitterService
+from ..SocialMediaModuleHelper.UserValidatorFunction import UserValidatorFunction
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -25,6 +30,12 @@ facebook_service = FacebookService(
     app_id=EnvConfig.META_APP_ID,
     app_secret=EnvConfig.META_APP_SECRET,
     redirect_uri=f"{EnvConfig.BACKEND_BASE_URL}/social/media/accounts/authenticate/facebook/callback",
+)
+
+twitter_service = TwitterService(
+    consumer_key=EnvConfig.TWITTER_CONSUMER_KEY,
+    consumer_secret=EnvConfig.TWITTER_CONSUMER_SECRETE,
+    callback_uri=f"{EnvConfig.BACKEND_BASE_URL}/social/media/accounts/authenticate/twitter/callback",
 )
 
 
@@ -231,4 +242,148 @@ async def facebook_callback(
                 "message": "An unexpected error occurred during Facebook authentication",
                 "error": str(e),
             },
+        )
+
+
+@SocialAccountAuth.get("/login/twitter", status_code=status.HTTP_200_OK)
+@limiter.limit(EnvConfig.API_RATE_LIMITING)
+async def Login_With_The_Twitter(
+    request: Request,
+    db: db_dependencies,
+    org_id: str = Query(..., alias="org-id"),
+    token: str = Query(..., alias="token"),
+):
+
+    user = UserValidatorFunction(request=request, db=db, token=token)
+
+    organization = db.query(Models.Organization).filter(Models.Organization.id == org_id).first()
+
+    if not organization:
+        return RedirectResponse(url=f"{EnvConfig.FRONTEND_URL}/auth/sign-in")
+
+    state_data = {"org_id": org_id, "user_id": user.id}
+    state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
+    auth_url = twitter_service.get_auth_url(state)
+
+    return RedirectResponse(url=auth_url)
+
+
+@SocialAccountAuth.get("/twitter/callback", status_code=status.HTTP_200_OK)
+@limiter.limit(EnvConfig.API_RATE_LIMITING)
+async def twitter_callback_handler(
+    request: Request,
+    db: db_dependencies,
+    code: str = Query(...),
+    state: str = Query(...),
+    error: str = Query(None),
+    error_reason: str = Query(None),
+    error_description: str = Query(None),
+):
+    try:
+        # Parse state (org_id + token)
+        try:
+            state_data = json.loads(base64.urlsafe_b64decode(state.encode()).decode())
+            org_id = state_data["org_id"]
+            user_id = state_data["user_id"]
+        except (json.JSONDecodeError, KeyError):
+            raise HTTPException(status_code=400, detail="Invalid state parameter")
+
+        user = db.query(Models.User).filter(Models.User.id == user_id).first()
+
+        if not user or not user.account_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": (
+                        "Account is deactivated. Access denied."
+                        if user.account_status
+                        else "User Not Found"
+                    ),
+                    "success": False,
+                },
+            )
+
+        if not user.organization.status:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Organization is deactivated. Access denied.",
+                    "success": False,
+                },
+            )
+
+        organization = (
+            db.query(Models.Organization)
+            .options(joinedload(Models.Organization.general_info))
+            .filter(Models.Organization.id == org_id)
+            .first()
+        )
+
+        if not organization:
+            return RedirectResponse(url=f"{EnvConfig.FRONTEND_URL}/auth/sign-in")
+
+        if error:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Twitter authentication failed: {error_description}",
+            )
+
+        # Exchange code for token
+        full_url = str(request.url)  # includes ?code=...&state=...
+        token_data = twitter_service.fetch_token(full_url)
+
+        access_token = token_data.get("access_token")
+        refresh_token = token_data.get("refresh_token")
+        expires_in = token_data.get("expires_in")
+
+        if not access_token:
+            raise HTTPException(status_code=400, detail="No access token received from Twitter")
+
+        expires_at = datetime.now() + timedelta(seconds=expires_in) if expires_in else None
+
+        # Save to DB (for now, just as Twitter account)
+        existing_account = (
+            db.query(Models.SocialMediaAccount)
+            .filter(
+                and_(
+                    Models.SocialMediaAccount.organization_id == org_id,
+                    Models.SocialMediaAccount.platform == "twitter",
+                )
+            )
+            .first()
+        )
+
+        if existing_account:
+            existing_account.access_token = access_token
+            existing_account.expires_at = expires_at
+            existing_account.extra_data = {"refresh_token": refresh_token}
+            existing_account.refresh_token = refresh_token
+        else:
+            db.add(
+                Models.SocialMediaAccount(
+                    account_name="twitter",  # could later fetch actual username via
+                    access_token=access_token,
+                    platform="twitter",
+                    expires_at=expires_at,
+                    extra_data={"refresh_token": refresh_token},
+                    organization_id=org_id,
+                    refresh_token=refresh_token,
+                )
+            )
+
+        db.commit()
+
+        frontend_url = (
+            f"{EnvConfig.FRONTEND_URL}/{organization.general_info.portal_slug}/social-media/"
+        )
+        clean_url = frontend_url.split("#")[0]
+        return RedirectResponse(url=clean_url)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in Twitter callback: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={"message": "Unexpected error during Twitter authentication", "error": str(e)},
         )

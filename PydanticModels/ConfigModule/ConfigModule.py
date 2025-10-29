@@ -29,6 +29,8 @@ class InquiryFormSchemaSchemaModel(BaseModel):
     form_name: str
     description: str
     status: bool
+    authorized_recipient_emails: List[str]
+    email_notification: bool
 
 
 class PermissionModule(BaseModel):

@@ -1,14 +1,12 @@
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
-
-from Database.Database import db_dependencies
-from Helper.helper import model_to_filtered_dict
-from SqlModels import Models
-from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import ExpiredSignatureError, InvalidTokenError
 
+from Database.Database import db_dependencies
+from Helper.helper import model_to_filtered_dict
 from Helper.jwtHelper import verify_jwt_token
+from SqlModels import Models
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/app/v1/auth/login")
 

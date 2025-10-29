@@ -1,5 +1,4 @@
 import logging
-from Config.EnvConfig import EnvConfig
 from typing import Annotated
 
 from databases import Database
@@ -7,6 +6,8 @@ from dotenv import load_dotenv
 from fastapi.params import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+
+from Config.EnvConfig import EnvConfig
 
 load_dotenv(override=True)
 

@@ -52,8 +52,8 @@ async def AddEditFeedPostController(
     description: str = File(...),
     isCommentDisabled: bool = File(...),
     isLikeDisabled: bool = File(...),
-    new_images: List[UploadFile] = File(default=[]),
-    existing_images: List[str] = Form(default=[]),
+    videos: List[str] = Form(default=[]),
+    images: List[str] = Form(default=[]),
     id: Optional[str] = Query(None, description="ID for edit operation"),
     user: dict = Depends(UserAuthenticatorMiddleware),
 ):
@@ -67,15 +67,8 @@ async def AddEditFeedPostController(
 
         if type == "add":
 
-            uploaded_file_url = []
-
-            for img in new_images:
-                file_bytes = await img.read()
-                result = cloudinary.uploader.upload(file_bytes, resource_type="image")
-                uploaded_file_url.append(result["secure_url"])
-
             post_data = Models.OrganizationUpdates(
-                images=json.dumps(uploaded_file_url),
+                images=json.dumps(images),
                 description=description,
                 user_id=user.id,
                 isCommentDisabled=isCommentDisabled,
@@ -127,16 +120,7 @@ async def AddEditFeedPostController(
                     },
                 )
 
-            uploaded_file_url = []
-
-            for img in new_images:
-                file_bytes = await img.read()
-                result = cloudinary.uploader.upload(file_bytes, resource_type="image")
-                uploaded_file_url.append(result["secure_url"])
-
-            final_images = existing_images + uploaded_file_url
-
-            existing_post.images = json.dumps(final_images)
+            existing_post.images = json.dumps(images)
             existing_post.description = description
             existing_post.isCommentDisabled = isCommentDisabled
             existing_post.isLikeDisabled = isLikeDisabled

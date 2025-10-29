@@ -1,6 +1,7 @@
-from pydantic import BaseModel
 from typing import List, Optional
-from fastapi import UploadFile, File
+
+from fastapi import File, UploadFile
+from pydantic import BaseModel
 
 
 class SocialMediaPostBackgroundTaskData(BaseModel):

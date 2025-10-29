@@ -29,6 +29,7 @@ from SqlModels.HelperModel.OrganizationModelUtils import (
     OrganizationGeneralInfo,
     OrganizationSettings,
 )
+from SqlModels.HelperModel.SocialMediaModule import SocialMediaAccount, SocialMediaPosts
 from SqlModels.HelperModel.UserModelUtils import (
     Address,
     Children,
@@ -40,7 +41,6 @@ from SqlModels.HelperModel.UserModelUtils import (
     Sessions,
     SocialLinks,
 )
-from SqlModels.HelperModel.SocialMediaModule import SocialMediaAccount, SocialMediaPosts
 
 
 class Admin(BaseModel):
@@ -262,9 +262,7 @@ class ClientInquires(BaseModel):
 
     status = Column(Boolean, nullable=False, default=False)
 
-    email_notification = Column(Boolean, nullable=True, default=True)
 
-    authorized_recipient_emails = Column(Text, nullable=True, default=None)
 
     client_inquires_data = relationship(
         "ClientInquiresData", back_populates="client_inquire", cascade="all, delete-orphan"

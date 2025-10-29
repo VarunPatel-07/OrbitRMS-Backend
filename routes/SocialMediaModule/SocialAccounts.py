@@ -1,34 +1,38 @@
-from fastapi import (
-    APIRouter,
-    Request,
-    status,
-    HTTPException,
-    Depends,
-    UploadFile,
-    File,
-    Form,
-    BackgroundTasks,
-    Query,
-)
-from sqlalchemy.inspection import inspect
-from sqlalchemy import asc, desc, and_
+import json
+import logging
 from typing import List, Optional
 
-from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
-from BackgroundTasks.SocialMediaModule.SocialMediaModuleBackground import (
-    HandelPostingToSocialMediaAccount,
-    HandelDeletingPostFromSocialMediaAccount,
-)
-from PydanticModels.SocialMediaModule.SocialMediaModule import SocialMediaPostBackgroundTaskData
-from Database.Database import db_dependencies
-from RateLimiting import limiter
-from Config.EnvConfig import EnvConfig
-from Helper.helper import model_to_filtered_dict
-from SqlModels import Models
-import logging
-import json
 import cloudinary
 import cloudinary.uploader
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
+from sqlalchemy import and_, asc, desc
+from sqlalchemy.inspection import inspect
+
+from BackgroundTasks.SocialMediaModule.SocialMediaModuleBackground import (
+    HandelDeletingPostFromSocialMediaAccount,
+    HandelPostingToSocialMediaAccount,
+)
+from Config.EnvConfig import EnvConfig
+from Database.Database import db_dependencies
+from Helper.helper import model_to_filtered_dict
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
+from PydanticModels.SocialMediaModule.SocialMediaModule import (
+    SocialMediaPostBackgroundTaskData,
+)
+from RateLimiting import limiter
+from SqlModels import Models
+
 from .Services.FacebookService import FacebookService
 
 # Set up logging
@@ -85,9 +89,9 @@ async def Post_Content_To_Social_Media(
     request: Request,
     background_task: BackgroundTasks,
     db: db_dependencies,
-    new_images: List[UploadFile] = File(...),
+    videos: List[str] = Form(default=[]),
+    images: List[str] = Form(default=[]),
     caption: str = Form(...),
-    existing_images: List[str] = Form(default=[]),
     platforms: List[str] = Form(default=[]),
     type: str = Form(...),
     scheduled_on: Optional[str] = Form(None),
@@ -95,18 +99,8 @@ async def Post_Content_To_Social_Media(
 ):
     try:
 
-        uploaded_file_url = []
-
-        for image in new_images:
-
-            file_bytes = await image.read()
-
-            result = cloudinary.uploader.upload(file_bytes, resource_type="image")
-
-            uploaded_file_url.append(result["secure_url"])
-
         post_data = Models.SocialMediaPosts(
-            media_urls=json.dumps(uploaded_file_url),
+            media_urls=json.dumps(images),
             caption=caption,
             type="default",
             status="queued",
@@ -122,7 +116,7 @@ async def Post_Content_To_Social_Media(
         db.commit()
 
         background_task_data = SocialMediaPostBackgroundTaskData(
-            caption=caption, uploaded_file_url=uploaded_file_url
+            caption=caption, uploaded_file_url=images
         )
 
         background_task.add_task(

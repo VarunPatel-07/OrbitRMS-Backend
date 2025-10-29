@@ -1,10 +1,11 @@
 import uuid
-
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Enum
-from sqlalchemy.dialects.mysql import CHAR, JSON
-from sqlalchemy.orm import relationship
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy.dialects.mysql import CHAR, JSON
+from sqlalchemy.orm import relationship
+
 from SqlModels.Models import BaseModel
 
 
@@ -43,6 +44,7 @@ class SocialMediaPosts(BaseModel):
     status = Column(
         Enum("queued", "scheduled", "posted", "cancelled", name="post_status_enum"), nullable=False
     )
+    post_logs = Column(Text, nullable=True, default=None)
 
     selected_platforms = Column(Text, nullable=True)
 

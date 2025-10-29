@@ -11,13 +11,6 @@ from BackgroundDataHandler.DataSeederHelper import (
     roles_permission_data_seeder_helper,
 )
 from PydanticModels.ConfigModule.ConfigModule import (
-    ClientFormSchemaModel,
-    Department,
-    Designations,
-    ProjectStatus,
-    RolesPermission,
-)
-from PydanticModels.ConfigModule.ConfigModule import (
     AddRolesPermission,
     ClientFormSchemaModel,
     Department,
@@ -25,6 +18,7 @@ from PydanticModels.ConfigModule.ConfigModule import (
     InquiryFormSchemaSchemaModel,
     ProjectStatus,
     RoleAssociatedPermissionModule,
+    RolesPermission,
 )
 
 
@@ -343,3 +337,6 @@ def client_form_field_initial_data_seeder(db, organization_id: str):
                 "error": str(e),
             },
         )
+
+
+

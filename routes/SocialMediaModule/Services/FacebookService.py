@@ -1,10 +1,11 @@
-import requests
-from datetime import datetime
-from typing import Optional, List, Dict
-import facebook
-import logging
 import json
+import logging
 import time
+from datetime import datetime
+from typing import Dict, List, Optional
+
+import facebook
+import requests
 
 logger = logging.getLogger(__name__)
 

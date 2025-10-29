@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -139,3 +140,6 @@ class EnvConfig:
     META_APP_SECRET = os.getenv("META_APP_SECRET")
     META_API_VERSION = os.getenv("META_API_VERSION")
     META_GRAPH_BASE_URL = os.getenv("META_GRAPH_BASE_URL")
+
+    TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
+    TWITTER_CONSUMER_SECRETE = os.getenv("TWITTER_CONSUMER_SECRETE")

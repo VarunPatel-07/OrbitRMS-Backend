@@ -1,18 +1,21 @@
-from typing import Optional, List
-
+from typing import List, Optional
+import os
 from fastapi import HTTPException, status
-from sqlalchemy import func, and_
-
+from sqlalchemy import and_, func
+from Helper.jwtHelper import hash_passwords
 from PydanticModels.ConfigModule.ConfigModule import (
     ClientFormSchemaModel,
-    InquiryFormSchemaSchemaModel,
     Department,
     Designations,
+    InquiryFormSchemaSchemaModel,
     ProjectStatus,
     RoleAssociatedPermissionModule,
     RolesPermission,
 )
 from SqlModels import Models
+
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 
 # This is The Recursive Function That Helps to Add The Data Recursively In To The DataBase
@@ -311,3 +314,26 @@ def ClientInquiryInitiator(db, organization_id: str, api_key: str, api_secret: s
     db.add(create_client_inquires)
     db.commit()
     db.refresh(create_client_inquires)
+
+
+def initializing_OrbitAdmin_On_App_start(db):
+    admin = db.query(Models.Admin).filter(Models.Admin.email == ADMIN_EMAIL).first()
+    if not admin:
+
+        hash_password = hash_passwords(ADMIN_PASSWORD)
+
+        admin = Models.Admin(email=ADMIN_EMAIL, password=hash_password)
+
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if not maintenance_mode:
+            maintenance_mode = Models.MaintenanceMode(
+                is_active=False, updated_by="System Init", message="Initialized Maintenance Mode"
+            )
+            db.add(maintenance_mode)
+            db.commit()
+            db.refresh(maintenance_mode)

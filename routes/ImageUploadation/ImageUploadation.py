@@ -1,5 +1,5 @@
 import os
-
+from datetime import datetime
 import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
@@ -23,7 +23,7 @@ cloudinary.config(
 )
 
 
-imgRoute = APIRouter(prefix="/app/v1/uploadation", tags=["uploadation"])
+imgRoute = APIRouter(prefix="/app/v1/upload", tags=["upload"])
 
 
 @imgRoute.post("/single-upload", status_code=status.HTTP_200_OK)
@@ -47,6 +47,44 @@ async def ImageUploadation(
                 "url": result["secure_url"],
             },
         }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error Accrued While Uploading Image",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@imgRoute.post("/cloud/signature", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def GetCloudUploadSignature(
+    request: Request,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        time_stamp = round(datetime.now().timestamp())
+
+        params = {"timestamp": time_stamp}
+        CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+
+        signature = cloudinary.utils.api_sign_request(params, CLOUDINARY_API_SECRET)
+
+        return {
+            "message": "Signature Generated Successfully",
+            "success": True,
+            "data": {
+                "time_stamp": time_stamp,
+                "signature": signature,
+                "api_key": os.getenv("CLOUDINARY_API_KEY"),
+                "cloud_name": os.getenv("CLOUDINARY_CLOUD_NAME"),
+            },
+        }
+
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:
