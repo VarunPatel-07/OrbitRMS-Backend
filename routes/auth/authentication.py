@@ -630,6 +630,57 @@ async def fetch_sessions(
         )
 
 
+def build_permission_tree(associated_permissions):
+    """
+    Recursively build permission tree with nested sub-modules
+    """
+    permissions_data = []
+
+    for assoc_perm in associated_permissions:
+        if not assoc_perm.parent_module_id:  # Only root level modules
+            perm_dict = {
+                "module_label": assoc_perm.module_label,
+                "is_active": assoc_perm.is_active,
+                "permissions": [
+                    {
+                        "label": perm.label,
+                        "is_allowed": perm.is_allowed,
+                    }
+                    for perm in assoc_perm.permissions
+                ],
+                "sub_modules": build_sub_modules(assoc_perm.sub_modules),
+            }
+            permissions_data.append(perm_dict)
+
+    return permissions_data
+
+
+def build_sub_modules(sub_modules):
+    """
+    Recursively build sub-modules
+    """
+    sub_modules_data = []
+
+    for sub_module in sub_modules:
+        sub_dict = {
+            "module_label": sub_module.module_label,
+            "is_active": sub_module.is_active,
+            "permissions": [
+                {
+                    "label": perm.label,
+                    "is_allowed": perm.is_allowed,
+                }
+                for perm in sub_module.permissions
+            ],
+            "sub_modules": (
+                build_sub_modules(sub_module.sub_modules) if sub_module.sub_modules else []
+            ),
+        }
+        sub_modules_data.append(sub_dict)
+
+    return sub_modules_data
+
+
 #
 # ? The Api To Verify The Organization
 #
@@ -664,15 +715,19 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
             db.query(Models.User)
             .options(
                 joinedload(Models.User.personal_info),
-                joinedload(Models.User.employee_info),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.employee_role)
+                .joinedload(Models.ConfigRoleModule.associated_permissions)
+                .joinedload(Models.RoleAssociatedPermissionModule.permissions),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.employee_role)
+                .joinedload(Models.ConfigRoleModule.associated_permissions)
+                .joinedload(Models.RoleAssociatedPermissionModule.sub_modules)
+                .joinedload(Models.RoleAssociatedPermissionModule.permissions),
                 joinedload(Models.User.organization).joinedload(Models.Organization.general_info),
-                joinedload(Models.User.organization).joinedload(Models.Organization.address),
-                joinedload(Models.User.organization).joinedload(Models.Organization.contact_info),
-                joinedload(Models.User.organization).joinedload(Models.Organization.about_info),
                 joinedload(Models.User.organization).joinedload(
                     Models.Organization.organization_settings
                 ),
-                joinedload(Models.User.sessions),
             )
             .filter(Models.User.id == user_id)
             .first()
@@ -710,11 +765,7 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = user.organization
         if not organization or not organization.status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -731,6 +782,12 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
         organization = user.organization
 
         encrypted_org_id = urlsafe_data_encoding_function(organization.id)
+
+        permissions_data = []
+        if user.employee_info and user.employee_info.employee_role:
+            permissions_data = build_permission_tree(
+                user.employee_info.employee_role.associated_permissions
+            )
 
         return {
             "message": "user verified successfully",
@@ -749,19 +806,6 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                         if organization.general_info
                         else None
                     ),
-                    "address": (
-                        model_to_filtered_dict(organization.address[0])
-                        if organization.address
-                        else None
-                    ),
-                    "contact_info": (
-                        organization.contact_info if organization.contact_info else None
-                    ),
-                    "about_info": (
-                        model_to_filtered_dict(organization.about_info[0])
-                        if organization.about_info
-                        else None
-                    ),
                     "organization_settings": (
                         model_to_filtered_dict(organization.organization_settings[0])
                         if organization.organization_settings
@@ -771,6 +815,11 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                     "organization_created": organization.organization_created,
                     "created_at": organization.created_at,
                     "updated_at": organization.updated_at,
+                },
+                "roles_permissions": {
+                    "id": user.employee_info.employee_role.id,
+                    "role_name": user.employee_info.employee_role.role_name,
+                    "permissions": permissions_data,
                 },
             },
             "encrypted_org_id": encrypted_org_id if not organization.organization_created else None,

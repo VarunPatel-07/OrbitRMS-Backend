@@ -30,6 +30,7 @@ load_dotenv(override=True)
 
 
 API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+ROLES_MODULE_API_RATE_LIMITING = "50/minute"
 
 configRoute = APIRouter(prefix="/app/v1/config", tags=["config"])
 
@@ -853,7 +854,7 @@ def recursive_creation_helper(
 
 # ? ------------------------- The Api To Fetch All The Associated Role Of The Organization  -------------------
 @configRoute.get("/roles_permissions/fetch-all", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def fetch_all_role_of_organization(
     request: Request,
     db: db_dependencies,
@@ -938,32 +939,55 @@ async def fetch_all_role_of_organization(
 
 # * ------------------------- This The Comman Function To Build The Hierarchy For The Permission Module  -------------------
 def build_hierarchy(modules, parent_id=None):
+    filtered_modules = [m for m in modules if m.parent_module_id == parent_id]
+
     result = []
-    for module in modules:
+    for module in filtered_modules:
         if module.parent_module_id == parent_id:
             module_data = {
                 "id": module.id,
                 "module_label": module.module_label,
                 "module_title": module.module_title,
                 "is_active": module.is_active,
-                "permissions": [
-                    {
-                        "id": p.id,
-                        "label": p.label,
-                        "is_allowed": p.is_allowed,
-                        "show_input": p.show_input,
-                    }
-                    for p in module.permissions
-                ],
+                "permissions": sorted(
+                    [
+                        {
+                            "id": p.id,
+                            "label": p.label,
+                            "is_allowed": p.is_allowed,
+                            "show_input": p.show_input,
+                        }
+                        for p in module.permissions
+                    ],
+                    key=lambda x: x["label"].lower(),
+                ),
                 "sub_modules": build_hierarchy(modules, module.id),
             }
             result.append(module_data)
-    return result
+
+    module_with_subs = [module for module in result if module["sub_modules"]]
+    module_without_subs = [module for module in result if not module["sub_modules"]]
+
+    module_with_subs.sort(key=lambda x: x["module_title"].lower())
+    module_without_subs.sort(key=lambda x: x["module_title"].lower())
+
+    final_result = module_with_subs + module_without_subs
+
+    return final_result
+
+
+def deactivate_module(module):
+    module.is_active = False
+    for permission in module.permissions:
+        permission.is_allowed = False
+
+    for sub_module in module.sub_modules:
+        deactivate_module(sub_module)
 
 
 # * ------------------------- The Api To Fetch A Specific Role's Permission  -------------------
 @configRoute.get("/roles_permissions/fetch-role", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def fetch_roles_permission(
     request: Request,
     db: db_dependencies,
@@ -1056,13 +1080,14 @@ async def fetch_roles_permission(
 
 
 @configRoute.put("/roles_permissions/update", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def update(
     request: Request,
     db: db_dependencies,
     id: str = Query(..., description="Id Of The Module"),
     type: str = Query(..., description="type should be module or permission"),
     user: dict = Depends(UserAuthenticatorMiddleware),
+    role_module_id: str = Query(..., description="Id Of The Module"),
 ):
     try:
 
@@ -1075,8 +1100,14 @@ async def update(
                 },
             )
 
-        if type == "module":
+        cache_data_key = f"organization_roles_permissions_fetch_role_{role_module_id}"
 
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        if type == "module":
             role_permission_module = (
                 db.query(Models.RoleAssociatedPermissionModule)
                 .filter(Models.RoleAssociatedPermissionModule.id == id)
@@ -1092,7 +1123,6 @@ async def update(
                 )
                 .first()
             )
-
             if not role_permission_module:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -1102,25 +1132,14 @@ async def update(
                     },
                 )
 
-            cache_data_key = (
-                f"organization_roles_permissions_fetch_role_{role_permission_module.role_module_id}"
-            )
-
-            cached_data = await cache_database.get(cache_data_key)
-
-            if cached_data:
-                await cache_database.delete(cache_data_key)
-
             if role_permission_module.is_active:
                 role_permission_module.is_active = False
 
                 for permission in role_permission_module.permissions:
                     permission.is_allowed = False
 
-                for module in role_permission_module.sub_modules:
-                    module.is_active = False
-                    for permission in module.permissions:
-                        permission.is_allowed = False
+                for sub_module in role_permission_module.sub_modules:
+                    deactivate_module(sub_module)
 
             else:
                 role_permission_module.is_active = True
@@ -1784,7 +1803,10 @@ async def Client_Form_Schema(
         return {
             "success": True,
             "message": "Inquiry Form Fields Fetched Successfully",
-            "data": data,
+            "data": {
+                **model_to_filtered_dict(inquiry_form_schema, fields=["form_id", "form_name"]),
+                "form_fields": data,
+            },
         }
 
     except HTTPException as http_exception:

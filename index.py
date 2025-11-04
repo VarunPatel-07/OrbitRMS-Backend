@@ -21,6 +21,7 @@ from routes.Admin.MaintenanceModeManager.MaintenanceModeManager import Maintenan
 from routes.Admin.Organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.Admin.Organization.organization import adminOrgRoute
 from routes.ApiManager.ApiManager import ApiManager
+from routes.OrbitAi.OrbitAi import OrbitAiRoute
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -86,6 +87,7 @@ app.include_router(adminOrgEmpControl)
 app.include_router(MaintenanceMode)
 app.include_router(SocialAccount)
 app.include_router(SocialAccountAuth)
+app.include_router(OrbitAiRoute)
 
 scheduler = BackgroundScheduler()
 

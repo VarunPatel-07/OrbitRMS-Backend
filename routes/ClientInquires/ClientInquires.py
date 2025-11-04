@@ -262,8 +262,7 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Invalid Form Type",
-                    "extra_form_field": extra_form_field,
+                    "message": "FormId Not Found",
                     "success": False,
                 },
             )

@@ -95,7 +95,7 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
     db.add(config_role_module)
     db.flush()
 
-    for module in data.permission_module:
+    for module in data.permission_modules:
         permission_module = recursive_creation_helper(
             module, db, role_module_id=config_role_module.id
         )

@@ -2,8 +2,7 @@ import json
 import logging
 from typing import List, Optional
 
-import cloudinary
-import cloudinary.uploader
+
 from fastapi import (
     APIRouter,
     BackgroundTasks,

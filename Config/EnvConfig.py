@@ -120,6 +120,8 @@ class EnvConfig:
     # Admin panel password
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
     # OrbitRMS owner email
     ORBITRMS_OWNER_EMAIL = os.getenv("ORBITRMS_OWNER_EMAIL")
 

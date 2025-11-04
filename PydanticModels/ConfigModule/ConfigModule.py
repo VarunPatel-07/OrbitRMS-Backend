@@ -50,7 +50,7 @@ class RoleAssociatedPermissionModule(BaseModel):
 class RolesPermission(BaseModel):
     role_name: str
     description: str
-    permission_module: List[RoleAssociatedPermissionModule]
+    permission_modules: List[RoleAssociatedPermissionModule]
 
 
 class CloneRole(BaseModel):

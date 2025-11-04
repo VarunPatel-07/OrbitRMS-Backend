@@ -14,6 +14,7 @@ from fastapi import (
     Request,
     status,
 )
+from Database.CacheDatabase import cache_database
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql import func
@@ -502,6 +503,17 @@ async def edit_employee_profile(
                 "reporting_to_id": data.employee_info.reporting_to.id,
             }
         )
+
+        cache_data_key = [
+            f"organization_roles_permissions_{user.organization_id}",
+            f"organization_roles_permissions_fetch_role_{data.employee_info.employee_role.role_id}",
+        ]
+
+        for cache_key in cache_data_key:
+            cached_data = await cache_database.get(cache_key)
+
+            if cached_data:
+                await cache_database.delete(cache_key)
 
         personal_contact_info_data = data.personal_contact_info.dict(exclude={"emergency_contacts"})
 
