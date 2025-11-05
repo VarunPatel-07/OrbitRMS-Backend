@@ -3,12 +3,8 @@ import os
 from datetime import datetime, timedelta
 
 import jwt
-from dotenv import load_dotenv
 
-load_dotenv()
-
-JWT_SECRET = os.getenv("JWT_SECRET_KEY")
-ALGORITHM = os.getenv("JWT_ALGORITHM")
+from Config.EnvConfig import EnvConfig
 
 
 # Function To Convert Plain Text Password To Hash Passwords
@@ -35,7 +31,7 @@ def create_jwt_token(data: dict, expires_date: timedelta = None) -> str:
     if expires_date:
         expire_date = datetime.now() + expires_date
         encoded_data.update({"exp": expire_date})
-    return jwt.encode(encoded_data, JWT_SECRET, algorithm=ALGORITHM)
+    return jwt.encode(encoded_data, EnvConfig.JWT_SECRET_KEY, algorithm=EnvConfig.JWT_ALGORITHM)
 
 
 # Function To Encode The Incoming Jwt Token From The Request Header
@@ -43,7 +39,9 @@ def create_jwt_token(data: dict, expires_date: timedelta = None) -> str:
 
 def verify_jwt_token(jwt_token: str) -> dict:
     # try:
-    request_payload = jwt.decode(jwt_token, JWT_SECRET, algorithms=[ALGORITHM])
+    request_payload = jwt.decode(
+        jwt_token, EnvConfig.JWT_SECRET_KEY, algorithms=[EnvConfig.JWT_ALGORITHM]
+    )
     return request_payload
 
 

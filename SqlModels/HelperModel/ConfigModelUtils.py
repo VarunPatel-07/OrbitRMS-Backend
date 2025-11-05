@@ -209,6 +209,10 @@ class InquiryFormSchema(BaseModel):
         "InquiryFormFields", back_populates="inquiry_form_schema", cascade="all, delete"
     )
 
+    email_notification = Column(Boolean, nullable=True, default=False)
+
+    authorized_recipient_emails = Column(Text, nullable=True, default=None)
+
     created_by = Column(JSON, nullable=True)
     updated_by = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)

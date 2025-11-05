@@ -314,7 +314,7 @@ async def Fetch_Employee_Details(
                         else {}
                     ),
                     "personal_contact_info": (
-                        filter_fields(employee_data.personal_contact_info[0])
+                        filter_fields(employee_data.personal_contact_info)
                         if employee_data.personal_contact_info
                         else {}
                     ),

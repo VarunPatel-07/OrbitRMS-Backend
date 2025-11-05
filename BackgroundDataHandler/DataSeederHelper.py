@@ -1,17 +1,21 @@
-from typing import Optional
-
+from typing import List, Optional
+import os
 from fastapi import HTTPException, status
-from sqlalchemy import func
-
+from sqlalchemy import and_, func
+from Helper.jwtHelper import hash_passwords
 from PydanticModels.ConfigModule.ConfigModule import (
     ClientFormSchemaModel,
     Department,
     Designations,
+    InquiryFormSchemaSchemaModel,
     ProjectStatus,
     RoleAssociatedPermissionModule,
     RolesPermission,
 )
 from SqlModels import Models
+
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 
 # This is The Recursive Function That Helps to Add The Data Recursively In To The DataBase
@@ -91,7 +95,7 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
     db.add(config_role_module)
     db.flush()
 
-    for module in data.permission_module:
+    for module in data.permission_modules:
         permission_module = recursive_creation_helper(
             module, db, role_module_id=config_role_module.id
         )
@@ -233,7 +237,10 @@ def department_data_seeder_helper_function(db, organization_id: str, data: Depar
 
 
 def client_form_filed_data_seeder_helper_function(
-    db, organization_id: str, data: ClientFormSchemaModel
+    db,
+    organization_id: str,
+    form_schema_data: InquiryFormSchemaSchemaModel,
+    form_fields_arr: List[ClientFormSchemaModel],
 ):
     config_module = (
         db.query(Models.ConfigModule)
@@ -248,8 +255,15 @@ def client_form_filed_data_seeder_helper_function(
         )
 
     existing_field = (
-        db.query(Models.ClientFormSchema)
-        .filter(func.lower(Models.ClientFormSchema.field_name) == func.lower(data.field_name))
+        db.query(Models.InquiryFormSchema)
+        .filter(
+            and_(
+                func.lower(Models.InquiryFormSchema.form_id)
+                == func.lower(form_schema_data.form_id),
+                func.lower(Models.InquiryFormSchema.form_name)
+                == func.lower(form_schema_data.form_name),
+            )
+        )
         .first()
     )
 
@@ -262,19 +276,34 @@ def client_form_filed_data_seeder_helper_function(
             },
         )
 
-    form_field = Models.ClientFormSchema(
-        field_name=data.field_name,
-        is_required_field=data.is_required_field,
-        type=data.type,
+    inquiry_form = Models.InquiryFormSchema(
+        form_id=form_schema_data.form_id,
+        form_name=form_schema_data.form_name,
+        status=form_schema_data.status,
+        description=form_schema_data.description,
         source_type="default",
         config_module_id=config_module.id,
         created_by=None,
         updated_by=None,
     )
 
-    db.add(form_field)
+    db.add(inquiry_form)
+    db.flush()
+
+    for form_field in form_fields_arr:
+        db.add(
+            Models.InquiryFormFields(
+                field_name=form_field.field_name,
+                is_required_field=form_field.is_required_field,
+                type=form_field.type,
+                source_type="user_created",
+                inquiry_form_schema_id=inquiry_form.id,
+                created_by=None,
+                updated_by=None,
+            )
+        )
+
     db.commit()
-    db.refresh(form_field)
 
 
 def ClientInquiryInitiator(db, organization_id: str, api_key: str, api_secret: str):
@@ -285,3 +314,26 @@ def ClientInquiryInitiator(db, organization_id: str, api_key: str, api_secret: s
     db.add(create_client_inquires)
     db.commit()
     db.refresh(create_client_inquires)
+
+
+def initializing_OrbitAdmin_On_App_start(db):
+    admin = db.query(Models.Admin).filter(Models.Admin.email == ADMIN_EMAIL).first()
+    if not admin:
+
+        hash_password = hash_passwords(ADMIN_PASSWORD)
+
+        admin = Models.Admin(email=ADMIN_EMAIL, password=hash_password)
+
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if not maintenance_mode:
+            maintenance_mode = Models.MaintenanceMode(
+                is_active=False, updated_by="System Init", message="Initialized Maintenance Mode"
+            )
+            db.add(maintenance_mode)
+            db.commit()
+            db.refresh(maintenance_mode)

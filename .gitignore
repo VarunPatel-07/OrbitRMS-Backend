@@ -108,3 +108,6 @@ migrations/*/versions/*.py
 *.env.*.local
 .env.staging
 .env.production
+
+
+/test

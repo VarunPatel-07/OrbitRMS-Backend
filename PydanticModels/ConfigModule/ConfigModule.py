@@ -29,6 +29,8 @@ class InquiryFormSchemaSchemaModel(BaseModel):
     form_name: str
     description: str
     status: bool
+    authorized_recipient_emails: List[str]
+    email_notification: bool
 
 
 class PermissionModule(BaseModel):
@@ -48,7 +50,7 @@ class RoleAssociatedPermissionModule(BaseModel):
 class RolesPermission(BaseModel):
     role_name: str
     description: str
-    permission_module: List[RoleAssociatedPermissionModule]
+    permission_modules: List[RoleAssociatedPermissionModule]
 
 
 class CloneRole(BaseModel):

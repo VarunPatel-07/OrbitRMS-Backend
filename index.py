@@ -9,7 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
-
+from starlette.middleware.sessions import SessionMiddleware
+from BackgroundDataHandler.DataSeederHelper import initializing_OrbitAdmin_On_App_start
+from Config.EnvConfig import EnvConfig
 from Database.CacheDatabase import cache_database
 from Database.Database import DATABASE_ENGINE, SessionLocal, database
 from Helper.helper import get_client_ip
@@ -19,6 +21,7 @@ from routes.Admin.MaintenanceModeManager.MaintenanceModeManager import Maintenan
 from routes.Admin.Organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.Admin.Organization.organization import adminOrgRoute
 from routes.ApiManager.ApiManager import ApiManager
+from routes.OrbitAi.OrbitAi import OrbitAiRoute
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -30,6 +33,8 @@ from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.FeedController import feedControl
 from routes.Organizations.organizations import orgRouter
 from routes.OrganizationSettings.OrganizationSettings import orgSettings
+from routes.SocialMediaModule.Auth.SocialMedialAccountAuth import SocialAccountAuth
+from routes.SocialMediaModule.SocialAccounts import SocialAccount
 from Schedulers.BulkCommentFeeder import BulkCommentFeeder
 from Schedulers.BulkLikeFeeder import BulkLikeFeeder
 from Schedulers.MaintenanceModeScheduler import ping_maintenance_mode_scheduler
@@ -50,6 +55,7 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -79,7 +85,9 @@ app.include_router(adminAuthRoute)
 app.include_router(adminOrgRoute)
 app.include_router(adminOrgEmpControl)
 app.include_router(MaintenanceMode)
-
+app.include_router(SocialAccount)
+app.include_router(SocialAccountAuth)
+app.include_router(OrbitAiRoute)
 
 scheduler = BackgroundScheduler()
 
@@ -89,6 +97,12 @@ async def initializing_scheduler_event():
     scheduler.add_job(ping_maintenance_mode_scheduler, "interval", minutes=1)
     scheduler.start()
     print("[Scheduler Started] Maintenance Mode Check is active.")
+
+
+@app.on_event("startup")
+async def initializing_OrbitAdmin():
+    db: Session = SessionLocal()
+    initializing_OrbitAdmin_On_App_start(db)
 
 
 @app.on_event("startup")

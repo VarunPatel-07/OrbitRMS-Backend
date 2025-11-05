@@ -10,7 +10,7 @@ from fastapi import (
     Request,
     status,
 )
-
+from sqlalchemy.orm import joinedload
 from Database.Database import db_dependencies
 from Helper.helper import generate_api_secrets_api_key, model_to_filtered_dict
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
@@ -101,10 +101,21 @@ async def Fetch_Status_OF_Api(
 ):
     try:
 
-        client_inquires = (
+        client_inquire = (
             db.query(Models.ClientInquires)
             .filter(Models.ClientInquires.organization_id == user.organization_id)
             .first()
+        )
+        config_module = (
+            db.query(Models.ConfigModule)
+            .filter(Models.ConfigModule.organization_id == user.organization_id)
+            .first()
+        )
+
+        inquiry_form_schemas = (
+            db.query(Models.InquiryFormSchema)
+            .filter(Models.InquiryFormSchema.config_module_id == config_module.id)
+            .all()
         )
 
         return {
@@ -113,15 +124,13 @@ async def Fetch_Status_OF_Api(
             "data": (
                 {
                     **model_to_filtered_dict(
-                        client_inquires, fields=["-authorized_recipient_emails"]
+                        client_inquire,
                     ),
-                    "authorized_recipient_emails": (
-                        json.loads(client_inquires.authorized_recipient_emails)
-                        if client_inquires.authorized_recipient_emails
-                        else []
-                    ),
+                    "inquiry_form_schemas": [
+                        model_to_filtered_dict(data,fields=['form_id',"id","form_name","status","email_notification","authorized_recipient_emails"]) for data in inquiry_form_schemas
+                    ],
                 }
-                if client_inquires
+                if client_inquire
                 else None
             ),
         }

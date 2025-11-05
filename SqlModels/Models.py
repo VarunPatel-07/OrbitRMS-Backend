@@ -29,6 +29,7 @@ from SqlModels.HelperModel.OrganizationModelUtils import (
     OrganizationGeneralInfo,
     OrganizationSettings,
 )
+from SqlModels.HelperModel.SocialMediaModule import SocialMediaAccount, SocialMediaPosts
 from SqlModels.HelperModel.UserModelUtils import (
     Address,
     Children,
@@ -189,6 +190,19 @@ class Organization(BaseModel):
         "OrganizationUpdates", back_populates="organization", cascade="all, delete-orphan"
     )
 
+    social_media_accounts = relationship(
+        "SocialMediaAccount",
+        back_populates="organization",
+        uselist=True,
+        cascade="all, delete-orphan",
+    )
+    social_media_posts = relationship(
+        "SocialMediaPosts",
+        back_populates="organization",
+        uselist=True,
+        cascade="all, delete-orphan",
+    )
+
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
@@ -248,9 +262,7 @@ class ClientInquires(BaseModel):
 
     status = Column(Boolean, nullable=False, default=False)
 
-    email_notification = Column(Boolean, nullable=True, default=True)
 
-    authorized_recipient_emails = Column(Text, nullable=True, default=None)
 
     client_inquires_data = relationship(
         "ClientInquiresData", back_populates="client_inquire", cascade="all, delete-orphan"

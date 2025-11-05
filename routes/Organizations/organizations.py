@@ -136,7 +136,7 @@ async def verify_organization(
             background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(department_data_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(project_status_initial_data_seeder, db, decrypted_org_id)
-            # background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
 
             return {
                 "message": "Organization Is Verified Successfully",
@@ -153,6 +153,7 @@ async def verify_organization(
             )
 
             encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
+
             # todo need to add email
             return {
                 "message": "Organization already Verified",
@@ -173,6 +174,68 @@ async def verify_organization(
                 "error": str(e),
             },
         )
+
+
+# @orgRouter.get("/data-feeder", status_code=status.HTTP_200_OK)
+# @limiter.limit(API_RATE_LIMITING)
+# async def verify_organization(
+#     request: Request,
+#     db: db_dependencies,
+#     background_task: BackgroundTasks,
+#     organization_id: str = Query(..., alias="organization-id"),
+# ):
+#     try:
+#         decrypted_org_id = organization_id
+
+#         organization = (
+#             db.query(Models.OrganizationGeneralInfo)
+#             .filter(Models.OrganizationGeneralInfo.organization_id == decrypted_org_id)
+#             .first()
+#         )
+#         if not organization:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail={"message": "Organization Not Found", "success": False},
+#             )
+
+#         user = (
+#             db.query(Models.User)
+#             .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
+#             .filter(Models.EmployeeInfo.employee_email == organization.primary_email)
+#             .first()
+#         )
+#         if not user:
+#             raise HTTPException(
+#                 status_code=status.HTTP_401_UNAUTHORIZED,
+#                 detail={
+#                     "message": "User Not Found",
+#                     "success": False,
+#                 },
+#             )
+
+#         background_task.add_task(
+#             roles_permission_initial_data_seeder_function, db, decrypted_org_id
+#         )
+
+#         return {
+#             "message": "Organization Is Verified Successfully",
+#             "success": True,
+#             "data": {
+#                 "alreadyVerified": False,
+#             },
+#         }
+
+#     except HTTPException as http_exception:
+#         raise http_exception
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail={
+#                 "message": "Error Accrued While Adding Employee",
+#                 "success": False,
+#                 "error": str(e),
+#             },
+#         )
 
 
 #

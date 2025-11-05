@@ -6,7 +6,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import and_, asc, desc, func
+from sqlalchemy import and_, or_, asc, desc, func
 from sqlalchemy.orm import joinedload
 
 from Database.CacheDatabase import cache_database
@@ -30,6 +30,7 @@ load_dotenv(override=True)
 
 
 API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+ROLES_MODULE_API_RATE_LIMITING = "50/minute"
 
 configRoute = APIRouter(prefix="/app/v1/config", tags=["config"])
 
@@ -853,7 +854,7 @@ def recursive_creation_helper(
 
 # ? ------------------------- The Api To Fetch All The Associated Role Of The Organization  -------------------
 @configRoute.get("/roles_permissions/fetch-all", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def fetch_all_role_of_organization(
     request: Request,
     db: db_dependencies,
@@ -938,32 +939,55 @@ async def fetch_all_role_of_organization(
 
 # * ------------------------- This The Comman Function To Build The Hierarchy For The Permission Module  -------------------
 def build_hierarchy(modules, parent_id=None):
+    filtered_modules = [m for m in modules if m.parent_module_id == parent_id]
+
     result = []
-    for module in modules:
+    for module in filtered_modules:
         if module.parent_module_id == parent_id:
             module_data = {
                 "id": module.id,
                 "module_label": module.module_label,
                 "module_title": module.module_title,
                 "is_active": module.is_active,
-                "permissions": [
-                    {
-                        "id": p.id,
-                        "label": p.label,
-                        "is_allowed": p.is_allowed,
-                        "show_input": p.show_input,
-                    }
-                    for p in module.permissions
-                ],
+                "permissions": sorted(
+                    [
+                        {
+                            "id": p.id,
+                            "label": p.label,
+                            "is_allowed": p.is_allowed,
+                            "show_input": p.show_input,
+                        }
+                        for p in module.permissions
+                    ],
+                    key=lambda x: x["label"].lower(),
+                ),
                 "sub_modules": build_hierarchy(modules, module.id),
             }
             result.append(module_data)
-    return result
+
+    module_with_subs = [module for module in result if module["sub_modules"]]
+    module_without_subs = [module for module in result if not module["sub_modules"]]
+
+    module_with_subs.sort(key=lambda x: x["module_title"].lower())
+    module_without_subs.sort(key=lambda x: x["module_title"].lower())
+
+    final_result = module_with_subs + module_without_subs
+
+    return final_result
+
+
+def deactivate_module(module):
+    module.is_active = False
+    for permission in module.permissions:
+        permission.is_allowed = False
+
+    for sub_module in module.sub_modules:
+        deactivate_module(sub_module)
 
 
 # * ------------------------- The Api To Fetch A Specific Role's Permission  -------------------
 @configRoute.get("/roles_permissions/fetch-role", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def fetch_roles_permission(
     request: Request,
     db: db_dependencies,
@@ -1056,13 +1080,14 @@ async def fetch_roles_permission(
 
 
 @configRoute.put("/roles_permissions/update", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def update(
     request: Request,
     db: db_dependencies,
     id: str = Query(..., description="Id Of The Module"),
     type: str = Query(..., description="type should be module or permission"),
     user: dict = Depends(UserAuthenticatorMiddleware),
+    role_module_id: str = Query(..., description="Id Of The Module"),
 ):
     try:
 
@@ -1075,8 +1100,14 @@ async def update(
                 },
             )
 
-        if type == "module":
+        cache_data_key = f"organization_roles_permissions_fetch_role_{role_module_id}"
 
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        if type == "module":
             role_permission_module = (
                 db.query(Models.RoleAssociatedPermissionModule)
                 .filter(Models.RoleAssociatedPermissionModule.id == id)
@@ -1092,7 +1123,6 @@ async def update(
                 )
                 .first()
             )
-
             if not role_permission_module:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -1102,25 +1132,14 @@ async def update(
                     },
                 )
 
-            cache_data_key = (
-                f"organization_roles_permissions_fetch_role_{role_permission_module.role_module_id}"
-            )
-
-            cached_data = await cache_database.get(cache_data_key)
-
-            if cached_data:
-                await cache_database.delete(cache_data_key)
-
             if role_permission_module.is_active:
                 role_permission_module.is_active = False
 
                 for permission in role_permission_module.permissions:
                     permission.is_allowed = False
 
-                for module in role_permission_module.sub_modules:
-                    module.is_active = False
-                    for permission in module.permissions:
-                        permission.is_allowed = False
+                for sub_module in role_permission_module.sub_modules:
+                    deactivate_module(sub_module)
 
             else:
                 role_permission_module.is_active = True
@@ -1333,7 +1352,7 @@ async def Add_Edit_Roles_Permissions(
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:
-        db.rollback()  # ✅ Ensure rollback in case of error
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -1510,7 +1529,7 @@ async def Add_Edit_Inquiry_Form_Schema(
         )
 
         query = db.query(Models.InquiryFormSchema).filter(
-            and_(
+            or_(
                 func.lower(Models.InquiryFormSchema.form_id) == func.lower(data.form_id),
                 func.lower(Models.InquiryFormSchema.form_name) == func.lower(data.form_name),
             )
@@ -1521,11 +1540,13 @@ async def Add_Edit_Inquiry_Form_Schema(
                 Models.InquiryFormSchema.id != id,
             )
 
-        if query.first():
+        existing_form = query.first()
+
+        if existing_form:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Form With This Name Or FormId Is Already Exist",
+                    "message": "Form Schema Already Exist",
                     "success": False,
                 },
             )
@@ -1553,6 +1574,8 @@ async def Add_Edit_Inquiry_Form_Schema(
                 form_name=data.form_name,
                 status=data.status,
                 description=data.description,
+                authorized_recipient_emails=json.dumps(data.authorized_recipient_emails),
+                email_notification=data.email_notification,
                 source_type="user_created",
                 config_module_id=config_module.id,
                 created_by=json.dumps(created_updated_by_user),
@@ -1589,6 +1612,9 @@ async def Add_Edit_Inquiry_Form_Schema(
             inquiry_form.status = data.status
             inquiry_form.description = data.description
             inquiry_form.updated_by = json.dumps(created_updated_by_user)
+            inquiry_form.authorized_recipient_emails = json.dumps(data.authorized_recipient_emails)
+
+            inquiry_form.email_notification = data.email_notification
 
             db.commit()
 
@@ -1601,6 +1627,56 @@ async def Add_Edit_Inquiry_Form_Schema(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Add , Edit Field Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.put(
+    path="/inquiry_form_schema/toggle/email-notification", status_code=status.HTTP_200_OK
+)
+@limiter.limit(API_RATE_LIMITING)
+async def delete_designation(
+    request: Request,
+    db: db_dependencies,
+    id: str = Query(..., description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+
+        cache_data_key = f"organization_inquiry_form_schema_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        inquiry_form = (
+            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
+        )
+
+        if not inquiry_form:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Form Not Found", "success": False},
+            )
+
+        inquiry_form.email_notification = True if not inquiry_form.email_notification else False
+
+        db.commit()
+
+        status = "enabled" if inquiry_form.email_notification else "disabled"
+
+        return {"success": True, "message": f"Email notifications have been {status} successfully."}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Delete Status Right Now",
                 "success": False,
                 "error": str(e),
             },
@@ -1727,7 +1803,10 @@ async def Client_Form_Schema(
         return {
             "success": True,
             "message": "Inquiry Form Fields Fetched Successfully",
-            "data": data,
+            "data": {
+                **model_to_filtered_dict(inquiry_form_schema, fields=["form_id", "form_name"]),
+                "form_fields": data,
+            },
         }
 
     except HTTPException as http_exception:

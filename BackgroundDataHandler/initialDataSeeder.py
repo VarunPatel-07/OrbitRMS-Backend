@@ -11,10 +11,13 @@ from BackgroundDataHandler.DataSeederHelper import (
     roles_permission_data_seeder_helper,
 )
 from PydanticModels.ConfigModule.ConfigModule import (
+    AddRolesPermission,
     ClientFormSchemaModel,
     Department,
     Designations,
+    InquiryFormSchemaSchemaModel,
     ProjectStatus,
+    RoleAssociatedPermissionModule,
     RolesPermission,
 )
 
@@ -265,32 +268,46 @@ def client_form_field_initial_data_seeder(db, organization_id: str):
     try:
         with open(path, "r") as file_content:
 
-            data_list = json.load(file_content)
+            file_data = json.load(file_content)
 
-            if not isinstance(data_list, list):
-                raise ValueError("Expected a list of department")
+            if not isinstance(file_data, dict):
+                raise ValueError("Each Form should be a dictionary")
 
-            for form_field in data_list:
-                if not isinstance(form_field, dict):
-                    raise ValueError("Each department should be a dictionary")
-                if "field_name" not in form_field:
-                    raise ValueError("Missing 'field_name' in Client Form Field data")
-                if "is_required_field" not in form_field:
-                    raise ValueError("Missing 'is_required_field' in Client Form Field data")
-                if "type" not in form_field:
-                    raise ValueError("Missing 'type' in Client Form Field data")
+            if "form_schema" not in file_data:
+                raise ValueError("Missing 'form_schema' in Client Form Field data")
 
-                try:
-                    form_field_data = ClientFormSchemaModel(**form_field)
-                    client_form_filed_data_seeder_helper_function(
-                        db, organization_id, form_field_data
-                    )
+            if "form_fields" not in file_data:
+                raise ValueError("Missing 'form_field' in Client Form Field data")
 
-                except HTTPException as http_exception:
-                    raise http_exception
-                except Exception as e:
+            try:
 
-                    raise ValueError(f"Invalid department data: {str(e)}")
+                form_field_data_array = []
+
+                for form_field in file_data["form_fields"]:
+
+                    if not isinstance(form_field, dict):
+                        raise ValueError("Each department should be a dictionary")
+
+                    if "field_name" not in form_field:
+                        raise ValueError("Missing 'field_name' in Client Form Field data")
+
+                    if "is_required_field" not in form_field:
+                        raise ValueError("Missing 'is_required_field' in Client Form Field data")
+
+                    if "type" not in form_field:
+                        raise ValueError("Missing 'type' in Client Form Field data")
+
+                    form_field_data_array.append(ClientFormSchemaModel(**form_field))
+
+                form_field_data = InquiryFormSchemaSchemaModel(**file_data["form_schema"])
+                client_form_filed_data_seeder_helper_function(
+                    db, organization_id, form_field_data, form_field_data_array
+                )
+
+            except HTTPException as http_exception:
+                raise http_exception
+            except Exception as e:
+                raise ValueError(f"Invalid Form data: {str(e)}")
 
     except HTTPException as http_exception:
         raise http_exception
@@ -320,3 +337,6 @@ def client_form_field_initial_data_seeder(db, organization_id: str):
                 "error": str(e),
             },
         )
+
+
+

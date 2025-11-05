@@ -262,8 +262,7 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Invalid Form Type",
-                    "extra_form_field": extra_form_field,
+                    "message": "FormId Not Found",
                     "success": False,
                 },
             )
@@ -276,6 +275,18 @@ async def submit_inquiry(
 
         # now we will allow only that field that are in the form field
         valid_field = [field.field_name for field in form_fields]
+
+        missing_fields = [key for key in valid_field if key not in payload]
+
+        if missing_fields:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "message": "Missing fields in payload",
+                    "fields_missing": missing_fields,
+                    "success": False,
+                },
+            )
 
         extra_form_field = [key for key in payload.keys() if key not in valid_field]
 
@@ -361,14 +372,16 @@ async def submit_inquiry(
         db.commit()
         db.refresh(client_inquiry_data)
 
-        if client_inquires.email_notification and client_inquires.authorized_recipient_emails:
+        if form_schema.email_notification and form_schema.authorized_recipient_emails:
 
             email_data = {
-                "recever_email": json.loads(client_inquires.authorized_recipient_emails),
+                "recever_email": json.loads(form_schema.authorized_recipient_emails),
                 "subject": f"You’ve Got a New Client Inquiry on {organization.general_info.organization_name}",
                 "body": NewClientInquiryAccruedMail(
                     f"{FRONTEND_URL}/{organization.general_info.portal_slug}/client-inquiry",
                     organization.general_info.organization_name,
+                    organization_logo=organization.general_info.organization_profile_picture,
+                    client_details=payload,
                 ),
             }
 
