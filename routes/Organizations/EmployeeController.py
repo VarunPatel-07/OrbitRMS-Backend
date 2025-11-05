@@ -4,6 +4,7 @@ import os
 from typing import Optional
 from urllib.parse import unquote
 
+
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -14,6 +15,7 @@ from fastapi import (
     Request,
     status,
 )
+from sqlalchemy import and_
 from Database.CacheDatabase import cache_database
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import aliased, joinedload, selectinload
@@ -58,6 +60,21 @@ alignable_for_child_info = [
 ]
 
 employee_router = APIRouter(prefix="/app/v1/employee", tags=["employee"])
+
+
+def has_view_access(array_of_modules, label):
+    for module in array_of_modules:
+        if module.module_label == label:
+            if any(
+                permission.label == "view" and permission.is_allowed
+                for permission in module.permissions or []
+            ):
+                return True
+
+        if getattr(module, "sub_modules", None):
+            if has_view_access(module.sub_modules or [], label):
+                return True
+    return False
 
 
 @employee_router.post("/add", status_code=status.HTTP_200_OK)
@@ -351,64 +368,118 @@ async def handel_fetch_profile_info(
             .first()
         )
 
+        all_modules = (
+            db.query(Models.RoleAssociatedPermissionModule)
+            .filter(
+                and_(
+                    Models.RoleAssociatedPermissionModule.role_module_id
+                    == user.employee_info.employee_role_id,
+                    Models.RoleAssociatedPermissionModule.module_label == "employee_details",
+                )
+            )
+            .options(
+                joinedload(Models.RoleAssociatedPermissionModule.permissions),
+                joinedload(Models.RoleAssociatedPermissionModule.sub_modules),
+            )
+            .all()
+        )
+
+        employee_data_neglect_field = [
+            "-password",
+            "-personal_info",
+            "-personal_contact_info",
+            "-family_info",
+            "-employee_info",
+        ]
+
+        if not has_view_access(all_modules, "employee_address") and employee_id != user.id:
+            employee_data_neglect_field = employee_data_neglect_field + [
+                "-current_address",
+                "-permanent_address",
+                "-current_address_id",
+                "-permanent_address_id",
+            ]
+
         return {
             "message": "user verified successfully",
             "success": True,
+            "use": user.id,
             "data": {
                 **filter_fields(
                     employee_data,
-                    fields=[
-                        "-password",
-                        "-personal_info",
-                        "-personal_contact_info",
-                        "-family_info",
-                        "-employee_info",
-                    ],
+                    fields=employee_data_neglect_field,
                 ),
-                "employee_info": {
-                    **filter_fields(employee_data.employee_info, fields=["-reporting_manager"]),
-                    "reporting_manager": (
-                        {
-                            **filter_fields(
-                                employee_data.employee_info.reporting_manager,
-                                fields=["id"],
-                            ),
-                            **(
-                                filter_fields(
-                                    employee_data.employee_info.reporting_manager.personal_info,
-                                    fields=[
-                                        "-id",
-                                        "first_name",
-                                        "last_name",
-                                        "middle_name",
-                                        "profile_picture",
-                                        "profile_picture_bg",
-                                        "full_name",
-                                        "gender",
-                                    ],
-                                )
-                                if employee_data.employee_info.reporting_manager
-                                and employee_data.employee_info.reporting_manager.personal_info
-                                else {}
-                            ),
-                        }
-                        if employee_data.employee_info
-                        and employee_data.employee_info.reporting_manager
-                        else {}
-                    ),
-                },
+                "employee_info": (
+                    {
+                        **filter_fields(employee_data.employee_info, fields=["-reporting_manager"]),
+                        "reporting_manager": (
+                            {
+                                **filter_fields(
+                                    employee_data.employee_info.reporting_manager,
+                                    fields=["id"],
+                                ),
+                                **(
+                                    filter_fields(
+                                        employee_data.employee_info.reporting_manager.personal_info,
+                                        fields=[
+                                            "-id",
+                                            "first_name",
+                                            "last_name",
+                                            "middle_name",
+                                            "profile_picture",
+                                            "profile_picture_bg",
+                                            "full_name",
+                                            "gender",
+                                        ],
+                                    )
+                                    if employee_data.employee_info.reporting_manager
+                                    and employee_data.employee_info.reporting_manager.personal_info
+                                    else {}
+                                ),
+                            }
+                            if employee_data.employee_info
+                            and employee_data.employee_info.reporting_manager
+                            else {}
+                        ),
+                    }
+                    if (
+                        has_view_access(all_modules, "employee_information")
+                        or employee_id == user.id
+                    )
+                    else None
+                ),
                 "personal_info": (
                     filter_fields(employee_data.personal_info)
-                    if employee_data.personal_info
-                    else {}
+                    if (
+                        (
+                            employee_data.personal_info
+                            and has_view_access(all_modules, "personal_information")
+                        )
+                        or employee_id == user.id
+                    )
+                    else None
                 ),
                 "personal_contact_info": (
                     filter_fields(employee_data.personal_contact_info)
-                    if employee_data.personal_contact_info
-                    else {}
+                    if (
+                        (
+                            employee_data.personal_contact_info
+                            and has_view_access(all_modules, "personal_contact_information")
+                        )
+                        or employee_id == user.id
+                    )
+                    else None
                 ),
                 "family_info": (
-                    filter_fields(employee_data.family_info[0]) if employee_data.family_info else {}
+                    filter_fields(employee_data.family_info[0])
+                    if (
+                        (
+                            employee_data.family_info
+                            and has_view_access(all_modules, "family_information")
+                        )
+                        or employee_id == user.id
+                    )
+                    else None
                 ),
             },
         }

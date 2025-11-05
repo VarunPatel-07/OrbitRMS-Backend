@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from typing import Optional
-
+from sqlalchemy import and_
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -26,6 +26,21 @@ load_dotenv(override=True)
 API_RATE_LIMITING = os.getenv("API_RATE_LIMITING").strip()
 
 
+def has_view_access(array_of_modules, label):
+    for module in array_of_modules:
+        if module.module_label == label:
+            if any(
+                permission.label == "view" and permission.is_allowed
+                for permission in module.permissions or []
+            ):
+                return True
+
+        if getattr(module, "sub_modules", None):
+            if has_view_access(module.sub_modules or [], label):
+                return True
+    return False
+
+
 @orgSettings.get("/fetch-info", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def FetchTheInfoOfTheOrganization(
@@ -47,6 +62,21 @@ async def FetchTheInfoOfTheOrganization(
             .filter(Models.Organization.id == user.organization_id)
             .first()
         )
+        all_modules = (
+            db.query(Models.RoleAssociatedPermissionModule)
+            .filter(
+                and_(
+                    Models.RoleAssociatedPermissionModule.role_module_id
+                    == user.employee_info.employee_role_id,
+                    Models.RoleAssociatedPermissionModule.module_label == "general_info",
+                )
+            )
+            .options(
+                joinedload(Models.RoleAssociatedPermissionModule.permissions),
+                joinedload(Models.RoleAssociatedPermissionModule.sub_modules),
+            )
+            .all()
+        )
 
         if not organization:
             raise HTTPException(
@@ -60,19 +90,35 @@ async def FetchTheInfoOfTheOrganization(
             "success": True,
             "data": {
                 **model_to_filtered_dict(organization),
-                "general_info": filter_fields(
-                    organization.general_info, ["-id", "-organization_id"]
+                "general_info": (
+                    filter_fields(organization.general_info, ["-id", "-organization_id"])
+                    if has_view_access(all_modules, "general_information")
+                    else None
                 ),
-                "address": filter_fields(organization.address[0], ["-id", "-organization_id"]),
-                "contact_info": [
-                    filter_fields(contact_info, ["-id", "-organization_id"])
-                    for contact_info in organization.contact_info
-                ],
-                "about_info": filter_fields(
-                    organization.about_info[0], ["-id", "-organization_id"]
+                "address": (
+                    filter_fields(organization.address[0], ["-id", "-organization_id"])
+                    if has_view_access(all_modules, "organization_address")
+                    else None
                 ),
-                "organization_settings": filter_fields(
-                    organization.organization_settings[0], ["-id", "-organization_id"]
+                "contact_info": (
+                    [
+                        filter_fields(contact_info, ["-id", "-organization_id"])
+                        for contact_info in organization.contact_info
+                    ]
+                    if has_view_access(all_modules, "organization_contact_info")
+                    else None
+                ),
+                "about_info": (
+                    filter_fields(organization.about_info[0], ["-id", "-organization_id"])
+                    if has_view_access(all_modules, "about_info")
+                    else None
+                ),
+                "organization_settings": (
+                    filter_fields(
+                        organization.organization_settings[0], ["-id", "-organization_id"]
+                    )
+                    if has_view_access(all_modules, "organization_settings_details")
+                    else None
                 ),
             },
         }

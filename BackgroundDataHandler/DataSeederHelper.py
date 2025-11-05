@@ -88,6 +88,7 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
     config_role_module = Models.ConfigRoleModule(
         role_name=data.role_name,
         description=data.description,
+        is_editable=data.is_editable,
         source_type="default",
         config_module_id=config_module.id,
     )

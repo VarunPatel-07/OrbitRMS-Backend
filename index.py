@@ -119,9 +119,8 @@ async def worker_task():
     """
     db: Session = SessionLocal()
 
-    while True:
-        await BulkLikeFeeder(db)
-        await BulkCommentFeeder(db)
+    asyncio.create_task(BulkLikeFeeder(db))
+    asyncio.create_task(BulkCommentFeeder(db))
 
 
 @app.on_event("shutdown")

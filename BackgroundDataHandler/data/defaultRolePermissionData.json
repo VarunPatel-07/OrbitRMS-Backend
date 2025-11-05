@@ -1,7 +1,8 @@
 [
   {
-    "role_name": "Administrator test",
+    "role_name": "Test One",
     "description": "Administrator role with full access to all modules and submodules.",
+    "is_editable": true,
     "permission_modules": [
       {
         "module_label": "dashboard",
@@ -58,12 +59,12 @@
           {
             "label": "view",
             "is_allowed": true,
-            "show_input": true
+            "show_input": false
           },
           {
             "label": "edit",
             "is_allowed": true,
-            "show_input": true
+            "show_input": false
           },
           {
             "label": "delete",
@@ -257,6 +258,29 @@
                 "sub_modules": []
               }
             ]
+          },
+          {
+            "module_label": "employee_listing",
+            "module_title": "Employee Listing",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": false
+              }
+            ],
+            "sub_modules": []
           }
         ]
       },

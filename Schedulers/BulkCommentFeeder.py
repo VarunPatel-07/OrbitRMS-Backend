@@ -9,10 +9,14 @@ from SqlModels import Models
 
 
 async def BulkCommentFeeder(db: db_dependencies):
-    try:
-        event_data = await cache_database.lpop("comment_queue")
-        if event_data:
-            print(event_data)
+    while True:
+        try:
+            event_data = await cache_database.rpoplpush("comment_queue", "comment_queue_processing")
+
+            if not event_data:
+                await asyncio.sleep(5)
+                continue
+
             event = json.loads(event_data)
             post_id = event["post_id"]
             user_id = event["user_id"]
@@ -36,8 +40,11 @@ async def BulkCommentFeeder(db: db_dependencies):
                 )
 
                 db.commit()
-        else:
-            await asyncio.sleep(5)  # Prevent busy looping
 
-    except Exception as e:
-        print(e)
+                await cache_database.lrem("comment_queue_processing", 1, event_data)
+                await cache_database.expire(f"user:{user_id}:comment_on_post", 600)
+                await cache_database.expire(f"post:{post_id}:comment", 600)
+
+        except Exception as e:
+            await asyncio.sleep(5)
+            print(e)
