@@ -50,6 +50,7 @@ class RoleAssociatedPermissionModule(BaseModel):
 class RolesPermission(BaseModel):
     role_name: str
     description: str
+    is_editable: bool
     permission_modules: List[RoleAssociatedPermissionModule]
 
 

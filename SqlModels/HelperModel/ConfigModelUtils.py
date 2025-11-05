@@ -100,6 +100,7 @@ class ConfigRoleModule(BaseModel):
     role_name = Column(String(255), nullable=False)
     description = Column(String(355), nullable=False)
     source_type = Column(Enum("default", "user_created", name="source_type_enum"), nullable=False)
+    is_editable = Column(Boolean, default=True)
 
     associated_employees = relationship(
         "EmployeeInfo",

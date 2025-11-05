@@ -9,10 +9,14 @@ from SqlModels import Models
 
 
 async def BulkLikeFeeder(db: db_dependencies):
-    try:
-        event_data = await cache_database.lpop("likes_queue")
-        if event_data:
-            print(event_data)
+    while True:
+        try:
+            event_data = await cache_database.rpoplpush("likes_queue", "likes_queue_processing")
+
+            if not event_data:
+                await asyncio.sleep(5)
+                continue
+
             event = json.loads(event_data)
             post_id = event["post_id"]
             user_id = event["user_id"]
@@ -39,11 +43,18 @@ async def BulkLikeFeeder(db: db_dependencies):
                         .first()
                     )
 
-                    db.delete(like)
+                    if like:
+                        db.delete(like)
+                    else:
+                        print(f"No existing like found for user {user_id} on post {post_id}.")
 
                 db.commit()
-        else:
-            await asyncio.sleep(5)  # Prevent busy looping
 
-    except Exception as e:
-        print(e)
+                await cache_database.lrem("likes_queue_processing", 1, event_data)
+
+                await cache_database.expire(f"user:{user_id}:liked_posts", 600)
+                await cache_database.expire(f"post:{post_id}:likes", 600)
+
+        except Exception as e:
+            print(e)
+            await asyncio.sleep(5)

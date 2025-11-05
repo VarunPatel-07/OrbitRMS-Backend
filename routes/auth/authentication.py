@@ -819,6 +819,7 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                 "roles_permissions": {
                     "id": user.employee_info.employee_role.id,
                     "role_name": user.employee_info.employee_role.role_name,
+                    "is_editable": user.employee_info.employee_role.is_editable,
                     "permissions": permissions_data,
                 },
             },

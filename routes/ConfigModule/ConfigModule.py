@@ -979,7 +979,8 @@ def build_hierarchy(modules, parent_id=None):
 def deactivate_module(module):
     module.is_active = False
     for permission in module.permissions:
-        permission.is_allowed = False
+        if permission.show_input:
+            permission.is_allowed = False
 
     for sub_module in module.sub_modules:
         deactivate_module(sub_module)
@@ -1043,6 +1044,7 @@ async def fetch_roles_permission(
         data = {
             "id": role.id,
             "role_name": role.role_name,
+            "is_editable": role.is_editable,
             "description": role.description,
             "source_type": role.source_type,
             "status": role.status,
@@ -1136,7 +1138,8 @@ async def update(
                 role_permission_module.is_active = False
 
                 for permission in role_permission_module.permissions:
-                    permission.is_allowed = False
+                    if permission.show_input:
+                        permission.is_allowed = False
 
                 for sub_module in role_permission_module.sub_modules:
                     deactivate_module(sub_module)
@@ -1281,6 +1284,7 @@ async def Add_Edit_Roles_Permissions(
             config_role_module = Models.ConfigRoleModule(
                 role_name=data.role_name,
                 description=data.description,
+                is_editable=True,
                 status=data.status,
                 source_type="user_created",
                 config_module_id=config_module_id,
