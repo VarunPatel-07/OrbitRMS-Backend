@@ -23,6 +23,13 @@ async def BulkCommentFeeder(db: db_dependencies):
             comment = event["comment"]
             is_replay = event["is_replay"]
 
+            cache_data_key = f"feed_post_{post_id}_comments"
+
+            cached_data = await cache_database.get(cache_data_key)
+
+            if cached_data:
+                await cache_database.delete(cache_data_key)
+
             post = (
                 db.query(Models.OrganizationUpdates)
                 .filter(Models.OrganizationUpdates.id == post_id)

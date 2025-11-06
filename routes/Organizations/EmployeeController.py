@@ -4,7 +4,6 @@ import os
 from typing import Optional
 from urllib.parse import unquote
 
-
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -15,12 +14,12 @@ from fastapi import (
     Request,
     status,
 )
-from sqlalchemy import and_
-from Database.CacheDatabase import cache_database
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import and_
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql import func
 
+from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import WelcomeMailForNewlyAddedEmployee
 from Helper.createModelInstance import cerate_model_instance
@@ -479,6 +478,116 @@ async def handel_fetch_profile_info(
                         )
                         or employee_id == user.id
                     )
+                    else None
+                ),
+            },
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Fetching The User Info",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@employee_router.get("/fetch-employee", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def handel_fetch_profile_info(
+    request: Request,
+    db: db_dependencies,
+    employee_id: str = Query(..., alias="employee_id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+
+        employee_data = (
+            db.query(Models.User)
+            .options(
+                joinedload(Models.User.personal_info),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.reporting_manager)
+                .joinedload(Models.User.personal_info),
+                joinedload(Models.User.employee_info).joinedload(Models.EmployeeInfo.employee_role),
+                joinedload(Models.User.personal_contact_info).joinedload(
+                    Models.PersonalContactInfo.emergency_contacts
+                ),
+                joinedload(Models.User.family_info).joinedload(Models.FamilyInfo.children),
+                joinedload(Models.User.current_address),
+                joinedload(Models.User.permanent_address),
+                joinedload(Models.User.social_link),
+            )
+            .filter(Models.User.id == employee_id)
+            .first()
+        )
+
+        employee_data_neglect_field = [
+            "-password",
+            "-personal_info",
+            "-personal_contact_info",
+            "-family_info",
+            "-employee_info",
+        ]
+
+        return {
+            "message": "user verified successfully",
+            "success": True,
+            "use": user.id,
+            "data": {
+                **filter_fields(
+                    employee_data,
+                    fields=employee_data_neglect_field,
+                ),
+                "employee_info": {
+                    **filter_fields(employee_data.employee_info, fields=["-reporting_manager"]),
+                    "reporting_manager": (
+                        {
+                            **filter_fields(
+                                employee_data.employee_info.reporting_manager,
+                                fields=["id"],
+                            ),
+                            **(
+                                filter_fields(
+                                    employee_data.employee_info.reporting_manager.personal_info,
+                                    fields=[
+                                        "-id",
+                                        "first_name",
+                                        "last_name",
+                                        "middle_name",
+                                        "profile_picture",
+                                        "profile_picture_bg",
+                                        "full_name",
+                                        "gender",
+                                    ],
+                                )
+                                if employee_data.employee_info.reporting_manager
+                                and employee_data.employee_info.reporting_manager.personal_info
+                                else {}
+                            ),
+                        }
+                        if employee_data.employee_info
+                        and employee_data.employee_info.reporting_manager
+                        else {}
+                    ),
+                },
+                "personal_info": (
+                    filter_fields(employee_data.personal_info)
+                    if employee_data.personal_info
+                    else None
+                ),
+                "personal_contact_info": (
+                    filter_fields(employee_data.personal_contact_info)
+                    if employee_data.personal_contact_info
+                    else None
+                ),
+                "family_info": (
+                    filter_fields(employee_data.family_info[0])
+                    if employee_data.family_info
                     else None
                 ),
             },

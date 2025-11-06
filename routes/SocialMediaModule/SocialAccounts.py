@@ -2,7 +2,6 @@ import json
 import logging
 from typing import List, Optional
 
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,

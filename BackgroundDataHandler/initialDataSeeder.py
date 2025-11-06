@@ -337,6 +337,3 @@ def client_form_field_initial_data_seeder(db, organization_id: str):
                 "error": str(e),
             },
         )
-
-
-

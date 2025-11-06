@@ -11,6 +11,7 @@ from fastapi import (
     status,
 )
 from sqlalchemy.orm import joinedload
+
 from Database.Database import db_dependencies
 from Helper.helper import generate_api_secrets_api_key, model_to_filtered_dict
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
@@ -127,7 +128,18 @@ async def Fetch_Status_OF_Api(
                         client_inquire,
                     ),
                     "inquiry_form_schemas": [
-                        model_to_filtered_dict(data,fields=['form_id',"id","form_name","status","email_notification","authorized_recipient_emails"]) for data in inquiry_form_schemas
+                        model_to_filtered_dict(
+                            data,
+                            fields=[
+                                "form_id",
+                                "id",
+                                "form_name",
+                                "status",
+                                "email_notification",
+                                "authorized_recipient_emails",
+                            ],
+                        )
+                        for data in inquiry_form_schemas
                     ],
                 }
                 if client_inquire

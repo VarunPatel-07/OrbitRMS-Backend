@@ -1,4 +1,5 @@
-from sqlalchemy import and_, or_, func, cast, String
+from sqlalchemy import String, and_, cast, func, or_
+
 
 def apply_client_inquiry_query_filter(query_data, filters):
     all_conditions = []

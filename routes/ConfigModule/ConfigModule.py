@@ -6,7 +6,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import and_, or_, asc, desc, func
+from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
 
 from Database.CacheDatabase import cache_database

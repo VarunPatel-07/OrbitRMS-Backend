@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
+
 from BackgroundDataHandler.DataSeederHelper import initializing_OrbitAdmin_On_App_start
 from Config.EnvConfig import EnvConfig
 from Database.CacheDatabase import cache_database
@@ -21,7 +22,6 @@ from routes.Admin.MaintenanceModeManager.MaintenanceModeManager import Maintenan
 from routes.Admin.Organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.Admin.Organization.organization import adminOrgRoute
 from routes.ApiManager.ApiManager import ApiManager
-from routes.OrbitAi.OrbitAi import OrbitAiRoute
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -29,6 +29,7 @@ from routes.ClientInquires.ClientInquires import clientInquires
 from routes.ConfigModule.ConfigModule import configRoute
 from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
+from routes.OrbitAi.OrbitAi import OrbitAiRoute
 from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.FeedController import feedControl
 from routes.Organizations.organizations import orgRouter
