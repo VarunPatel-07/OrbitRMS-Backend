@@ -165,7 +165,7 @@ def format_client_details(client_details: dict) -> str:
   <tr>
     <td style="padding:30px 16px; font-family: Montserrat, Trebuchet MS, Lucida Grande, Lucida Sans Unicode,
                                         Lucida Sans, Tahoma, sans-serif; font-size:15px; line-height:1.5; text-align:start; color:#555555;">
-      <h3 style="margin:0 0 15px; color:#222;">📝 Client Details</h3>
+      <h3 style="margin:0 0 15px; color:#222;">📝 Inquiry Details</h3>
 
       <!-- card wrapper -->
       <table role="presentation" width="100%" style="border-collapse:separate; border-spacing:0;">

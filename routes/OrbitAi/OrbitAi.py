@@ -1,12 +1,23 @@
-from fastapi import APIRouter, status, Request, Depends, UploadFile, File, Form, HTTPException
-from typing import List
-from Config.EnvConfig import EnvConfig
-from RateLimiting import limiter
-from openai import OpenAI
-from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 import json
+from typing import List
+
 import cloudinary
 import cloudinary.uploader
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
+from openai import OpenAI
+
+from Config.EnvConfig import EnvConfig
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
+from RateLimiting import limiter
 
 cloudinary.config(
     cloud_name=EnvConfig.CLOUDINARY_CLOUD_NAME,

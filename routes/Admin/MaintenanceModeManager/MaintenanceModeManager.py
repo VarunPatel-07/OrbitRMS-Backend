@@ -89,8 +89,6 @@ async def Toggle_Maintenance_Mode(
             )
         maintenance_mode = db.query(Models.MaintenanceMode).first()
 
-
-
         if type == "activate":
             maintenance_logs = (
                 db.query(Models.MaintenanceLog)

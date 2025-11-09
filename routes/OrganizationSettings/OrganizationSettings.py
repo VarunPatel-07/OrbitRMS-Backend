@@ -2,11 +2,11 @@ import json
 import os
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import and_
+
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import asc, desc, func
+from sqlalchemy import and_, asc, desc, func
 from sqlalchemy.orm import joinedload
 
 from Database.Database import db_dependencies

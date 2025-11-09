@@ -262,8 +262,6 @@ class ClientInquires(BaseModel):
 
     status = Column(Boolean, nullable=False, default=False)
 
-
-
     client_inquires_data = relationship(
         "ClientInquiresData", back_populates="client_inquire", cascade="all, delete-orphan"
     )

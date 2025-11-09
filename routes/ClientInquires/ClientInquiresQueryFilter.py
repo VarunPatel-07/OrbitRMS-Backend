@@ -1,5 +1,4 @@
-from sqlalchemy import and_, func, or_, cast, String, Boolean
-
+from sqlalchemy import Boolean, String, and_, cast, func, or_
 
 from SqlModels import Models
 

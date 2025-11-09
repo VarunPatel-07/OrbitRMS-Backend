@@ -398,113 +398,142 @@ async def HandelLikeUnlikePostFunction(
         )
 
 
-# @feedControl.put("/comment/toggle", status_code=status.HTTP_200_OK)
-# @limiter.limit(API_RATE_LIMITING)
-# async def FetchLikesAndComment(
-#     request: Request,
-#     db: db_dependencies,
-#     post_id: str = Query(..., alias="post-id"),
-#     user: dict = Depends(UserAuthenticatorMiddleware),
-#     type: str = Query(..., alias="type"),
-# ):
-#     try:
-#         if type not in ["like", "comment"]:
-#             raise HTTPException(
-#                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-#                 detail={"message": "Only Like Or Comment Is Allowed", "success": False},
-#             )
+@feedControl.get("/fetch", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def FetchLikesAndComment(
+    request: Request,
+    db: db_dependencies,
+    post_id: str = Query(..., alias="post-id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    type: str = Query(..., alias="type"),
+):
+    try:
+        if type not in ["likes", "comments"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={"message": "Only Like Or Comment Is Allowed", "success": False},
+            )
 
-#         query_option = (
-#             joinedload(Models.OrganizationUpdates.likes).joinedload(Models.FeedLikes.user)
-#             if type == "like"
-#             else joinedload(Models.OrganizationUpdates.comment).joinedload(Models.FeedComments.user)
-#         )
+        cache_data_key = f"feed_post_{post_id}_{type}"
+        cached_data = await cache_database.get(cache_data_key)
 
-#         query_data = (
-#             db.query(Models.OrganizationUpdates)
-#             .options(query_option)
-#             .filter(Models.OrganizationUpdates.id == post_id)
-#             .first()
-#         )
+        if cached_data:
+            cached_Data = json.loads(cached_data)
+            # cached_sorted_data = sorted(
+            #     cached_Data,
+            #     key=lambda x: datetime.fromisoformat(x["created_at"]),
+            #     reverse=True if order.lower() == "desc" else False,
+            # )
+            return {
+                "message": f"{type} Fetched Successfully. Cached!",
+                "success": True,
+                "data": cached_Data,
+            }
 
-#         if type == "like":
+        query_option = (
+            joinedload(Models.OrganizationUpdates.likes).joinedload(Models.FeedLikes.user)
+            if type == "likes"
+            else joinedload(Models.OrganizationUpdates.comments).joinedload(
+                Models.FeedComments.user
+            )
+        )
 
-#             likes_info_array = []
+        query_data = (
+            db.query(Models.OrganizationUpdates)
+            .options(query_option)
+            .filter(Models.OrganizationUpdates.id == post_id)
+            .first()
+        )
 
-#             for like in query_data.likes:
+        if type == "likes":
 
-#                 like_personal_info = (
-#                     filter_fields(
-#                         like.user.personal_info,
-#                         ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
-#                     )
-#                     if like.user
-#                     else {}
-#                 )
+            cache_data_key = f"feed_post_{post_id}_{type}"
 
-#                 like_employee_info = (
-#                     filter_fields(
-#                         like.user.employee_info,
-#                         ["department", "designation", "employee_code"],
-#                     )
-#                     if like.user
-#                     else {}
-#                 )
+            likes_info_array = []
 
-#                 likes_info_array.append(
-#                     {**like_personal_info, "id": like.user_id, **like_employee_info}
-#                 )
-#             return {
-#                 "message": "Likes Fetched Successfully",
-#                 "success": True,
-#                 "data": likes_info_array,
-#             }
-#         else:
+            for like in query_data.likes:
 
-#             comment_info_array = []
+                like_personal_info = (
+                    filter_fields(
+                        like.user.personal_info,
+                        ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
+                    )
+                    if like.user
+                    else {}
+                )
 
-#             query_data = query_data.option(
-#                 joinedload(Models.OrganizationUpdates.comment).joinedload(Models.FeedComments.user),
-#             )
+                like_employee_info = (
+                    filter_fields(
+                        like.user.employee_info,
+                        ["department", "designation", "employee_code"],
+                    )
+                    if like.user
+                    else {}
+                )
 
-#             for comment in query_data.comment:
+                likes_info_array.append(
+                    {**like_personal_info, "id": like.user_id, **like_employee_info, "comment": ""}
+                )
 
-#                 comment_personal_info = (
-#                     filter_fields(
-#                         comment.user.personal_info,
-#                         ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
-#                     )
-#                     if comment.user
-#                     else {}
-#                 )
+                await cache_database.set(
+                    cache_data_key, json.dumps(jsonable_encoder(likes_info_array)), ex=3600
+                )
+            return {
+                "message": "Likes Fetched Successfully",
+                "success": True,
+                "data": likes_info_array,
+            }
+        else:
 
-#                 comment_employee_info = (
-#                     filter_fields(
-#                         comment.user.employee_info,
-#                         ["department", "designation", "employee_code"],
-#                     )
-#                     if comment.user
-#                     else {}
-#                 )
+            comment_info_array = []
 
-#                 comment_info_array.append(
-#                     {**comment_personal_info, "id": comment.user_id, **comment_employee_info}
-#                 )
+            for comment in query_data.comments:
 
-#             return {
-#                 "message": "Comments Fetched Successfully",
-#                 "success": True,
-#                 "data": comment_info_array,
-#             }
+                comment_personal_info = (
+                    filter_fields(
+                        comment.user.personal_info,
+                        ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
+                    )
+                    if comment.user
+                    else {}
+                )
 
-#     except HTTPException as http_exception:
-#         raise http_exception
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail={
-#                 "message": "Error while Deleting a Post",
-#                 "error": str(e),
-#                 "success": False,
-#             },
-#         )
+                comment_employee_info = (
+                    filter_fields(
+                        comment.user.employee_info,
+                        ["department", "designation", "employee_code"],
+                    )
+                    if comment.user
+                    else {}
+                )
+
+                comment_info_array.append(
+                    {
+                        **comment_personal_info,
+                        "id": comment.user_id,
+                        **comment_employee_info,
+                        "comment": comment.comment,
+                    }
+                )
+
+                await cache_database.set(
+                    cache_data_key, json.dumps(jsonable_encoder(comment_info_array)), ex=3600
+                )
+
+            return {
+                "message": "Comments Fetched Successfully",
+                "success": True,
+                "data": comment_info_array,
+            }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Deleting a Post",
+                "error": str(e),
+                "success": False,
+            },
+        )

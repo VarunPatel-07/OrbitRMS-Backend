@@ -3,9 +3,9 @@ import hashlib
 import secrets
 from io import BytesIO
 from typing import Optional
-from requests.auth import HTTPBasicAuth
 
 import requests
+from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth2Session
 
 
