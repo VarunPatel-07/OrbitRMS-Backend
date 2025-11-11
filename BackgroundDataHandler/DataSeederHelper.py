@@ -4,6 +4,7 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func
 
+from Config.EnvConfig import EnvConfig
 from Helper.jwtHelper import hash_passwords
 from PydanticModels.ConfigModule.ConfigModule import (
     ClientFormSchemaModel,
@@ -16,8 +17,8 @@ from PydanticModels.ConfigModule.ConfigModule import (
 )
 from SqlModels import Models
 
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+ADMIN_EMAIL = EnvConfig.ADMIN_EMAIL
+ADMIN_PASSWORD = EnvConfig.ADMIN_PASSWORD
 
 
 # This is The Recursive Function That Helps to Add The Data Recursively In To The DataBase

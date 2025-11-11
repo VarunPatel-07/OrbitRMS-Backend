@@ -35,23 +35,23 @@ async def BulkLikeFeeder(db: db_dependencies):
                 .first()
             )
             if post:
+                existing_like = (
+                    db.query(Models.FeedLikes)
+                    .filter(
+                        and_(
+                            Models.FeedLikes.organization_update_id == post_id,
+                            Models.FeedLikes.user_id == user_id,
+                        )
+                    )
+                    .first()
+                )
                 if action == "like":
-                    db.add(Models.FeedLikes(user_id=user_id, organization_update_id=post_id))
+                    if not existing_like:
+                        db.add(Models.FeedLikes(user_id=user_id, organization_update_id=post_id))
                 elif action == "unlike":
 
-                    like = (
-                        db.query(Models.FeedLikes)
-                        .filter(
-                            and_(
-                                Models.FeedLikes.organization_update_id == post_id,
-                                Models.FeedLikes.user_id == user_id,
-                            )
-                        )
-                        .first()
-                    )
-
-                    if like:
-                        db.delete(like)
+                    if existing_like:
+                        db.delete(existing_like)
                     else:
                         print(f"No existing like found for user {user_id} on post {post_id}.")
 

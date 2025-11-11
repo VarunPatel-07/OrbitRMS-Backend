@@ -2,9 +2,9 @@ import uuid
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, Table, Text
 from sqlalchemy.dialects.mysql import CHAR, JSON
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import expression
 
 from Database.Base import BaseModel
@@ -28,10 +28,13 @@ from SqlModels.HelperModel.OrganizationModelUtils import (
     OrganizationContactInfo,
     OrganizationGeneralInfo,
     OrganizationSettings,
+    LeavesSettings,
+    LeaveBalance,
 )
 from SqlModels.HelperModel.SocialMediaModule import SocialMediaAccount, SocialMediaPosts
 from SqlModels.HelperModel.UserModelUtils import (
     Address,
+    AttendanceLeavesModule,
     Children,
     EmergencyContact,
     EmployeeInfo,
@@ -40,6 +43,15 @@ from SqlModels.HelperModel.UserModelUtils import (
     PersonalInfo,
     Sessions,
     SocialLinks,
+)
+
+# This IS The Table That Will Connect The Multiple Leave Records
+
+attendance_leave_notify_table = Table(
+    "attendance_leave_notify",
+    BaseModel.metadata,
+    Column("leave_id", CHAR(36), ForeignKey("attendance_leave_module.id"), primary_key=True),
+    Column("user_id", CHAR(36), ForeignKey("users.id"), primary_key=True),
 )
 
 
@@ -111,19 +123,27 @@ class User(BaseModel):
 
     employee_info = relationship(
         "EmployeeInfo",
-        foreign_keys="[EmployeeInfo.user_id]",  # Define this in EmployeeInfo
+        foreign_keys="[EmployeeInfo.user_id]",
         back_populates="user",
-        uselist=False,  # If one-to-one
+        uselist=False,
     )
-    reporting_employees = relationship(  # Managers can have many reporting employees
+    reporting_employees = relationship(
         "EmployeeInfo",
         foreign_keys="[EmployeeInfo.reporting_to_id]",
         back_populates="reporting_manager",
+    )
+    notifying_users = relationship(
+        "AttendanceLeavesModule",
+        secondary="attendance_leave_notify",
+        back_populates="notify_to_users",
     )
 
     personal_contact_info = relationship(
         "PersonalContactInfo", back_populates="user", uselist=False
     )
+
+    leave_balance = relationship("LeaveBalance", back_populates="user")
+
     family_info = relationship("FamilyInfo", back_populates="user")
     same_as_current_address = Column(Boolean, nullable=False, default=True)
 
@@ -153,6 +173,12 @@ class User(BaseModel):
 
     sessions = relationship("Sessions", back_populates="user")
 
+    applied_leaves = relationship(
+        "AttendanceLeavesModule",
+        foreign_keys="[AttendanceLeavesModule.user_id]",
+        back_populates="user",
+    )
+
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
         DateTime,
@@ -173,7 +199,9 @@ class Organization(BaseModel):
     address = relationship("OrganizationAddress", back_populates="organization")
     contact_info = relationship("OrganizationContactInfo", back_populates="organization")
     about_info = relationship("OrganizationAboutInfo", back_populates="organization")
-    organization_settings = relationship("OrganizationSettings", back_populates="organization")
+    organization_settings = relationship(
+        "OrganizationSettings", back_populates="organization", uselist=False
+    )
     status = Column(Boolean, nullable=False, default=True)
 
     employees = relationship("User", back_populates="organization", cascade="all, delete-orphan")
@@ -198,6 +226,13 @@ class Organization(BaseModel):
     )
     social_media_posts = relationship(
         "SocialMediaPosts",
+        back_populates="organization",
+        uselist=True,
+        cascade="all, delete-orphan",
+    )
+
+    leaves_settings = relationship(
+        "LeavesSettings",
         back_populates="organization",
         uselist=True,
         cascade="all, delete-orphan",

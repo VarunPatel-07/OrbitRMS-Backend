@@ -30,6 +30,7 @@ from routes.ConfigModule.ConfigModule import configRoute
 from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
 from routes.OrbitAi.OrbitAi import OrbitAiRoute
+from routes.Organizations.Attendance import attendanceRoute
 from routes.Organizations.EmployeeController import employee_router
 from routes.Organizations.FeedController import feedControl
 from routes.Organizations.organizations import orgRouter
@@ -43,7 +44,7 @@ from SqlModels.Models import BaseModel
 
 load_dotenv(override=True)
 
-BACKEND_APP_ENVIRONMENT = os.getenv("BACKEND_APP_ENVIRONMENT")
+BACKEND_APP_ENVIRONMENT = EnvConfig.BACKEND_APP_ENVIRONMENT
 
 app = FastAPI(
     title="OrbitRMS",
@@ -89,6 +90,7 @@ app.include_router(MaintenanceMode)
 app.include_router(SocialAccount)
 app.include_router(SocialAccountAuth)
 app.include_router(OrbitAiRoute)
+app.include_router(attendanceRoute)
 
 scheduler = BackgroundScheduler()
 

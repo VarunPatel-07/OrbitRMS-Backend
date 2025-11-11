@@ -1,8 +1,8 @@
 [
   {
-    "role_name": "Test One",
+    "role_name": "Administrator",
     "description": "Administrator role with full access to all modules and submodules.",
-    "is_editable": true,
+    "is_editable": false,
     "permission_modules": [
       {
         "module_label": "dashboard",

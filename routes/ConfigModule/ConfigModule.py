@@ -9,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
 from Helper.helper import model_to_filtered_dict
@@ -29,7 +30,7 @@ from SqlModels import Models
 load_dotenv(override=True)
 
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 ROLES_MODULE_API_RATE_LIMITING = "50/minute"
 
 configRoute = APIRouter(prefix="/app/v1/config", tags=["config"])
@@ -76,7 +77,7 @@ async def project_status_function(
         )
 
         updated_created_by_user = model_to_filtered_dict(
-            personal_info, ["id", "first_name", "last_name"]
+            personal_info, ["user_id", "first_name", "last_name"]
         )
 
         query = db.query(Models.ProjectStatus).filter(
@@ -359,7 +360,7 @@ async def add_edit_department(
             )
 
         updated_created_by_user = model_to_filtered_dict(
-            personal_info, ["id", "first_name", "last_name"]
+            personal_info,["user_id", "first_name", "last_name"]
         )
 
         if type == "add":
@@ -615,7 +616,7 @@ async def add_edit_designations(
             )
 
         updated_created_by_user = model_to_filtered_dict(
-            personal_info, ["id", "first_name", "last_name"]
+            personal_info, ["user_id", "first_name", "last_name"]
         )
 
         if type == "add":
@@ -1278,7 +1279,7 @@ async def Add_Edit_Roles_Permissions(
                 )
             modules = build_hierarchy(role_permission_module)
             created_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
+                personal_info, ["user_id", "first_name", "last_name"]
             )
 
             config_role_module = Models.ConfigRoleModule(
@@ -1335,7 +1336,7 @@ async def Add_Edit_Roles_Permissions(
                 )
 
             update_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
+                personal_info, ["user_id", "first_name", "last_name"]
             )
 
             config_role_module = (
@@ -1556,7 +1557,7 @@ async def Add_Edit_Inquiry_Form_Schema(
             )
 
         created_updated_by_user = model_to_filtered_dict(
-            personal_info, ["id", "first_name", "last_name"]
+            personal_info, ["user_id", "first_name", "last_name"]
         )
 
         if type == "add":
@@ -1894,7 +1895,7 @@ async def add_edit_Client_Form_Schema(
             )
 
         created_updated_by_user = model_to_filtered_dict(
-            personal_info, ["id", "first_name", "last_name"]
+            personal_info, ["user_id", "first_name", "last_name"]
         )
 
         if type == "add":

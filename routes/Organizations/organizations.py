@@ -21,6 +21,7 @@ from BackgroundDataHandler.initialDataSeeder import (
     project_status_initial_data_seeder,
     roles_permission_initial_data_seeder_function,
 )
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import CreatePasswordHtmlBody
 from Helper.createModelInstance import cerate_model_instance
@@ -36,6 +37,7 @@ from Helper.helper import (
 )
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
+from PydanticModels.HelperPydanticModel import CreatePasswordPydanticBody
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
 )
@@ -47,9 +49,9 @@ load_dotenv(override=True)
 orgRouter = APIRouter(prefix="/app/v1/organization", tags=["organization"])
 
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+FRONTEND_URL = EnvConfig.FRONTEND_URL.strip()
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 
 #
@@ -112,7 +114,11 @@ async def verify_organization(
                 "recever_email": organization.primary_email,
                 "subject": "Complete Your Account Setup – Create Your Password",
                 "body": CreatePasswordHtmlBody(
-                    f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}&token={encrypted_token}"
+                    CreatePasswordPydanticBody(
+                        user_name="",
+                        organization_name=organization.organization_name,
+                        create_password_link=f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}&token={encrypted_token}",
+                    )
                 ),
             }
 
@@ -176,66 +182,66 @@ async def verify_organization(
         )
 
 
-@orgRouter.get("/data-feeder", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
-async def verify_organization(
-    request: Request,
-    db: db_dependencies,
-    background_task: BackgroundTasks,
-    organization_id: str = Query(..., alias="organization-id"),
-):
-    try:
-        decrypted_org_id = organization_id
+# @orgRouter.get("/data-feeder", status_code=status.HTTP_200_OK)
+# @limiter.limit(API_RATE_LIMITING)
+# async def verify_organization(
+#     request: Request,
+#     db: db_dependencies,
+#     background_task: BackgroundTasks,
+#     organization_id: str = Query(..., alias="organization-id"),
+# ):
+#     try:
+#         decrypted_org_id = organization_id
 
-        organization = (
-            db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.organization_id == decrypted_org_id)
-            .first()
-        )
-        if not organization:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Organization Not Found", "success": False},
-            )
+#         organization = (
+#             db.query(Models.OrganizationGeneralInfo)
+#             .filter(Models.OrganizationGeneralInfo.organization_id == decrypted_org_id)
+#             .first()
+#         )
+#         if not organization:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail={"message": "Organization Not Found", "success": False},
+#             )
 
-        user = (
-            db.query(Models.User)
-            .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
-            .filter(Models.EmployeeInfo.employee_email == organization.primary_email)
-            .first()
-        )
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "User Not Found",
-                    "success": False,
-                },
-            )
+#         user = (
+#             db.query(Models.User)
+#             .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
+#             .filter(Models.EmployeeInfo.employee_email == organization.primary_email)
+#             .first()
+#         )
+#         if not user:
+#             raise HTTPException(
+#                 status_code=status.HTTP_401_UNAUTHORIZED,
+#                 detail={
+#                     "message": "User Not Found",
+#                     "success": False,
+#                 },
+#             )
 
-        background_task.add_task(
-            roles_permission_initial_data_seeder_function, db, decrypted_org_id
-        )
+#         background_task.add_task(
+#             roles_permission_initial_data_seeder_function, db, decrypted_org_id
+#         )
 
-        return {
-            "message": "Organization Is Verified Successfully",
-            "success": True,
-            "data": {
-                "alreadyVerified": False,
-            },
-        }
+#         return {
+#             "message": "Organization Is Verified Successfully",
+#             "success": True,
+#             "data": {
+#                 "alreadyVerified": False,
+#             },
+#         }
 
-    except HTTPException as http_exception:
-        raise http_exception
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Error Accrued While Adding Employee",
-                "success": False,
-                "error": str(e),
-            },
-        )
+#     except HTTPException as http_exception:
+#         raise http_exception
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail={
+#                 "message": "Error Accrued While Adding Employee",
+#                 "success": False,
+#                 "error": str(e),
+#             },
+#         )
 
 
 #
@@ -282,11 +288,21 @@ async def onboard_organization(
             updated_data=data.general_info,
         )
 
+        fetch_admin_role = (
+            db.query(Models.ConfigRoleModule)
+            .filter(Models.ConfigRoleModule.role_name == "Administrator")
+            .first()
+        )
+
         user_info = (
             db.query(Models.EmployeeInfo)
             .filter(Models.EmployeeInfo.employee_email == data.general_info.primary_email)
             .first()
         )
+
+        user_info.employee_role_id = fetch_admin_role.id
+
+        db.add(user_info)
 
         updated_user_info = cerate_model_instance(
             model=Models.PersonalInfo,
@@ -295,12 +311,10 @@ async def onboard_organization(
 
         updated_user_info.user_id = user_info.user_id
         db.add(updated_user_info)
-        db.commit()
 
         address = cerate_model_instance(model=Models.OrganizationAddress, data=data.address)
         address.organization_id = organization.id
         db.add(address)
-        db.commit()
 
         contact_info_arr = []
 
@@ -315,13 +329,13 @@ async def onboard_organization(
         about_info = cerate_model_instance(model=Models.OrganizationAboutInfo, data=data.about_info)
         about_info.organization_id = organization.id
         db.add(about_info)
-        db.commit()
 
         organization_settings = cerate_model_instance(
             model=Models.OrganizationSettings, data=data.organization_settings
         )
         organization_settings.organization_id = organization.id
         db.add(organization_settings)
+
         db.commit()
 
         api_key, api_secret = generate_api_secrets_api_key()
@@ -487,10 +501,3 @@ async def fetch_reporting_manager(
                 "success": False,
             },
         )
-
-
-#
-#
-# ? ------------ Api To Fetch The Info Of The Organization ---------------------
-#
-#

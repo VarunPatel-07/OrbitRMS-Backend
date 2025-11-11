@@ -12,6 +12,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from Helper.helper import generate_api_secrets_api_key, model_to_filtered_dict
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
@@ -21,7 +22,7 @@ from SqlModels import Models
 
 load_dotenv(override=True)
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 ApiManager = APIRouter(prefix="/app/v1/api-manager", tags=["api-manger"])
 

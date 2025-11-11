@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import aliased, joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
 from Helper.helper import filter_fields, model_to_filtered_dict
@@ -20,7 +21,7 @@ from .OrganizationQueryFilters import Apply_Organization_Query_Filter
 load_dotenv(override=True)
 
 adminOrgRoute = APIRouter(prefix="/app/v1/admin/organization-manager", tags=["admin"])
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 
 @adminOrgRoute.get(path="/fetch-organizations", status_code=status.HTTP_200_OK)

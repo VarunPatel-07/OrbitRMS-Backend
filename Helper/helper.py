@@ -16,11 +16,12 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 
 load_dotenv(override=True)
 
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
+ENCRYPTION_KEY = EnvConfig.ENCRYPTION_KEY.encode()
 
 
 def generate_full_name(first_name: str, last_name: str, middle_name: str = None) -> str:

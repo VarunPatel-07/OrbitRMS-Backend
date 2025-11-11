@@ -2,22 +2,35 @@ import os
 
 from dotenv import load_dotenv
 
-from PydanticModels.HelperPydanticModel import WelcomeEmployeeMailModel
+from Config.EnvConfig import EnvConfig
+from PydanticModels.HelperPydanticModel import (
+    CreatePasswordPydanticBody,
+    NewClientInquiryMailPydanticBody,
+    VerifyEmailPydanticBody,
+    WelcomeEmployeeMailModel,
+)
 
 load_dotenv(override=True)
 
-INSTAGRAM_LINK = os.getenv("INSTAGRAM_LINK").strip()
-FACEBOOK_LINK = os.getenv("FACEBOOK_LINK").strip()
-LINKEDIN_LINK = os.getenv("LINKEDIN_LINK").strip()
+INSTAGRAM_LINK = EnvConfig.INSTAGRAM_LINK.strip()
+FACEBOOK_LINK = EnvConfig.FACEBOOK_LINK.strip()
+LINKEDIN_LINK = EnvConfig.LINKEDIN_LINK.strip()
+ORBIT_CONTACT_EMAIL = EnvConfig.ORBIT_CONTACT_EMAIL.strip()
 
 
-def VerifyEmailHtmlBody(url: str):
+def VerifyEmailHtmlBody(data: VerifyEmailPydanticBody):
+
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "Html", "email-verification.html")
     with open(path, "r") as file:
         html_content = file.read()
     html_content = (
-        (html_content.replace("{verification_link}", url))
+        (
+            html_content.replace("{confirm_my_email}", data.confirm_my_email).replace(
+                "{organization_name}", data.organization_name
+            )
+        )
+        .replace("{orbit_contact_emil}", ORBIT_CONTACT_EMAIL)
         .replace("{facebook_url}", FACEBOOK_LINK)
         .replace("{instagram_url}", INSTAGRAM_LINK)
         .replace("{linked_in_url}", LINKEDIN_LINK)
@@ -25,15 +38,16 @@ def VerifyEmailHtmlBody(url: str):
     return html_content
 
 
-def CreatePasswordHtmlBody(url: str):
+def CreatePasswordHtmlBody(data: CreatePasswordPydanticBody):
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "Html", "create-password.html")
     with open(path, "r") as file:
         html_content = file.read()
 
-        print(url)
     html_content = (
-        (html_content.replace("{create_password_link}", url))
+        (html_content.replace("{create_password_link}", data.create_password_link))
+        .replace("{user_name}", data.user_name)
+        .replace("{organization_name}", data.organization_name)
         .replace("{facebook_url}", FACEBOOK_LINK)
         .replace("{instagram_url}", INSTAGRAM_LINK)
         .replace("{linked_in_url}", LINKEDIN_LINK)
@@ -57,9 +71,29 @@ def ResetPasswordHtmlBody(url: str):
     return html_content
 
 
+def NewClientInquiryMailHtmlBody(data: NewClientInquiryMailPydanticBody):
+
+    base_url = os.path.dirname(__file__)
+    path = os.path.join(base_url, "Html", "rest-password-instruction.html")
+    with open(path, "r") as file:
+        html_content = file.read()
+    html_content = (
+        (
+            html_content.replace("{user_name}", data.user_name)
+            .replace("{organization_name}", data.organization_name)
+            .replace("{reset_password_link}", data.reset_password_link)
+        )
+        .replace("{orbit_contact_emil}", ORBIT_CONTACT_EMAIL)
+        .replace("{facebook_url}", FACEBOOK_LINK)
+        .replace("{instagram_url}", INSTAGRAM_LINK)
+        .replace("{linked_in_url}", LINKEDIN_LINK)
+    )
+
+    return html_content
+
+
 def WelcomeMailForNewlyAddedEmployee(data: WelcomeEmployeeMailModel):
 
-    ORBIT_CONTACT_EMAIL = os.getenv("ORBIT_CONTACT_EMAIL", "").strip()
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "Html", "welcome-new-user-mail.html")
     with open(path, "r") as file:
@@ -201,7 +235,6 @@ def format_client_details(client_details: dict) -> str:
 def NewClientInquiryAccruedMail(
     url: str, organization_name: str, organization_logo: str, client_details: dict
 ):
-    ORBIT_CONTACT_EMAIL = os.getenv("ORBIT_CONTACT_EMAIL", "").strip()
 
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "Html", "new-client-inquiry-mail.html")
@@ -227,7 +260,6 @@ def NewClientInquiryAccruedMail(
 
 
 def NewAdminLoginGeneratedOtp(Otp_Code: str):
-    ORBIT_CONTACT_EMAIL = os.getenv("ORBIT_CONTACT_EMAIL", "").strip()
 
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "Html", "admin-access-code.html")

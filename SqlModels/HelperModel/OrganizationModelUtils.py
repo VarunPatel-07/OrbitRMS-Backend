@@ -1,8 +1,9 @@
 import uuid
-
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Integer, Enum, Date
 from sqlalchemy.dialects.mysql import CHAR, JSON
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 
 from SqlModels.Models import BaseModel
 
@@ -129,6 +130,11 @@ class FeedComments(BaseModel):
 
     comment = Column(Text, nullable=True, default=None)
 
+    parent_id = Column(CHAR(36), ForeignKey("feed_comments.id"), nullable=True, index=True)
+    comment_replies = relationship(
+        "FeedComments", backref=backref("parent", remote_side=[id]), cascade="all, delete-orphan"
+    )
+
     user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)
     user = relationship("User", back_populates="feed_comments", uselist=False)
 
@@ -139,3 +145,87 @@ class FeedComments(BaseModel):
         index=True,
     )
     organization_updates = relationship("OrganizationUpdates", back_populates="comments")
+
+
+class LeavesSettings(BaseModel):
+    __tablename__ = "organization_leaves_settings"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    leave_name = Column(String(255), nullable=False, default=None, unique=True)
+    leave_code = Column(String(255), nullable=False, default=None, unique=True)
+
+    is_paid = Column(Boolean, nullable=False, default=False)
+    max_number_of_leave = Column(Integer, nullable=False, default=0)
+
+    refill_quarterly = Column(Boolean, nullable=False, default=False)
+    refill_from = Column(
+        Enum(
+            "January",
+            "April",
+            "July",
+            "October",
+            name="refill_quarter_start_enum",
+        ),
+        nullable=True,
+        default="January",
+    )
+
+    description = Column(Text, nullable=True, default=None)
+
+    gender = Column(JSON, nullable=True, default=list)
+    employee_status = Column(JSON, nullable=True, default=list)
+    marital_status = Column(JSON, nullable=True, default=list)
+
+    status = Column(Boolean, default=True, nullable=False)
+
+    leaves = relationship("AttendanceLeavesModule", back_populates="leave_type")
+
+    organization_id = Column(
+        CHAR(36),
+        ForeignKey("organization.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization = relationship("Organization", back_populates="leaves_settings")
+
+    leave_balance = relationship("LeaveBalance", back_populates="leave_type")
+
+    # created At UpdatedAt Field
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
+
+
+class LeaveBalance(BaseModel):
+    __tablename__ = "leave_balance"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    leave_type_id = Column(
+        CHAR(36), ForeignKey("organization_leaves_settings.id", ondelete="CASCADE")
+    )
+    leave_type = relationship("LeavesSettings", back_populates="leave_balance")
+
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, unique=True)
+    user = relationship(
+        "User",
+        back_populates="leave_balance",
+    )
+
+    available_leaves = Column(Integer, nullable=False, default=0)
+    last_refill_date = Column(Date, nullable=True)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )

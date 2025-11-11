@@ -8,14 +8,16 @@ import requests
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
+from Config.EnvConfig import EnvConfig
 from Database.CacheDatabase import cache_database
 from Helper.formateDateOnTheBaseOfTheCountry import formateDateOnTheBaseOfTheCountry
 from RateLimiting import limiter
 
 load_dotenv(override=True)
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
-GEONAME_API_USERNAME = os.getenv("GEONAME_API_USERNAME")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
+GEONAME_API_USERNAME = EnvConfig.GEONAME_API_USERNAME
+REST_API_URL = EnvConfig.REST_API_URL
 
 
 async def fetch_data(url, retries=3, timeout=20):
@@ -57,8 +59,6 @@ async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="
                 cached_Data, key=lambda x: x["country_name"], reverse=(order.lower() == "desc")
             )
             return {"message": "Fetched Successfully", "success": True, "data": cached_sorted_data}
-
-        REST_API_URL = os.getenv("REST_API_URL")
 
         response = requests.get(REST_API_URL)
 
@@ -356,9 +356,7 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
             sorted_cached_data = json.loads(cache_data)
             return {"message": "Fetched Successfully", "success": True, "data": sorted_cached_data}
 
-        url = os.getenv("REST_API_URL")
-
-        response = await fetch_data(url=url)
+        response = await fetch_data(url=REST_API_URL)
 
         countryData = response
 

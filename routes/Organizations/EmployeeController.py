@@ -19,6 +19,7 @@ from sqlalchemy import and_
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql import func
 
+from Config.EnvConfig import EnvConfig
 from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import WelcomeMailForNewlyAddedEmployee
@@ -44,11 +45,11 @@ from .EmployeeQueryFilters import apply_query_filter
 
 load_dotenv(override=True)
 
-SUPER_SECURE_HASH_PASSWORD = os.getenv("SUPER_SECURE_HASH_PASSWORD", "").strip()
+SUPER_SECURE_HASH_PASSWORD = EnvConfig.SUPER_SECURE_HASH_PASSWORD.strip()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+FRONTEND_URL = EnvConfig.FRONTEND_URL.strip()
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 
 alignable_for_child_info = [
@@ -496,7 +497,7 @@ async def handel_fetch_profile_info(
         )
 
 
-@employee_router.get("/fetch-employee", status_code=status.HTTP_200_OK)
+@employee_router.get("/fetch-employee-profile", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def handel_fetch_profile_info(
     request: Request,

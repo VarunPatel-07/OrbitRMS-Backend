@@ -18,6 +18,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import NewClientInquiryAccruedMail
 from Helper.emailSender import EmailSchema, email_sender_function
@@ -35,9 +36,9 @@ from SqlModels import Models
 from .ClientInquiresQueryFilter import apply_client_inquiry_query_filter
 
 load_dotenv(override=True)
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+FRONTEND_URL = EnvConfig.FRONTEND_URL.strip()
 
 clientInquires = APIRouter(prefix="/app/v1/client-inquires", tags=["clientInquires"])
 
