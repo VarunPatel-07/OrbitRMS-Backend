@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Enum
 from sqlalchemy.dialects.mysql import CHAR
 from sqlalchemy.orm import relationship
 
@@ -41,3 +41,39 @@ class OrbitAdminSessions(BaseModel):
         nullable=False,
     )
     admin = relationship("Admin", back_populates="admin_sessions")
+
+
+class AdminOrganizationUpdates(BaseModel):
+    __tablename__ = "organization_updates_admin"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    images = Column(Text, nullable=True, default=None)
+    description = Column(Text, nullable=True, default=None)
+
+    isCommentDisabled = Column(Boolean, default=False, nullable=True)
+
+    isLikeDisabled = Column(Boolean, default=False, nullable=True)
+
+    # comments = relationship("FeedComments", back_populates="organization_updates", cascade="all, delete")
+
+    user_id = Column(
+        CHAR(36),
+        ForeignKey("orbit_admin.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+    publisher = relationship("Admin", back_populates="organization_updates", uselist=False)
+
+    source_type = Column(
+        Enum("default", "system", "user_created", name="source_type_enum"),
+        nullable=False,
+        default="system",
+    )
+
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )

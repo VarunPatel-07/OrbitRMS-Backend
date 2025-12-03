@@ -71,7 +71,7 @@ def ResetPasswordHtmlBody(url: str):
     return html_content
 
 
-def NewClientInquiryMailHtmlBody(data: NewClientInquiryMailPydanticBody):
+def ResetPasswordInstructionHtmlBody(data: NewClientInquiryMailPydanticBody):
 
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "Html", "rest-password-instruction.html")

@@ -8,7 +8,7 @@ from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import expression
 
 from Database.Base import BaseModel
-from SqlModels.HelperModel.AdminModelHelperUtils import OrbitAdminSessions
+from SqlModels.HelperModel.AdminModelHelperUtils import OrbitAdminSessions, AdminOrganizationUpdates
 from SqlModels.HelperModel.ConfigModelUtils import (
     ConfigRoleModule,
     Department,
@@ -62,6 +62,7 @@ class Admin(BaseModel):
     email = Column(String(255), nullable=False, default=None)
     password = Column(String(255), nullable=False)
     admin_sessions = relationship("OrbitAdminSessions", back_populates="admin")
+    organization_updates = relationship("AdminOrganizationUpdates", back_populates="publisher")
 
 
 class MaintenanceLog(BaseModel):
@@ -119,13 +120,16 @@ class User(BaseModel):
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    personal_info = relationship("PersonalInfo", back_populates="user", uselist=False)
+    personal_info = relationship(
+        "PersonalInfo", back_populates="user", uselist=False, cascade="all, delete"
+    )
 
     employee_info = relationship(
         "EmployeeInfo",
         foreign_keys="[EmployeeInfo.user_id]",
         back_populates="user",
         uselist=False,
+        cascade="all, delete",
     )
     reporting_employees = relationship(
         "EmployeeInfo",
@@ -139,12 +143,12 @@ class User(BaseModel):
     )
 
     personal_contact_info = relationship(
-        "PersonalContactInfo", back_populates="user", uselist=False
+        "PersonalContactInfo", back_populates="user", uselist=False, cascade="all, delete"
     )
 
     leave_balance = relationship("LeaveBalance", back_populates="user")
 
-    family_info = relationship("FamilyInfo", back_populates="user")
+    family_info = relationship("FamilyInfo", back_populates="user", cascade="all, delete")
     same_as_current_address = Column(Boolean, nullable=False, default=True)
 
     current_address_id = Column(CHAR(36), ForeignKey("address.id"), nullable=True)
@@ -157,21 +161,29 @@ class User(BaseModel):
         "Address", foreign_keys=[permanent_address_id], backref="users_permanent"
     )
 
-    social_link = relationship("SocialLinks", back_populates="user")
+    social_link = relationship("SocialLinks", back_populates="user", cascade="all, delete")
     password = Column(String(255), nullable=False)
     account_status = Column(Boolean, nullable=False, default=True)
     profile_created = Column(Boolean, nullable=False, default=False)
     reset_password_token = Column(String(255), nullable=True, default=None)
     password_created = Column(Boolean, nullable=False, default=False)
-    organization_id = Column(CHAR(36), ForeignKey("organization.id"), nullable=False, index=True)
+    organization_id = Column(
+        CHAR(36),
+        ForeignKey(
+            "organization.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
 
     organization = relationship("Organization", back_populates="employees")
-    post = relationship("OrganizationUpdates", back_populates="publisher")
+    post = relationship("OrganizationUpdates", back_populates="publisher", cascade="all, delete")
 
-    feed_likes = relationship("FeedLikes", back_populates="user")
-    feed_comments = relationship("FeedComments", back_populates="user")
+    feed_likes = relationship("FeedLikes", back_populates="user", cascade="all, delete")
+    feed_comments = relationship("FeedComments", back_populates="user", cascade="all, delete")
 
-    sessions = relationship("Sessions", back_populates="user")
+    sessions = relationship("Sessions", back_populates="user", cascade="all, delete")
 
     applied_leaves = relationship(
         "AttendanceLeavesModule",
@@ -194,48 +206,48 @@ class Organization(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     general_info = relationship(
-        "OrganizationGeneralInfo", back_populates="organization", uselist=False
+        "OrganizationGeneralInfo",
+        back_populates="organization",
+        uselist=False,
+        cascade="all, delete",
     )
-    address = relationship("OrganizationAddress", back_populates="organization")
-    contact_info = relationship("OrganizationContactInfo", back_populates="organization")
-    about_info = relationship("OrganizationAboutInfo", back_populates="organization")
+    address = relationship(
+        "OrganizationAddress", back_populates="organization", cascade="all, delete"
+    )
+    contact_info = relationship(
+        "OrganizationContactInfo", back_populates="organization", cascade="all, delete"
+    )
+    about_info = relationship(
+        "OrganizationAboutInfo", back_populates="organization", cascade="all, delete"
+    )
     organization_settings = relationship(
-        "OrganizationSettings", back_populates="organization", uselist=False
+        "OrganizationSettings", back_populates="organization", uselist=False, cascade="all, delete"
     )
     status = Column(Boolean, nullable=False, default=True)
 
-    employees = relationship("User", back_populates="organization", cascade="all, delete-orphan")
+    employees = relationship("User", back_populates="organization", cascade="all, delete")
 
     config_modules = relationship(
-        "ConfigModule", back_populates="organization", cascade="all, delete-orphan"
+        "ConfigModule", back_populates="organization", cascade="all, delete"
     )
 
     client_inquires = relationship(
-        "ClientInquires", back_populates="organization", cascade="all, delete-orphan", uselist=False
+        "ClientInquires", back_populates="organization", cascade="all, delete", uselist=False
     )
 
     org_updates = relationship(
-        "OrganizationUpdates", back_populates="organization", cascade="all, delete-orphan"
+        "OrganizationUpdates", back_populates="organization", cascade="all, delete"
     )
 
     social_media_accounts = relationship(
-        "SocialMediaAccount",
-        back_populates="organization",
-        uselist=True,
-        cascade="all, delete-orphan",
+        "SocialMediaAccount", back_populates="organization", uselist=True, cascade="all, delete"
     )
     social_media_posts = relationship(
-        "SocialMediaPosts",
-        back_populates="organization",
-        uselist=True,
-        cascade="all, delete-orphan",
+        "SocialMediaPosts", back_populates="organization", uselist=True, cascade="all, delete"
     )
 
     leaves_settings = relationship(
-        "LeavesSettings",
-        back_populates="organization",
-        uselist=True,
-        cascade="all, delete-orphan",
+        "LeavesSettings", back_populates="organization", uselist=True, cascade="all, delete"
     )
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)

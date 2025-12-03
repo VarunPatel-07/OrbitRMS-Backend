@@ -1,8 +1,8 @@
 """automated-migration
 
-Revision ID: 75cb63854ed5
+Revision ID: 9fd2a039c5be
 Revises: 
-Create Date: 2025-11-10 16:53:11.456487
+Create Date: 2025-12-03 22:10:56.866579
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision: str = '75cb63854ed5'
+revision: str = '9fd2a039c5be'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -150,6 +150,9 @@ def upgrade() -> None:
     sa.Column('meta_value', sa.String(length=255), nullable=False),
     sa.Column('terms_accepted', sa.Boolean(), nullable=False),
     sa.Column('email_verified', sa.Boolean(), nullable=False),
+    sa.Column('industry', sa.String(length=255), nullable=False),
+    sa.Column('industry_slug', sa.String(length=255), nullable=False),
+    sa.Column('employee_count', sa.String(length=255), nullable=False),
     sa.Column('organization_profile_picture', sa.String(length=255), nullable=True),
     sa.Column('organization_id', mysql.CHAR(length=36), nullable=False),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], onupdate='CASCADE', ondelete='CASCADE'),
@@ -175,7 +178,6 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('is_paid'),
     sa.UniqueConstraint('leave_code'),
     sa.UniqueConstraint('leave_name')
     )
@@ -189,6 +191,19 @@ def upgrade() -> None:
     sa.Column('default_dateformat', sa.String(length=255), nullable=True),
     sa.Column('organization_id', mysql.CHAR(length=36), nullable=False),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], onupdate='CASCADE', ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('organization_updates_admin',
+    sa.Column('id', mysql.CHAR(length=36), nullable=False),
+    sa.Column('images', sa.Text(), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('isCommentDisabled', sa.Boolean(), nullable=True),
+    sa.Column('isLikeDisabled', sa.Boolean(), nullable=True),
+    sa.Column('user_id', mysql.CHAR(length=36), nullable=False),
+    sa.Column('source_type', sa.Enum('default', 'system', 'user_created', name='source_type_enum'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['orbit_admin.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('social_media_accounts',
@@ -237,7 +252,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['current_address_id'], ['address.id'], ),
-    sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ),
+    sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['permanent_address_id'], ['address.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -355,6 +370,19 @@ def upgrade() -> None:
     sa.UniqueConstraint('form_id'),
     sa.UniqueConstraint('form_name')
     )
+    op.create_table('leave_balance',
+    sa.Column('id', mysql.CHAR(length=36), nullable=False),
+    sa.Column('leave_type_id', mysql.CHAR(length=36), nullable=True),
+    sa.Column('user_id', mysql.CHAR(length=36), nullable=False),
+    sa.Column('available_leaves', sa.Integer(), nullable=False),
+    sa.Column('last_refill_date', sa.Date(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['leave_type_id'], ['organization_leaves_settings.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id')
+    )
     op.create_table('organization_holidays',
     sa.Column('id', mysql.CHAR(length=36), nullable=False),
     sa.Column('holiday_name', sa.String(length=255), nullable=False),
@@ -396,6 +424,7 @@ def upgrade() -> None:
     )
     op.create_table('personal_info',
     sa.Column('id', mysql.CHAR(length=36), nullable=False),
+    sa.Column('normalized_full_name', sa.String(length=255), nullable=False),
     sa.Column('first_name', sa.String(length=255), nullable=False),
     sa.Column('middle_name', sa.String(length=255), nullable=True),
     sa.Column('last_name', sa.String(length=255), nullable=False),
@@ -567,6 +596,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_organization_updates_user_id'), table_name='organization_updates')
     op.drop_table('organization_updates')
     op.drop_table('organization_holidays')
+    op.drop_table('leave_balance')
     op.drop_table('inquiry_form_schema')
     op.drop_table('family_info')
     op.drop_table('config_role_module')
@@ -580,6 +610,7 @@ def downgrade() -> None:
     op.drop_table('users')
     op.drop_table('social_media_posts')
     op.drop_table('social_media_accounts')
+    op.drop_table('organization_updates_admin')
     op.drop_table('organization_settings')
     op.drop_index(op.f('ix_organization_leaves_settings_organization_id'), table_name='organization_leaves_settings')
     op.drop_table('organization_leaves_settings')

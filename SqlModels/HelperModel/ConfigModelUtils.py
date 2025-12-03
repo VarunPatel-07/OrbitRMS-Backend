@@ -120,7 +120,7 @@ class ConfigRoleModule(BaseModel):
     # now we will include permission Module Here
 
     associated_permissions = relationship(
-        "RoleAssociatedPermissionModule", back_populates="role_module"
+        "RoleAssociatedPermissionModule", back_populates="role_module", cascade="all, delete"
     )
     status = Column(Boolean, default=True, nullable=False)
 
@@ -156,14 +156,21 @@ class RoleAssociatedPermissionModule(BaseModel):
         ForeignKey("config_role_associated_permissions.id", ondelete="CASCADE", onupdate="CASCADE"),
     )
 
-    role_module = relationship("ConfigRoleModule", back_populates="associated_permissions")
+    role_module = relationship(
+        "ConfigRoleModule", back_populates="associated_permissions", cascade="all, delete"
+    )
 
     parent_module = relationship(
-        "RoleAssociatedPermissionModule", remote_side=[id], back_populates="sub_modules"
+        "RoleAssociatedPermissionModule",
+        remote_side=[id],
+        back_populates="sub_modules",
+        cascade="all, delete",
     )
-    sub_modules = relationship("RoleAssociatedPermissionModule", back_populates="parent_module")
+    sub_modules = relationship(
+        "RoleAssociatedPermissionModule", back_populates="parent_module", cascade="all, delete"
+    )
 
-    permissions = relationship("PermissionModule", back_populates="associated_permissions_module")
+    permissions = relationship("PermissionModule", back_populates="associated_permissions_module", cascade="all, delete")
 
 
 class PermissionModule(BaseModel):

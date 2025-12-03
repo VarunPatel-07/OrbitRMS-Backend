@@ -2,7 +2,7 @@ import os
 from typing import List, Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, or_
 
 from Config.EnvConfig import EnvConfig
 from Helper.jwtHelper import hash_passwords
@@ -73,21 +73,7 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_config_role_module = (
-        db.query(Models.ConfigRoleModule)
-        .filter(func.lower(Models.ConfigRoleModule.role_name) == func.lower(data.role_name))
-        .first()
-    )
-
-    if existing_config_role_module:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Role Module With This Name Is Already Exist",
-                "success": False,
-            },
-        )
-
+ 
     config_role_module = Models.ConfigRoleModule(
         role_name=data.role_name,
         description=data.description,
@@ -125,22 +111,6 @@ def designation_data_seeder_helper_function(db, organization_id: str, data: Desi
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_designation = (
-        db.query(Models.Designations)
-        .filter(
-            func.lower(Models.Designations.designations_name) == func.lower(data.designations_name)
-        )
-        .first()
-    )
-
-    if existing_designation:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Designations Is Already Exist",
-                "success": False,
-            },
-        )
 
     designations = Models.Designations(
         designations_name=data.designations_name,
@@ -169,20 +139,6 @@ def project_status_data_seeder_helper_function(db, organization_id: str, data: P
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_status = (
-        db.query(Models.ProjectStatus)
-        .filter(func.lower(Models.ProjectStatus.status_name) == func.lower(data.status_name))
-        .first()
-    )
-
-    if existing_status:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Project Status With This Name Is Already Exist",
-                "success": False,
-            },
-        )
 
     project_status = Models.ProjectStatus(
         status_name=data.status_name,
@@ -212,20 +168,7 @@ def department_data_seeder_helper_function(db, organization_id: str, data: Depar
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_department = (
-        db.query(Models.Department)
-        .filter(func.lower(Models.Department.department_name) == func.lower(data.department_name))
-        .first()
-    )
 
-    if existing_department:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "department With This Name Is Already Exist",
-                "success": False,
-            },
-        )
 
     department = Models.Department(
         department_name=data.department_name,
@@ -256,28 +199,6 @@ def client_form_filed_data_seeder_helper_function(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"message": "Config Module Not Found", "success": False},
-        )
-
-    existing_field = (
-        db.query(Models.InquiryFormSchema)
-        .filter(
-            and_(
-                func.lower(Models.InquiryFormSchema.form_id)
-                == func.lower(form_schema_data.form_id),
-                func.lower(Models.InquiryFormSchema.form_name)
-                == func.lower(form_schema_data.form_name),
-            )
-        )
-        .first()
-    )
-
-    if existing_field:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Field With This Name Is Already Exist",
-                "success": False,
-            },
         )
 
     inquiry_form = Models.InquiryFormSchema(

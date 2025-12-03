@@ -36,6 +36,7 @@ def ping_maintenance_mode_scheduler():
                 maintenance_mode.is_active = True
                 maintenance_mode.updated_at = current_date
                 maintenance_mode.updated_by = log.started_by
+                maintenance_mode.message = log.message
                 print(f"maintenance mode Is Now Activated")
 
         active_logs = db.query(Models.MaintenanceLog).filter(

@@ -25,7 +25,7 @@ class PersonalInfo(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo: add the new field about
-
+    normalized_full_name = Column(String(255), nullable=False)
     first_name = Column(String(255), nullable=False)
     middle_name = Column(String(255), nullable=True, default=None)
     last_name = Column(String(255), nullable=False)

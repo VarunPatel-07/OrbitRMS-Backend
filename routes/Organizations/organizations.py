@@ -12,7 +12,7 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
-
+from sqlalchemy.sql import func
 from BackgroundDataHandler.DataSeederHelper import ClientInquiryInitiator
 from BackgroundDataHandler.initialDataSeeder import (
     client_form_field_initial_data_seeder,
@@ -84,8 +84,6 @@ async def verify_organization(
             )
         if not organization.email_verified:
             organization.email_verified = True
-            db.commit()
-            db.refresh(organization)
 
             user = (
                 db.query(Models.User)
@@ -131,16 +129,22 @@ async def verify_organization(
 
             db.add(config_module)
             db.commit()
-            db.refresh(config_module)
 
-            db.commit()
+            db.refresh(config_module)
             db.refresh(user)
 
             background_task.add_task(
                 roles_permission_initial_data_seeder_function, db, decrypted_org_id
             )
-            background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id)
-            background_task.add_task(department_data_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(
+                designation_initial_data_seeder, db, decrypted_org_id, organization.industry_slug
+            )
+            background_task.add_task(
+                department_data_initial_data_seeder,
+                db,
+                decrypted_org_id,
+                organization.industry_slug,
+            )
             background_task.add_task(project_status_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
 
@@ -307,9 +311,19 @@ async def onboard_organization(
         updated_user_info = cerate_model_instance(
             model=Models.PersonalInfo,
             data=data.employee_profile_info,
+            fields=["-normalized_full_name"],
+        )
+
+        normalized_full_name = func.regexp_replace(
+            func.lower(
+                func.regexp_replace(func.trim(data.employee_profile_info.full_name), r"\s+", " ")
+            ),
+            r"\s+",
+            "",
         )
 
         updated_user_info.user_id = user_info.user_id
+        updated_user_info.normalized_full_name = normalized_full_name
         db.add(updated_user_info)
 
         address = cerate_model_instance(model=Models.OrganizationAddress, data=data.address)

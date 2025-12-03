@@ -10,7 +10,7 @@ from fastapi.responses import Response
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
-
+from Middleware.RecaptchaVerifier import RecaptchaMiddleware
 from BackgroundDataHandler.DataSeederHelper import initializing_OrbitAdmin_On_App_start
 from Config.EnvConfig import EnvConfig
 from Database.CacheDatabase import cache_database
@@ -21,6 +21,8 @@ from routes.Admin.Auth.authentication import adminAuthRoute
 from routes.Admin.MaintenanceModeManager.MaintenanceModeManager import MaintenanceMode
 from routes.Admin.Organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.Admin.Organization.organization import adminOrgRoute
+from routes.Admin.Organization.AdminFeedController import adminFeedControl
+from routes.Admin.ImageUploadation.ImageUploadation import adminImgRoute
 from routes.ApiManager.ApiManager import ApiManager
 
 # from routes.Organizations.organizations import organization_router
@@ -67,6 +69,10 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+if not EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
+
+    app.add_middleware(RecaptchaMiddleware)
+
 
 # Create database tables (consider using migrations instead)
 BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
@@ -91,6 +97,8 @@ app.include_router(SocialAccount)
 app.include_router(SocialAccountAuth)
 app.include_router(OrbitAiRoute)
 app.include_router(attendanceRoute)
+app.include_router(adminFeedControl)
+app.include_router(adminImgRoute)
 
 scheduler = BackgroundScheduler()
 

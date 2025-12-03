@@ -30,3 +30,7 @@ class ScheduleMaintenanceModeCancellationData(BaseModel):
 
 class MaintenanceModeMessageData(BaseModel):
     message: str
+
+
+class ResendVerificationMail(BaseModel):
+    email: str

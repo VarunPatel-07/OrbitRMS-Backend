@@ -5,19 +5,28 @@ from typing import Optional
 from urllib.parse import unquote
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, BackgroundTasks
 from sqlalchemy.orm import aliased, joinedload
-
+from PydanticModels.Admin.AdminAuthenticationModel import ResendVerificationMail
 from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
-from Helper.helper import filter_fields, model_to_filtered_dict
+from Helper.helper import (
+    filter_fields,
+    model_to_filtered_dict,
+    urlsafe_data_encoding_function,
+    generatePasswordResetToken,
+)
+from Email.HtmlEmailBody import VerifyEmailHtmlBody, CreatePasswordHtmlBody
+from Helper.emailSender import EmailSchema, email_sender_function
 from Middleware.verifyToken import verify_token
 from RateLimiting import limiter
 from SqlModels import Models
+from PydanticModels.HelperPydanticModel import VerifyEmailPydanticBody, CreatePasswordPydanticBody
 
 from .OrganizationQueryFilters import Apply_Organization_Query_Filter
 
+FRONTEND_URL = EnvConfig.FRONTEND_URL.strip()
 load_dotenv(override=True)
 
 adminOrgRoute = APIRouter(prefix="/app/v1/admin/organization-manager", tags=["admin"])
@@ -114,17 +123,43 @@ async def Fetch_All__Organization(
                     "primary_number": org.general_info.primary_number,
                     "organization_name": org.general_info.organization_name,
                     "organization_image": org.general_info.organization_profile_picture,
-                    "email_domain_slug": org.organization_settings[0].email_domain_slug,
-                    "is_meta_verified": org.general_info.is_meta_verified,
-                    "email_verified": org.general_info.email_verified,
-                    "employee_code_prefix": org.organization_settings[0].employee_code_prefix,
-                    "intern_code_prefix": org.organization_settings[0].intern_code_prefix,
-                    "country_info": org.general_info.country_info,
-                    "portal_slug": org.general_info.portal_slug,
-                    "organization_address": {
-                        "country": org.address[0].country,
-                        "country_code": org.address[0].country_code,
-                    },
+                    "email_domain_slug": (
+                        org.organization_settings.email_domain_slug
+                        if org.organization_settings
+                        else None
+                    ),
+                    "is_meta_verified": (
+                        org.general_info.is_meta_verified if org.general_info else None
+                    ),
+                    "email_verified": org.general_info.email_verified if org.general_info else None,
+                    "employee_code_prefix": (
+                        org.organization_settings.employee_code_prefix
+                        if org.organization_settings
+                        else None
+                    ),
+                    "intern_code_prefix": (
+                        org.organization_settings.intern_code_prefix
+                        if org.organization_settings
+                        else None
+                    ),
+                    "country_info": (
+                        (
+                            json.loads(org.general_info.country_info)
+                            if isinstance(org.general_info.country_info, str)
+                            else org.general_info.country_info
+                        )
+                        if org.general_info
+                        else None
+                    ),
+                    "portal_slug": org.general_info.portal_slug if org.general_info else None,
+                    "organization_address": (
+                        {
+                            "country": org.address[0].country,
+                            "country_code": org.address[0].country_code,
+                        }
+                        if org.address
+                        else None
+                    ),
                 }
                 for org in organizations
             ],
@@ -284,19 +319,39 @@ async def Fetch_Client_Organization_Details(
             "success": True,
             "data": {
                 **model_to_filtered_dict(organization),
-                "general_info": filter_fields(
-                    organization.general_info, ["-id", "-organization_id"]
+                "general_info": (
+                    {
+                        "country_info": (
+                            json.loads(organization.general_info.country_info)
+                            if isinstance(organization.general_info.country_info, str)
+                            else organization.general_info.country_info
+                        ),
+                        **filter_fields(
+                            organization.general_info,
+                            ["-id", "-organization_id", "-country_info"],
+                        ),
+                    }
+                    if organization.general_info
+                    else None
                 ),
-                "address": filter_fields(organization.address[0], ["-id", "-organization_id"]),
+                "address": (
+                    filter_fields(organization.address[0], ["-id", "-organization_id"])
+                    if organization.address
+                    else None
+                ),
                 "contact_info": [
                     filter_fields(contact_info, ["-id", "-organization_id"])
                     for contact_info in organization.contact_info
                 ],
-                "about_info": filter_fields(
-                    organization.about_info[0], ["-id", "-organization_id"]
+                "about_info": (
+                    filter_fields(organization.about_info[0], ["-id", "-organization_id"])
+                    if organization.about_info
+                    else None
                 ),
-                "organization_settings": filter_fields(
-                    organization.organization_settings[0], ["-id", "-organization_id"]
+                "organization_settings": (
+                    filter_fields(organization.organization_settings, ["-id", "-organization_id"])
+                    if organization.organization_settings
+                    else None
                 ),
             },
         }
@@ -308,6 +363,350 @@ async def Fetch_Client_Organization_Details(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "error while Verifying Admin",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@adminOrgRoute.post(path="/reset/resend-email-verification")
+@limiter.limit(API_RATE_LIMITING)
+async def Resend_Email_Verification_Link(
+    request: Request,
+    db: db_dependencies,
+    data: ResendVerificationMail,
+    background_task: BackgroundTasks,
+    token: str = Depends(verify_token),
+    id: str = Query(..., alias="id"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
+        find_organization = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(Models.OrganizationGeneralInfo.primary_email == data.email)
+            .first()
+        )
+
+        domain = data.email.split("@")[1]
+
+        check_for_the_email_domain = (
+            db.query(Models.Organization)
+            .join(Models.OrganizationGeneralInfo)
+            .filter(
+                Models.OrganizationGeneralInfo.primary_email.like(f"%@{domain}"),
+                Models.Organization.status.is_(True),
+            )
+            .first()
+        )
+
+        if check_for_the_email_domain:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "The Provided Email Domain Is Already In Use",
+                    "success": False,
+                },
+            )
+
+        if find_organization:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "The Provided Email Is Already In Use",
+                    "success": False,
+                    "owner_email": find_organization.primary_email,
+                },
+            )
+
+        organization = db.query(Models.Organization).filter(Models.Organization.id == id).first()
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "No Such Organization Found", "success": False},
+            )
+
+        organization_general_info = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(Models.OrganizationGeneralInfo.organization_id == organization.id)
+            .first()
+        )
+
+        employee = (
+            db.query(Models.EmployeeInfo)
+            .filter(Models.EmployeeInfo.employee_email == organization_general_info.primary_email)
+            .first()
+        )
+
+        organization_general_info.primary_email = data.email
+
+        employee.employee_email = data.email
+
+        db.commit()
+
+        encrypted_org_id = urlsafe_data_encoding_function(organization.id)
+
+        email_data = {
+            "recever_email": data.email,
+            "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
+            "body": VerifyEmailHtmlBody(
+                VerifyEmailPydanticBody(
+                    confirm_my_email=f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}",
+                    organization_name=organization_general_info.organization_name,
+                )
+            ),
+        }
+
+        email_instance = EmailSchema(**email_data)
+
+        email_sender_function(email_instance, background_task)
+
+        return {
+            "success": True,
+            "title": "Organization Created",
+            "message": "Verification Email Send Successfully",
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Resending The Email Verification Link",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@adminOrgRoute.post(path="/reset/resend-onboarding-instruction")
+@limiter.limit(API_RATE_LIMITING)
+async def Resend_Onboarding_Instruction(
+    request: Request,
+    db: db_dependencies,
+    data: ResendVerificationMail,
+    background_task: BackgroundTasks,
+    token: str = Depends(verify_token),
+    id: str = Query(..., alias="id"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
+        find_organization = (
+            db.query(Models.OrganizationGeneralInfo)
+            .filter(Models.OrganizationGeneralInfo.primary_email == data.email)
+            .first()
+        )
+
+        if not find_organization:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "No Organization Found",
+                    "success": False,
+                    "owner_email": find_organization.primary_email,
+                },
+            )
+
+        organization = (
+            db.query(Models.Organization)
+            .join(Models.OrganizationGeneralInfo)
+            .filter(Models.Organization.id == id)
+            .first()
+        )
+
+        employee = (
+            db.query(Models.User)
+            .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
+            .filter(
+                Models.User.organization_id == organization.id,
+                Models.EmployeeInfo.employee_email == data.email,
+            )
+            .first()
+        )
+
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Employee Not Found",
+                    "success": False,
+                },
+            )
+
+        encrypted_user_id = urlsafe_data_encoding_function(employee.id)
+
+        reset_password_token = generatePasswordResetToken()
+
+        employee.reset_password_token = reset_password_token
+
+        encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+
+        email_data = {
+            "recever_email": data.email,
+            "subject": "Complete Your Account Setup – Create Your Password",
+            "body": CreatePasswordHtmlBody(
+                CreatePasswordPydanticBody(
+                    user_name="",
+                    organization_name=organization.general_info.organization_name,
+                    create_password_link=f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}&token={encrypted_token}",
+                )
+            ),
+        }
+
+        email_instance = EmailSchema(**email_data)
+
+        email_sender_function(email_instance, background_task)
+
+        db.commit()
+
+        return {
+            "message": "Onboarding Instruction Mail Send Successfully",
+            "success": True,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Resending The Email Verification Link",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@adminOrgRoute.post(path="/delete/delete-organization")
+@limiter.limit(API_RATE_LIMITING)
+async def Delete_Organization(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    id: str = Query(..., alias="id"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
+        organization = db.query(Models.Organization).filter(Models.Organization.id == id).first()
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "No Organization Found",
+                    "success": False,
+                },
+            )
+
+        db.delete(organization)
+        db.commit()
+
+        return {
+            "message": "Organization Deleted Successfully",
+            "success": True,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error While Deleting an Organization",
                 "error": str(e),
                 "success": False,
             },

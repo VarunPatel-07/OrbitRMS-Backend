@@ -25,6 +25,9 @@ class OrganizationGeneralInfo(BaseModel):
     meta_value = Column(String(255), nullable=False, default=None)
     terms_accepted = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
+    industry = Column(String(255), nullable=False, default=None)
+    industry_slug = Column(String(255), nullable=False, default=None)
+    employee_count = Column(String(255), nullable=False, default=None)
     organization_profile_picture = Column(String(255), nullable=True, default=None)
     organization_id = Column(
         CHAR(36),

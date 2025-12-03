@@ -135,6 +135,9 @@ class EnvConfig:
     # REST API base URL
     REST_API_URL = os.getenv("REST_API_URL")
 
+    GOOGLE_RECAPTCHA_SITE_KEY = os.getenv("GOOGLE_RECAPTCHA_SITE_KEY")
+    GOOGLE_RECAPTCHA_SECRET_KEY = os.getenv("GOOGLE_RECAPTCHA_SECRET_KEY")
+
     # & ----------- Ending Of The All The EnvSecrets Related To REST API ---------
 
     # ! ------- STARTING OF ALL THE SOCIAL MEDIA MODULE RELATED API KEY ---------

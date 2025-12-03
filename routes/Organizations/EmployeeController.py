@@ -165,8 +165,17 @@ async def handel_add_user_function(
         db.flush()
 
         # * We Will Add The Personal Info
+        normalized_full_name = func.regexp_replace(
+            func.lower(func.regexp_replace(func.trim(data.personal_info.full_name), r"\s+", " ")),
+            r"\s+",
+            "",
+        )
         db.add(
-            Models.PersonalInfo(user_id=new_user.id, **data.personal_info.dict(exclude={"user_id"}))
+            Models.PersonalInfo(
+                user_id=new_user.id,
+                normalized_full_name=normalized_full_name,
+                **data.personal_info.dict(exclude={"user_id"}),
+            )
         )
 
         # * Now We Are Validating The Reporting Manager And If It Exists Then We Will Add The Employee Info
@@ -660,8 +669,17 @@ async def edit_employee_profile(
             )
         # Now We Are Updating The Personal Info
         if employee.personal_info:
+            update_employee_data = data.personal_info.dict(exclude_unset=True)
+            normalized_full_name = func.regexp_replace(
+                func.lower(
+                    func.regexp_replace(func.trim(data.personal_info.full_name), r"\s+", " ")
+                ),
+                r"\s+",
+                "",
+            )
+            update_employee_data["normalized_full_name"] = normalized_full_name
             db.query(Models.PersonalInfo).filter_by(user_id=employee.id).update(
-                data.personal_info.dict(exclude_unset=True)
+                update_employee_data
             )
 
         reporting_to_user = (
@@ -1048,13 +1066,7 @@ async def Fetch_Employee(
         query_data = query_data.join(Models.User.personal_info)
 
         query_data = query_data.filter(
-            func.regexp_replace(
-                func.lower(
-                    func.regexp_replace(func.trim(Models.PersonalInfo.full_name), r"\s+", " ")
-                ),
-                r"\s+",
-                "",
-            ).ilike(f"%{query.lower().replace(' ', '')}%")
+            Models.PersonalInfo.normalized_full_name.ilike(f"%{query.lower().replace(' ', '')}%")
         )
 
         query_data = query_data.options(
