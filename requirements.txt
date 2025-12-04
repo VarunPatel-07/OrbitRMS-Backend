@@ -101,7 +101,6 @@ urllib3==2.3.0
 user-agents==2.2.0
 uvicorn==0.38.0
 uvloop==0.21.0
-valkey==6.1.1
 virtualenv==20.29.1
 watchfiles==1.0.3
 websockets==14.1
