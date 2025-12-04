@@ -4,16 +4,19 @@ from datetime import datetime
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import asc, desc, func
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, BackgroundTasks
+from BackgroundTasks.LeavesModule.LeavesModule import add_leaves_balance_in_employee
+from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
-from Helper.createModelInstance import cerate_model_instance
-from Helper.helper import model_to_filtered_dict
-from Middleware.verifyToken import verify_token
+from Helper.helper import filter_fields, model_to_filtered_dict
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
+
 from PydanticModels.OrganizationSettings.OrganizationSettings import (
     AddEditHolidayPydanticModel,
+    CreateLeaveTypePydanticModel,
 )
 from RateLimiting import limiter
 from SqlModels import Models
@@ -21,68 +24,32 @@ from SqlModels import Models
 orgSettings = APIRouter(prefix="/app/v1/org-setting", tags=["org-setting"])
 
 load_dotenv(override=True)
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING").strip()
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING.strip()
+
+
+def has_view_access(array_of_modules, label):
+    for module in array_of_modules:
+        if module.module_label == label:
+            if any(
+                permission.label == "view" and permission.is_allowed
+                for permission in module.permissions or []
+            ):
+                return True
+
+        if getattr(module, "sub_modules", None):
+            if has_view_access(module.sub_modules or [], label):
+                return True
+    return False
 
 
 @orgSettings.get("/fetch-info", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def FetchTheInfoOfTheOrganization(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         organization = (
             db.query(Models.Organization)
@@ -96,6 +63,21 @@ async def FetchTheInfoOfTheOrganization(
             .filter(Models.Organization.id == user.organization_id)
             .first()
         )
+        all_modules = (
+            db.query(Models.RoleAssociatedPermissionModule)
+            .filter(
+                and_(
+                    Models.RoleAssociatedPermissionModule.role_module_id
+                    == user.employee_info.employee_role_id,
+                    Models.RoleAssociatedPermissionModule.module_label == "general_info",
+                )
+            )
+            .options(
+                joinedload(Models.RoleAssociatedPermissionModule.permissions),
+                joinedload(Models.RoleAssociatedPermissionModule.sub_modules),
+            )
+            .all()
+        )
 
         if not organization:
             raise HTTPException(
@@ -108,18 +90,35 @@ async def FetchTheInfoOfTheOrganization(
             "message": "Info Fetched Successfully",
             "success": True,
             "data": {
-                "id": organization.id,
-                "general_info": model_to_filtered_dict(organization.general_info),
-                "address": model_to_filtered_dict(organization.address[0]),
-                "contact_info": organization.contact_info,
-                "about_info": model_to_filtered_dict(organization.about_info[0]),
-                "organization_settings": model_to_filtered_dict(
-                    organization.organization_settings[0]
+                **model_to_filtered_dict(organization),
+                "general_info": (
+                    filter_fields(organization.general_info, ["-id", "-organization_id"])
+                    if has_view_access(all_modules, "general_information")
+                    else None
                 ),
-                "status": organization.status,
-                "organization_created": organization.organization_created,
-                "created_at": organization.created_at,
-                "updated_at": organization.updated_at,
+                "address": (
+                    filter_fields(organization.address[0], ["-id", "-organization_id"])
+                    if has_view_access(all_modules, "organization_address")
+                    else None
+                ),
+                "contact_info": (
+                    [
+                        filter_fields(contact_info, ["-id", "-organization_id"])
+                        for contact_info in organization.contact_info
+                    ]
+                    if has_view_access(all_modules, "organization_contact_info")
+                    else None
+                ),
+                "about_info": (
+                    filter_fields(organization.about_info[0], ["-id", "-organization_id"])
+                    if has_view_access(all_modules, "about_info")
+                    else None
+                ),
+                "organization_settings": (
+                    filter_fields(organization.organization_settings, ["-id", "-organization_id"])
+                    if has_view_access(all_modules, "organization_settings_details")
+                    else None
+                ),
             },
         }
 
@@ -142,25 +141,11 @@ async def AddEditHoliday(
     request: Request,
     db: db_dependencies,
     data: AddEditHolidayPydanticModel,
-    token: str = Depends(verify_token),
     type: str = Query(..., description="Operation Type: add or edit", alias="type"),
     id: Optional[str] = Query(None, description="Id Is Required For The Edit Function", alias="id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        # Checking For The Valid Token
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
         if type not in ["add", "edit"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
@@ -168,41 +153,6 @@ async def AddEditHoliday(
                     "message": "Invalid type. Must be 'add' or 'edit'",
                     "success": False,
                 },
-            )
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
             )
 
         personal_info = (
@@ -347,73 +297,18 @@ async def AddEditHoliday(
 async def Fetch_Holiday(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     year: str = Query(..., description="To Fetch The Holiday According To The year"),
     order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
     field_name: Optional[str] = Query(
         None, description="This Is An Optional Field", alias="field_name"
     ),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
         year = int(year)
         if not order:
             order = "asc"
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
 
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
         config_module = (
             db.query(Models.ConfigModule)
             .filter(Models.ConfigModule.organization_id == user.organization_id)
@@ -477,65 +372,13 @@ async def Fetch_Holiday(
 
 @orgSettings.delete(path="/holiday/delete", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def delete_project_status(
+async def delete_holiday(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # * We Will Firstly Check For The Users Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         #
         # *  Once The User Is Authenticated Then We Will Move Further
@@ -563,6 +406,141 @@ async def delete_project_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Delete Holiday",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.post(path="/leaves/leave-type/create", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def create_leave_type(
+    request: Request,
+    db: db_dependencies,
+    background_task: BackgroundTasks,
+    data: CreateLeaveTypePydanticModel,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        find_leave = (
+            db.query(Models.LeavesSettings)
+            .filter(
+                or_(
+                    Models.LeavesSettings.leave_name == data.leave_name,
+                    Models.LeavesSettings.leave_code == data.leave_code,
+                )
+            )
+            .first()
+        )
+
+        if find_leave:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Leave Type With This Name Or Code AllReady Exist",
+                    "success": False,
+                },
+            )
+
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Organization Not Found",
+                    "success": False,
+                },
+            )
+
+        updated_created_by_user = model_to_filtered_dict(
+            user.personal_info, ["user_id", "first_name", "last_name"]
+        )
+
+        leave_data = Models.LeavesSettings(
+            leave_name=data.leave_name,
+            leave_code=data.leave_code,
+            is_paid=data.is_paid,
+            max_number_of_leave=data.max_number_of_leave,
+            refill_quarterly=data.refill_quarterly,
+            refill_from=data.refill_from,
+            description=data.description,
+            gender=json.dumps(data.gender),
+            employee_status=json.dumps(data.employee_status),
+            marital_status=json.dumps(data.marital_status),
+            status=data.status,
+            organization_id=organization.id,
+            created_by=json.dumps(updated_created_by_user),
+        )
+
+        db.add(leave_data)
+        db.commit()
+        db.refresh(leave_data)
+
+        background_task.add_task(
+            add_leaves_balance_in_employee,
+            organization_id=organization.id,
+            refill_quarterly=data.refill_quarterly,
+            max_number_of_leave=data.max_number_of_leave,
+            leave_type_id=leave_data.id,
+        )
+
+        return {
+            "success": True,
+            "message": f"Leave type '{leave_data.leave_name}' created successfully.",
+            "data": {"leave_data": leave_data},
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable Add Leave Type",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.get(path="/leaves/leave-type/fetch", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_all_leave_types(
+    request: Request, db: db_dependencies, user: dict = Depends(UserAuthenticatorMiddleware)
+):
+    try:
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+
+        query_data = (
+            db.query(Models.LeavesSettings)
+            .filter(Models.LeavesSettings.organization_id == organization.id)
+            .all()
+        )
+
+        data = [model_to_filtered_dict(_data) for _data in query_data]
+
+        return {
+            "success": True,
+            "message": "Leaves Type Fetched Successfully",
+            "data": data,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable Add Leave Type",
                 "success": False,
                 "error": str(e),
             },

@@ -1,11 +1,338 @@
 [
   {
     "role_name": "Administrator",
-    "description": "Test role with full permissions",
-    "permission_module": [
+    "description": "Administrator role with full access to all modules and submodules.",
+    "is_editable": false,
+    "permission_modules": [
       {
-        "module_label": "config_module",
-        "module_title": "Config Module",
+        "module_label": "dashboard",
+        "module_title": "Dashboard",
+        "is_active": true,
+        "permissions": [
+          {
+            "label": "view",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "delete",
+            "is_allowed": true,
+            "show_input": false
+          }
+        ],
+        "sub_modules": [
+          {
+            "module_label": "feed",
+            "module_title": "Feed",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          }
+        ]
+      },
+      {
+        "module_label": "employees",
+        "module_title": "Employees",
+        "is_active": true,
+        "permissions": [
+          {
+            "label": "view",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "delete",
+            "is_allowed": true,
+            "show_input": false
+          }
+        ],
+        "sub_modules": [
+          {
+            "module_label": "employee_profile",
+            "module_title": "Employee Profile",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": false,
+                "show_input": false
+              }
+            ],
+            "sub_modules": [
+              {
+                "module_label": "employee_details",
+                "module_title": "Employee Details",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "edit",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "delete",
+                    "is_allowed": false,
+                    "show_input": false
+                  }
+                ],
+                "sub_modules": [
+                  {
+                    "module_label": "personal_information",
+                    "module_title": "Personal Information",
+                    "is_active": true,
+                    "permissions": [
+                      {
+                        "label": "view",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "edit",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "delete",
+                        "is_allowed": false,
+                        "show_input": false
+                      }
+                    ],
+                    "sub_modules": []
+                  },
+                  {
+                    "module_label": "employee_information",
+                    "module_title": "Employee Information",
+                    "is_active": true,
+                    "permissions": [
+                      {
+                        "label": "view",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "edit",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "delete",
+                        "is_allowed": false,
+                        "show_input": false
+                      }
+                    ],
+                    "sub_modules": []
+                  },
+                  {
+                    "module_label": "personal_contact_information",
+                    "module_title": "Personal Contact Information",
+                    "is_active": true,
+                    "permissions": [
+                      {
+                        "label": "view",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "edit",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "delete",
+                        "is_allowed": false,
+                        "show_input": false
+                      }
+                    ],
+                    "sub_modules": []
+                  },
+                  {
+                    "module_label": "family_information",
+                    "module_title": "Family Information",
+                    "is_active": true,
+                    "permissions": [
+                      {
+                        "label": "view",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "edit",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "delete",
+                        "is_allowed": false,
+                        "show_input": false
+                      }
+                    ],
+                    "sub_modules": []
+                  },
+                  {
+                    "module_label": "employee_address",
+                    "module_title": "Address",
+                    "is_active": true,
+                    "permissions": [
+                      {
+                        "label": "view",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "edit",
+                        "is_allowed": true,
+                        "show_input": true
+                      },
+                      {
+                        "label": "delete",
+                        "is_allowed": false,
+                        "show_input": false
+                      }
+                    ],
+                    "sub_modules": []
+                  }
+                ]
+              },
+              {
+                "module_label": "logged_in_device",
+                "module_title": "Logged-in Device",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "edit",
+                    "is_allowed": false,
+                    "show_input": false
+                  },
+                  {
+                    "label": "delete",
+                    "is_allowed": false,
+                    "show_input": false
+                  }
+                ],
+                "sub_modules": []
+              }
+            ]
+          },
+          {
+            "module_label": "employee_listing",
+            "module_title": "Employee Listing",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": false
+              }
+            ],
+            "sub_modules": []
+          }
+        ]
+      },
+      {
+        "module_label": "client_inquiry",
+        "module_title": "Client Inquiry",
+        "is_active": true,
+        "permissions": [
+          {
+            "label": "view",
+            "is_allowed": true,
+            "show_input": true
+          },
+          {
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "delete",
+            "is_allowed": true,
+            "show_input": true
+          }
+        ],
+        "sub_modules": []
+      },
+      {
+        "module_label": "social_media",
+        "module_title": "Social Media",
+        "is_active": true,
+        "permissions": [
+          {
+            "label": "view",
+            "is_allowed": true,
+            "show_input": true
+          },
+          {
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": true
+          },
+          {
+            "label": "delete",
+            "is_allowed": true,
+            "show_input": true
+          }
+        ],
+        "sub_modules": []
+      },
+      {
+        "module_label": "config",
+        "module_title": "Configuration",
         "is_active": true,
         "permissions": [
           {
@@ -96,7 +423,30 @@
           },
           {
             "module_label": "roles_permission",
-            "module_title": "Roles & Permission",
+            "module_title": "Roles & Permissions",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "inquiry_forms",
+            "module_title": "Inquiry Forms",
             "is_active": true,
             "permissions": [
               {
@@ -120,8 +470,8 @@
         ]
       },
       {
-        "module_label": "dashboard",
-        "module_title": "Dashboard",
+        "module_label": "api_manager",
+        "module_title": "API Manager",
         "is_active": true,
         "permissions": [
           {
@@ -140,7 +490,217 @@
             "show_input": false
           }
         ],
-        "sub_modules": []
+        "sub_modules": [
+          {
+            "module_label": "client_inquiry",
+            "module_title": "Client Inquiry",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": false
+              }
+            ],
+            "sub_modules": []
+          }
+        ]
+      },
+      {
+        "module_label": "organization_settings",
+        "module_title": "Organization Settings",
+        "is_active": true,
+        "permissions": [
+          {
+            "label": "view",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "delete",
+            "is_allowed": true,
+            "show_input": false
+          }
+        ],
+        "sub_modules": [
+          {
+            "module_label": "general_info",
+            "module_title": "General Info",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": false
+              }
+            ],
+            "sub_modules": [
+              {
+                "module_label": "general_information",
+                "module_title": "General Information",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "edit",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "delete",
+                    "is_allowed": true,
+                    "show_input": false
+                  }
+                ],
+                "sub_modules": []
+              },
+              {
+                "module_label": "about_info",
+                "module_title": "About Information",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "edit",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "delete",
+                    "is_allowed": true,
+                    "show_input": false
+                  }
+                ],
+                "sub_modules": []
+              },
+              {
+                "module_label": "organization_address",
+                "module_title": "Address",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "edit",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "delete",
+                    "is_allowed": true,
+                    "show_input": false
+                  }
+                ],
+                "sub_modules": []
+              },
+              {
+                "module_label": "organization_contact_info",
+                "module_title": "Organization Contact Info",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "edit",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "delete",
+                    "is_allowed": true,
+                    "show_input": false
+                  }
+                ],
+                "sub_modules": []
+              },
+              {
+                "module_label": "organization_settings_details",
+                "module_title": "Organization Settings Details",
+                "is_active": true,
+                "permissions": [
+                  {
+                    "label": "view",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "edit",
+                    "is_allowed": true,
+                    "show_input": true
+                  },
+                  {
+                    "label": "delete",
+                    "is_allowed": true,
+                    "show_input": false
+                  }
+                ],
+                "sub_modules": []
+              }
+            ]
+          },
+          {
+            "module_label": "holiday",
+            "module_title": "Holiday",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          }
+        ]
       }
     ]
   }

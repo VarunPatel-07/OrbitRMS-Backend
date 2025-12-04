@@ -1,8 +1,9 @@
 import uuid
-
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Integer, Enum, Date
 from sqlalchemy.dialects.mysql import CHAR, JSON
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 
 from SqlModels.Models import BaseModel
 
@@ -10,7 +11,7 @@ from SqlModels.Models import BaseModel
 class OrganizationGeneralInfo(BaseModel):
     __tablename__ = "organization_general_info"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     organization_name = Column(String(255), nullable=False, default=None)
     primary_email = Column(String(255), nullable=False, default=None)
@@ -24,6 +25,9 @@ class OrganizationGeneralInfo(BaseModel):
     meta_value = Column(String(255), nullable=False, default=None)
     terms_accepted = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=False)
+    industry = Column(String(255), nullable=False, default=None)
+    industry_slug = Column(String(255), nullable=False, default=None)
+    employee_count = Column(String(255), nullable=False, default=None)
     organization_profile_picture = Column(String(255), nullable=True, default=None)
     organization_id = Column(
         CHAR(36),
@@ -35,7 +39,7 @@ class OrganizationGeneralInfo(BaseModel):
 
 class OrganizationAddress(BaseModel):
     __tablename__ = "organization_address"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     address = Column(String(255), nullable=True, default=None)
     city = Column(String(255), nullable=True, default=None)
@@ -53,7 +57,7 @@ class OrganizationAddress(BaseModel):
 
 class OrganizationContactInfo(BaseModel):
     __tablename__ = "organization_contact_info"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     phone_number = Column(String(255), nullable=True, default=None)
     company_email = Column(String(255), nullable=True, default=None)
@@ -69,7 +73,7 @@ class OrganizationContactInfo(BaseModel):
 
 class OrganizationAboutInfo(BaseModel):
     __tablename__ = "organization_about_info"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     about = Column(String(255), nullable=True, default=None)
     established_science = Column(DateTime, nullable=True)
@@ -86,7 +90,7 @@ class OrganizationAboutInfo(BaseModel):
 class OrganizationSettings(BaseModel):
     __tablename__ = "organization_settings"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     email_domain_slug = Column(String(255), nullable=True, default=None)
     employee_code_prefix = Column(String(255), nullable=True, default=None)
@@ -100,3 +104,131 @@ class OrganizationSettings(BaseModel):
         nullable=False,
     )
     organization = relationship("Organization", back_populates="organization_settings")
+
+
+class FeedLikes(BaseModel):
+    __tablename__ = "feed_likes"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)
+    user = relationship("User", back_populates="feed_likes", uselist=False)
+
+    organization_update_id = Column(
+        CHAR(36),
+        ForeignKey("organization_updates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization_updates = relationship("OrganizationUpdates", back_populates="likes")
+
+
+class FeedComments(BaseModel):
+
+    __tablename__ = "feed_comments"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    is_replay = Column(Boolean, nullable=False, default=False)
+
+    comment = Column(Text, nullable=True, default=None)
+
+    parent_id = Column(CHAR(36), ForeignKey("feed_comments.id"), nullable=True, index=True)
+    comment_replies = relationship(
+        "FeedComments", backref=backref("parent", remote_side=[id]), cascade="all, delete-orphan"
+    )
+
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)
+    user = relationship("User", back_populates="feed_comments", uselist=False)
+
+    organization_update_id = Column(
+        CHAR(36),
+        ForeignKey("organization_updates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization_updates = relationship("OrganizationUpdates", back_populates="comments")
+
+
+class LeavesSettings(BaseModel):
+    __tablename__ = "organization_leaves_settings"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    leave_name = Column(String(255), nullable=False, default=None, unique=True)
+    leave_code = Column(String(255), nullable=False, default=None, unique=True)
+
+    is_paid = Column(Boolean, nullable=False, default=False)
+    max_number_of_leave = Column(Integer, nullable=False, default=0)
+
+    refill_quarterly = Column(Boolean, nullable=False, default=False)
+    refill_from = Column(
+        Enum(
+            "January",
+            "April",
+            "July",
+            "October",
+            name="refill_quarter_start_enum",
+        ),
+        nullable=True,
+        default="January",
+    )
+
+    description = Column(Text, nullable=True, default=None)
+
+    gender = Column(JSON, nullable=True, default=list)
+    employee_status = Column(JSON, nullable=True, default=list)
+    marital_status = Column(JSON, nullable=True, default=list)
+
+    status = Column(Boolean, default=True, nullable=False)
+
+    leaves = relationship("AttendanceLeavesModule", back_populates="leave_type")
+
+    organization_id = Column(
+        CHAR(36),
+        ForeignKey("organization.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization = relationship("Organization", back_populates="leaves_settings")
+
+    leave_balance = relationship("LeaveBalance", back_populates="leave_type")
+
+    # created At UpdatedAt Field
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
+
+
+class LeaveBalance(BaseModel):
+    __tablename__ = "leave_balance"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    leave_type_id = Column(
+        CHAR(36), ForeignKey("organization_leaves_settings.id", ondelete="CASCADE")
+    )
+    leave_type = relationship("LeavesSettings", back_populates="leave_balance")
+
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, unique=True)
+    user = relationship(
+        "User",
+        back_populates="leave_balance",
+    )
+
+    available_leaves = Column(Integer, nullable=False, default=0)
+    last_refill_date = Column(Date, nullable=True)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )

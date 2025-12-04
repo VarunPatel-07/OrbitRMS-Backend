@@ -2,20 +2,30 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    Text,
+)
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import relationship
 
 from SqlModels.Models import BaseModel
 
 
-# main
 class PersonalInfo(BaseModel):
     __tablename__ = "personal_info"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo: add the new field about
-
+    normalized_full_name = Column(String(255), nullable=False)
     first_name = Column(String(255), nullable=False)
     middle_name = Column(String(255), nullable=True, default=None)
     last_name = Column(String(255), nullable=False)
@@ -37,7 +47,7 @@ class PersonalInfo(BaseModel):
 class EmployeeInfo(BaseModel):
     __tablename__ = "employee_info"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo: change the reporting to from storing the json to storing the reference to the reporting to manager id
 
@@ -69,7 +79,7 @@ class EmployeeInfo(BaseModel):
 
 class EmergencyContact(BaseModel):
     __tablename__ = "emergency_contacts"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     emergency_contact_name = Column(String(255), nullable=False, default=None)
     emergency_contact_number = Column(String(255), nullable=False, default=None)
@@ -82,7 +92,7 @@ class EmergencyContact(BaseModel):
 class PersonalContactInfo(BaseModel):
     __tablename__ = "personal_contact_info"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo Change the field name form alternative_contact to emergency_contact As a Json and It contain two field emergency_contact_number and emergency_contact_name
 
@@ -104,7 +114,7 @@ class PersonalContactInfo(BaseModel):
 class Children(BaseModel):
     __tablename__ = "children"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     child_name = Column(String(255), nullable=True, default=None)
     child_date_of_birth = Column(DateTime, nullable=True, default=None)
 
@@ -114,7 +124,7 @@ class Children(BaseModel):
 
 class FamilyInfo(BaseModel):
     __tablename__ = "family_info"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo we will also add the children info like name and dob as a array of the children
 
@@ -134,7 +144,7 @@ class FamilyInfo(BaseModel):
 class Address(BaseModel):
     __tablename__ = "address"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     address = Column(String(255), nullable=False, default=None)
     country = Column(String(255), nullable=False, default=None)
@@ -146,7 +156,7 @@ class Address(BaseModel):
 
 class SocialLinks(BaseModel):
     __tablename__ = "social_link"
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     icon = Column(Text, nullable=True, default=None)
     name = Column(String(255), nullable=True, default=None)
@@ -163,7 +173,7 @@ class SocialLinks(BaseModel):
 class Sessions(BaseModel):
     __tablename__ = "session"
 
-    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     ip_address = Column(String(255), nullable=True, default=None)
     browser = Column(String(255), nullable=True, default=None)
     browser_version = Column(String(255), nullable=True, default=None)
@@ -190,3 +200,55 @@ class Sessions(BaseModel):
         nullable=False,
     )
     user = relationship("User", back_populates="sessions")
+
+
+class AttendanceLeavesModule(BaseModel):
+    __tablename__ = "attendance_leave_module"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    leave_type_id = Column(
+        CHAR(36), ForeignKey("organization_leaves_settings.id"), nullable=False, index=True
+    )
+    leave_type = relationship("LeavesSettings", back_populates="leaves", uselist=False)
+    start_date = Column(Date, nullable=False)
+    start_half = Column(Enum("first_half", "second_half", name="half_day_enum"), nullable=False)
+
+    is_planned = Column(Boolean, nullable=False, default=True)
+
+    status = Column(
+        Enum("pending", "approved", "cancelled", name="leave_status_enum"),
+        nullable=False,
+        default="pending",
+    )
+    total_days = Column(Integer, nullable=False, default=0)
+
+    end_date = Column(Date, nullable=False)
+    end_half = Column(Enum("first_half", "second_half", name="half_day_enum"), nullable=False)
+
+    description = Column(String(255), nullable=True, default=None)
+
+    documents = Column(Text, nullable=True, default=None)
+
+    notify_to_id = Column(CHAR(36), ForeignKey("users.id"), nullable=True, default=None)
+
+    user_id = Column(
+        CHAR(36),
+        ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+    user = relationship("User", foreign_keys=[user_id], back_populates="applied_leaves")
+
+    notify_to_users = relationship(
+        "User", secondary="attendance_leave_notify", back_populates="notifying_users"
+    )
+
+    # created At UpdatedAt Field
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )

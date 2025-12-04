@@ -1,17 +1,24 @@
-from typing import Optional
+import os
+from typing import List, Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 
+from Config.EnvConfig import EnvConfig
+from Helper.jwtHelper import hash_passwords
 from PydanticModels.ConfigModule.ConfigModule import (
     ClientFormSchemaModel,
     Department,
     Designations,
+    InquiryFormSchemaSchemaModel,
     ProjectStatus,
     RoleAssociatedPermissionModule,
     RolesPermission,
 )
 from SqlModels import Models
+
+ADMIN_EMAIL = EnvConfig.ADMIN_EMAIL
+ADMIN_PASSWORD = EnvConfig.ADMIN_PASSWORD
 
 
 # This is The Recursive Function That Helps to Add The Data Recursively In To The DataBase
@@ -66,24 +73,11 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_config_role_module = (
-        db.query(Models.ConfigRoleModule)
-        .filter(func.lower(Models.ConfigRoleModule.role_name) == func.lower(data.role_name))
-        .first()
-    )
-
-    if existing_config_role_module:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Role Module With This Name Is Already Exist",
-                "success": False,
-            },
-        )
-
+ 
     config_role_module = Models.ConfigRoleModule(
         role_name=data.role_name,
         description=data.description,
+        is_editable=data.is_editable,
         source_type="default",
         config_module_id=config_module.id,
     )
@@ -91,7 +85,7 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
     db.add(config_role_module)
     db.flush()
 
-    for module in data.permission_module:
+    for module in data.permission_modules:
         permission_module = recursive_creation_helper(
             module, db, role_module_id=config_role_module.id
         )
@@ -117,22 +111,6 @@ def designation_data_seeder_helper_function(db, organization_id: str, data: Desi
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_designation = (
-        db.query(Models.Designations)
-        .filter(
-            func.lower(Models.Designations.designations_name) == func.lower(data.designations_name)
-        )
-        .first()
-    )
-
-    if existing_designation:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Designations Is Already Exist",
-                "success": False,
-            },
-        )
 
     designations = Models.Designations(
         designations_name=data.designations_name,
@@ -161,20 +139,6 @@ def project_status_data_seeder_helper_function(db, organization_id: str, data: P
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_status = (
-        db.query(Models.ProjectStatus)
-        .filter(func.lower(Models.ProjectStatus.status_name) == func.lower(data.status_name))
-        .first()
-    )
-
-    if existing_status:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Project Status With This Name Is Already Exist",
-                "success": False,
-            },
-        )
 
     project_status = Models.ProjectStatus(
         status_name=data.status_name,
@@ -204,20 +168,7 @@ def department_data_seeder_helper_function(db, organization_id: str, data: Depar
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_department = (
-        db.query(Models.Department)
-        .filter(func.lower(Models.Department.department_name) == func.lower(data.department_name))
-        .first()
-    )
 
-    if existing_department:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "department With This Name Is Already Exist",
-                "success": False,
-            },
-        )
 
     department = Models.Department(
         department_name=data.department_name,
@@ -233,7 +184,10 @@ def department_data_seeder_helper_function(db, organization_id: str, data: Depar
 
 
 def client_form_filed_data_seeder_helper_function(
-    db, organization_id: str, data: ClientFormSchemaModel
+    db,
+    organization_id: str,
+    form_schema_data: InquiryFormSchemaSchemaModel,
+    form_fields_arr: List[ClientFormSchemaModel],
 ):
     config_module = (
         db.query(Models.ConfigModule)
@@ -247,34 +201,34 @@ def client_form_filed_data_seeder_helper_function(
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-    existing_field = (
-        db.query(Models.ClientFormSchema)
-        .filter(func.lower(Models.ClientFormSchema.field_name) == func.lower(data.field_name))
-        .first()
-    )
-
-    if existing_field:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Field With This Name Is Already Exist",
-                "success": False,
-            },
-        )
-
-    form_field = Models.ClientFormSchema(
-        field_name=data.field_name,
-        is_required_field=data.is_required_field,
-        type=data.type,
+    inquiry_form = Models.InquiryFormSchema(
+        form_id=form_schema_data.form_id,
+        form_name=form_schema_data.form_name,
+        status=form_schema_data.status,
+        description=form_schema_data.description,
         source_type="default",
         config_module_id=config_module.id,
         created_by=None,
         updated_by=None,
     )
 
-    db.add(form_field)
+    db.add(inquiry_form)
+    db.flush()
+
+    for form_field in form_fields_arr:
+        db.add(
+            Models.InquiryFormFields(
+                field_name=form_field.field_name,
+                is_required_field=form_field.is_required_field,
+                type=form_field.type,
+                source_type="user_created",
+                inquiry_form_schema_id=inquiry_form.id,
+                created_by=None,
+                updated_by=None,
+            )
+        )
+
     db.commit()
-    db.refresh(form_field)
 
 
 def ClientInquiryInitiator(db, organization_id: str, api_key: str, api_secret: str):
@@ -285,3 +239,26 @@ def ClientInquiryInitiator(db, organization_id: str, api_key: str, api_secret: s
     db.add(create_client_inquires)
     db.commit()
     db.refresh(create_client_inquires)
+
+
+def initializing_OrbitAdmin_On_App_start(db):
+    admin = db.query(Models.Admin).filter(Models.Admin.email == ADMIN_EMAIL).first()
+    if not admin:
+
+        hash_password = hash_passwords(ADMIN_PASSWORD)
+
+        admin = Models.Admin(email=ADMIN_EMAIL, password=hash_password)
+
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+
+        maintenance_mode = db.query(Models.MaintenanceMode).first()
+
+        if not maintenance_mode:
+            maintenance_mode = Models.MaintenanceMode(
+                is_active=False, updated_by="System Init", message="Initialized Maintenance Mode"
+            )
+            db.add(maintenance_mode)
+            db.commit()
+            db.refresh(maintenance_mode)

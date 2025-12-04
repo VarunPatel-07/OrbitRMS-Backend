@@ -4,7 +4,6 @@ import os
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
-    BackgroundTasks,
     Depends,
     HTTPException,
     Query,
@@ -13,16 +12,17 @@ from fastapi import (
 )
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from Helper.helper import generate_api_secrets_api_key, model_to_filtered_dict
-from Middleware.verifyToken import verify_token
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from PydanticModels.Organizations.organizations import AuthorizedRecipientEmail
 from RateLimiting import limiter
 from SqlModels import Models
 
 load_dotenv(override=True)
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 ApiManager = APIRouter(prefix="/app/v1/api-manager", tags=["api-manger"])
 
@@ -32,56 +32,12 @@ ApiManager = APIRouter(prefix="/app/v1/api-manager", tags=["api-manger"])
 #
 @ApiManager.put("/client-inquiry/enable-api", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def Enable_Api(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
+async def Enable_Api(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
     try:
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         client_inquires = (
             db.query(Models.ClientInquires)
@@ -141,61 +97,27 @@ async def Enable_Api(request: Request, db: db_dependencies, token: str = Depends
 @ApiManager.get(path="/client-inquiry/status/fetch", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def Fetch_Status_OF_Api(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
 
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        client_inquires = (
+        client_inquire = (
             db.query(Models.ClientInquires)
             .filter(Models.ClientInquires.organization_id == user.organization_id)
             .first()
+        )
+        config_module = (
+            db.query(Models.ConfigModule)
+            .filter(Models.ConfigModule.organization_id == user.organization_id)
+            .first()
+        )
+
+        inquiry_form_schemas = (
+            db.query(Models.InquiryFormSchema)
+            .filter(Models.InquiryFormSchema.config_module_id == config_module.id)
+            .all()
         )
 
         return {
@@ -204,15 +126,24 @@ async def Fetch_Status_OF_Api(
             "data": (
                 {
                     **model_to_filtered_dict(
-                        client_inquires, fields=["-authorized_recipient_emails"]
+                        client_inquire,
                     ),
-                    "authorized_recipient_emails": (
-                        json.loads(client_inquires.authorized_recipient_emails)
-                        if client_inquires.authorized_recipient_emails
-                        else []
-                    ),
+                    "inquiry_form_schemas": [
+                        model_to_filtered_dict(
+                            data,
+                            fields=[
+                                "form_id",
+                                "id",
+                                "form_name",
+                                "status",
+                                "email_notification",
+                                "authorized_recipient_emails",
+                            ],
+                        )
+                        for data in inquiry_form_schemas
+                    ],
                 }
-                if client_inquires
+                if client_inquire
                 else None
             ),
         }
@@ -234,58 +165,11 @@ async def Fetch_Status_OF_Api(
 async def ReGenerateKeys(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     id: str = Query(..., alias="id"),
     field_name: str = Query(..., alias="field_name"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         if field_name not in ["api_key", "api_secrete"]:
             raise HTTPException(
@@ -330,56 +214,10 @@ async def ReGenerateKeys(
 async def EnableMailNotification(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     id: str = Query(..., alias="id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-            )
 
         client_inquires = (
             db.query(Models.ClientInquires).filter(Models.ClientInquires.id == id).first()
@@ -423,56 +261,10 @@ async def EnableMailNotification(
     request: Request,
     db: db_dependencies,
     data: AuthorizedRecipientEmail,
-    token: str = Depends(verify_token),
     id: str = Query(..., alias="id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-            )
 
         client_inquires = (
             db.query(Models.ClientInquires).filter(Models.ClientInquires.id == id).first()

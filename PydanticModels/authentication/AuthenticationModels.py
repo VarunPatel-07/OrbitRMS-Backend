@@ -10,6 +10,7 @@ class CreatePassword(BaseModel):
 class SignIn(BaseModel):
     email: str
     password: str
+    user_position: object
 
 
 class CountryInfo(BaseModel):
@@ -33,6 +34,9 @@ class RegisterOrganizationInfo(BaseModel):
     terms_accepted: bool = False
     email_verified: bool = False
     organization_profile_picture: Optional[str] = None
+    industry: str
+    industry_slug: str
+    employee_count: str
 
 
 class VerifyMetaTag(BaseModel):
@@ -42,4 +46,8 @@ class VerifyMetaTag(BaseModel):
 
 
 class PasswordResetPydanticModel(BaseModel):
+    email: str
+
+
+class ResendVerificationMail(BaseModel):
     email: str

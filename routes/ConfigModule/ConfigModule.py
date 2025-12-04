@@ -1,20 +1,26 @@
 import json
 import os
+from datetime import datetime
 from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
+from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
 from Helper.helper import model_to_filtered_dict
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
 from PydanticModels.ConfigModule.ConfigModule import (
     AddRolesPermission,
     ClientFormSchemaModel,
     Department,
     Designations,
+    InquiryFormSchemaSchemaModel,
     ProjectStatus,
     RoleAssociatedPermissionModule,
 )
@@ -24,7 +30,8 @@ from SqlModels import Models
 load_dotenv(override=True)
 
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
+ROLES_MODULE_API_RATE_LIMITING = "50/minute"
 
 configRoute = APIRouter(prefix="/app/v1/config", tags=["config"])
 
@@ -41,25 +48,11 @@ async def project_status_function(
     request: Request,
     db: db_dependencies,
     data: ProjectStatus,
-    token: str = Depends(verify_token),
     type: str = Query(..., description="Operation type: add or edit"),
     id: Optional[str] = Query(None, description="ID for edit operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        # Checking For The Valid Token
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
         if type not in ["add", "edit"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
@@ -68,45 +61,40 @@ async def project_status_function(
                     "success": False,
                 },
             )
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
 
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
+        cache_data_key = f"organization_project_status_{user.organization_id}"
 
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
+        cached_data = await cache_database.get(cache_data_key)
 
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
         personal_info = (
             db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
         )
+
+        updated_created_by_user = model_to_filtered_dict(
+            personal_info, ["user_id", "first_name", "last_name"]
+        )
+
+        query = db.query(Models.ProjectStatus).filter(
+            func.lower(Models.ProjectStatus.status_name) == func.lower(data.status_name),
+        )
+
+        if type == "edit" and id:
+            query = query.filter(Models.ProjectStatus.id != id)
+
+        if query.first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Project Status With This Name Is Already Exist",
+                    "success": False,
+                },
+            )
 
         if type == "add":
 
@@ -125,39 +113,17 @@ async def project_status_function(
                     },
                 )
 
-            existing_status = (
-                db.query(Models.ProjectStatus)
-                .filter(
-                    func.lower(Models.ProjectStatus.status_name) == func.lower(data.status_name)
-                )
-                .first()
-            )
-
-            if existing_status:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "Project Status With This Name Is Already Exist",
-                        "success": False,
-                    },
-                )
-
-            created_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
-
             project_status = Models.ProjectStatus(
                 status_name=data.status_name,
                 source_type="user_created",
                 status_color=data.status_color,
                 config_module_id=config_module.id,
-                created_by=json.dumps(created_by_user),
+                created_by=json.dumps(updated_created_by_user),
                 updated_by=None,
             )
 
             db.add(project_status)
             db.commit()
-            db.refresh(project_status)
 
             return {"success": True, "message": "Project Status Added Successfully"}
         else:
@@ -166,24 +132,6 @@ async def project_status_function(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "message": "ID is required for edit operation",
-                        "success": False,
-                    },
-                )
-
-            existing_status = (
-                db.query(Models.ProjectStatus)
-                .filter(
-                    func.lower(Models.ProjectStatus.status_name) == func.lower(data.status_name),
-                    Models.ProjectStatus.id != id,
-                )
-                .first()
-            )
-
-            if existing_status:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "Project Status With This Name Is Already Exist",
                         "success": False,
                     },
                 )
@@ -201,14 +149,11 @@ async def project_status_function(
                     },
                 )
 
-            updated_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
             project_status.status_name = data.status_name
-            project_status.updated_by = json.dumps(updated_by_user)
+            project_status.updated_by = json.dumps(updated_created_by_user)
             project_status.status_color = data.status_color
+
             db.commit()
-            db.refresh(project_status)
 
             return {"success": True, "message": "Project Status Updated Successfully"}
 
@@ -231,65 +176,33 @@ async def project_status_function(
 @configRoute.get(path="/project_status/fetch", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def fetch_project_status(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+    request: Request,
+    db: db_dependencies,
+    order: str = Query("asc", alias="order"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
         #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
         # *  Once The User Is Authenticated Then We Will Move Further
         #
+
+        cache_data_key = f"organization_project_status_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            cached_Data = json.loads(cached_data)
+            cached_sorted_data = sorted(
+                cached_Data,
+                key=lambda x: datetime.fromisoformat(x["created_at"]),
+                reverse=True if order.lower() == "desc" else False,
+            )
+            return {
+                "message": "Project Status Fetched Successfully. Cached!",
+                "success": True,
+                "data": cached_sorted_data,
+            }
+
         config_module = (
             db.query(Models.ConfigModule)
             .filter(Models.ConfigModule.organization_id == user.organization_id)
@@ -305,17 +218,26 @@ async def fetch_project_status(
                 },
             )
 
-        project_status = db.query(Models.ProjectStatus).filter(
-            Models.ProjectStatus.config_module_id == config_module.id
+        sort_order = order.lower()
+
+        sort_func = asc if sort_order == "asc" else desc
+
+        project_status = (
+            db.query(Models.ProjectStatus)
+            .filter(Models.ProjectStatus.config_module_id == config_module.id)
+            .order_by(sort_func(Models.ProjectStatus.created_at))
         )
+
+        data = [
+            model_to_filtered_dict(each_project_status) for each_project_status in project_status
+        ]
+
+        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
             "success": True,
             "message": "Project Status Fetched Successfully",
-            "data": [
-                model_to_filtered_dict(each_project_status)
-                for each_project_status in project_status
-            ],
+            "data": data,
         }
 
     except HTTPException as http_exception:
@@ -339,66 +261,21 @@ async def fetch_project_status(
 async def delete_project_status(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # * We Will Firstly Check For The Users Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         #
         # *  Once The User Is Authenticated Then We Will Move Further
         #
+
+        cache_data_key = f"organization_project_status_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
         project_status = (
             db.query(Models.ProjectStatus).filter(Models.ProjectStatus.id == id).first()
@@ -440,22 +317,11 @@ async def add_edit_department(
     request: Request,
     db: db_dependencies,
     data: Department,
-    token: str = Depends(verify_token),
     type: str = Query(..., description="Operation type: add or edit"),
     id: Optional[str] = Query(None, description="ID for edit operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
 
         if type not in ["add", "edit"]:
             raise HTTPException(
@@ -465,45 +331,36 @@ async def add_edit_department(
                     "success": False,
                 },
             )
+        cache_data_key = f"organization_department_{user.organization_id}"
 
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
+        cached_data = await cache_database.get(cache_data_key)
 
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
         personal_info = (
             db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
+
+        query = db.query(Models.Department).filter(
+            func.lower(Models.Department.department_name) == func.lower(data.department_name)
+        )
+        if type == "edit" and id:
+            query = query.filter(
+                Models.Department.id != id,
+            )
+
+        if query.first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "department With This Name Is Already Exist",
+                    "success": False,
+                },
+            )
+
+        updated_created_by_user = model_to_filtered_dict(
+            personal_info,["user_id", "first_name", "last_name"]
         )
 
         if type == "add":
@@ -523,39 +380,16 @@ async def add_edit_department(
                     },
                 )
 
-            existing_department = (
-                db.query(Models.Department)
-                .filter(
-                    func.lower(Models.Department.department_name)
-                    == func.lower(data.department_name)
-                )
-                .first()
-            )
-
-            if existing_department:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "department With This Name Is Already Exist",
-                        "success": False,
-                    },
-                )
-
-            created_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
-
             department = Models.Department(
                 department_name=data.department_name,
                 config_module_id=config_module.id,
                 source_type="user_created",
-                created_by=json.dumps(created_by_user),
+                created_by=json.dumps(updated_created_by_user),
                 updated_by=None,
             )
 
             db.add(department)
             db.commit()
-            db.refresh(department)
 
             return {"success": True, "message": "Department Created Successfully"}
         else:
@@ -569,25 +403,6 @@ async def add_edit_department(
                     },
                 )
 
-            existing_department = (
-                db.query(Models.Department)
-                .filter(
-                    func.lower(Models.Department.department_name)
-                    == func.lower(data.department_name),
-                    Models.Department.id != id,
-                )
-                .first()
-            )
-
-            if existing_department:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "department With This Name Is Already Exist",
-                        "success": False,
-                    },
-                )
-
             department = db.query(Models.Department).filter(Models.Department.id == id).first()
 
             if not department:
@@ -595,13 +410,11 @@ async def add_edit_department(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={"message": "No Such department Found", "success": False},
                 )
-            updated_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
+
             department.department_name = data.department_name
-            department.updated_by = json.dumps(updated_by_user)
+            department.updated_by = json.dumps(updated_created_by_user)
+
             db.commit()
-            db.refresh(department)
 
             return {"success": True, "message": "department Updated Successfully"}
 
@@ -624,67 +437,29 @@ async def add_edit_department(
 @configRoute.get(path="/department/fetch", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def fetch_all_department_type(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+    request: Request,
+    db: db_dependencies,
+    order: str = Query("asc", alias="order"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
 
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
+        cache_data_key = f"organization_department_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            cached_Data = json.loads(cached_data)
+            cached_sorted_data = sorted(
+                cached_Data,
+                key=lambda x: datetime.fromisoformat(x["created_at"]),
+                reverse=True if order.lower() == "desc" else False,
             )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+            return {
+                "message": "Department Fetched Successfully. Cached!",
+                "success": True,
+                "data": cached_sorted_data,
+            }
 
         config_module = (
             db.query(Models.ConfigModule)
@@ -701,16 +476,24 @@ async def fetch_all_department_type(
                 },
             )
 
+        sort_order = order.lower()
+
+        sort_func = asc if sort_order == "asc" else desc
+
         department = (
             db.query(Models.Department)
             .filter(Models.Department.config_module_id == config_module.id)
-            .all()
+            .order_by(sort_func(Models.Department.created_at))
         )
+
+        data = [model_to_filtered_dict(each_department) for each_department in department]
+
+        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
             "success": True,
             "message": "Department Fetched Successfully",
-            "data": [model_to_filtered_dict(each_department) for each_department in department],
+            "data": data,
         }
 
     except HTTPException as http_exception:
@@ -734,67 +517,17 @@ async def fetch_all_department_type(
 async def delete_department(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
 
-        user_id = token["user_id"]
+        cache_data_key = f"organization_department_{user.organization_id}"
 
-        session_id = token["session_id"]
+        cached_data = await cache_database.get(cache_data_key)
 
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
         department = db.query(Models.Department).filter(Models.Department.id == id).first()
 
@@ -818,7 +551,7 @@ async def delete_department(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Delete Status Right Now",
+                "message": "Unable To Delete Department Right Now",
                 "success": False,
                 "error": str(e),
             },
@@ -840,9 +573,9 @@ async def add_edit_designations(
     request: Request,
     db: db_dependencies,
     data: Designations,
-    token: str = Depends(verify_token),
     type: str = Query(..., description="type Should be 'add' , 'edit'"),
     id: Optional[str] = Query(None, description="ID for edit operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
 
@@ -855,66 +588,35 @@ async def add_edit_designations(
                 },
             )
 
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
+        cache_data_key = f"organization_designations_{user.organization_id}"
 
-        user_id = token["user_id"]
+        cached_data = await cache_database.get(cache_data_key)
 
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
         personal_info = (
             db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
+
+        query = db.query(Models.Designations).filter(
+            func.lower(Models.Designations.designations_name) == func.lower(data.designations_name)
+        )
+
+        if type == "edit" and id:
+            query = query.filter(Models.Designations.id != id)
+
+        if query.first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Designations Is Already Exist",
+                    "success": False,
+                },
+            )
+
+        updated_created_by_user = model_to_filtered_dict(
+            personal_info, ["user_id", "first_name", "last_name"]
         )
 
         if type == "add":
@@ -931,39 +633,16 @@ async def add_edit_designations(
                     detail={"message": "Config Module Not Found", "success": False},
                 )
 
-            existing_designations = (
-                db.query(Models.Designations)
-                .filter(
-                    func.lower(Models.Designations.designations_name)
-                    == func.lower(data.designations_name)
-                )
-                .first()
-            )
-
-            if existing_designations:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "Designations Is Already Exist",
-                        "success": False,
-                    },
-                )
-
-            created_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
-
             designations = Models.Designations(
                 designations_name=data.designations_name,
                 source_type="user_created",
                 config_module_id=config_module.id,
-                created_by=json.dumps(created_by_user),
+                created_by=json.dumps(updated_created_by_user),
                 updated_by=None,
             )
 
             db.add(designations)
             db.commit()
-            db.refresh(designations)
 
             return {"success": True, "message": "Designation Added Successfully"}
 
@@ -973,25 +652,6 @@ async def add_edit_designations(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "message": "ID is required for edit operation",
-                        "success": False,
-                    },
-                )
-
-            existing_designations = (
-                db.query(Models.Designations)
-                .filter(
-                    func.lower(Models.Designations.designations_name)
-                    == func.lower(data.designations_name),
-                    Models.Designations.id != id,
-                )
-                .first()
-            )
-
-            if existing_designations:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "department With This Name Is Already Exist",
                         "success": False,
                     },
                 )
@@ -1006,15 +666,10 @@ async def add_edit_designations(
                     detail={"message": "Designation Not Found", "success": False},
                 )
 
-            updated_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
-
             designations.designations_name = data.designations_name
-            designations.updated_by = json.dumps(updated_by_user)
+            designations.updated_by = json.dumps(updated_created_by_user)
 
             db.commit()
-            db.refresh(designations)
 
             return {"success": True, "message": "Designation Updated Successfully"}
 
@@ -1037,66 +692,30 @@ async def add_edit_designations(
 @configRoute.get(path="/designations/fetch", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def fetch_all_designations(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+    request: Request,
+    db: db_dependencies,
+    order: str = Query("asc", alias="order"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
+        cache_data_key = f"organization_designations_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+
+            cached_Data = json.loads(cached_data)
+            cached_sorted_data = sorted(
+                cached_Data,
+                key=lambda x: datetime.fromisoformat(x["created_at"]),
+                reverse=True if order.lower() == "desc" else False,
             )
 
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+            return {
+                "message": "Designation Fetched Successfully. Cached!",
+                "success": True,
+                "data": cached_sorted_data,
+            }
 
         config_module = (
             db.query(Models.ConfigModule)
@@ -1113,16 +732,24 @@ async def fetch_all_designations(
                 },
             )
 
+        sort_order = order.lower()
+
+        sort_func = asc if sort_order == "asc" else desc
+
         designations = (
             db.query(Models.Designations)
             .filter(Models.Designations.config_module_id == config_module.id)
-            .all()
+            .order_by(sort_func(Models.Designations.created_at))
         )
+
+        data = [model_to_filtered_dict(each_designation) for each_designation in designations]
+
+        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
             "message": "Designation Fetched Successfully",
             "success": True,
-            "data": [model_to_filtered_dict(each_designation) for each_designation in designations],
+            "data": data,
         }
 
     except HTTPException as http_exception:
@@ -1146,68 +773,17 @@ async def fetch_all_designations(
 async def delete_designation(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
 
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
+        cache_data_key = f"organization_designations_{user.organization_id}"
 
-        user_id = token["user_id"]
+        cached_data = await cache_database.get(cache_data_key)
 
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
         designations = db.query(Models.Designations).filter(Models.Designations.id == id).first()
 
@@ -1279,71 +855,31 @@ def recursive_creation_helper(
 
 # ? ------------------------- The Api To Fetch All The Associated Role Of The Organization  -------------------
 @configRoute.get("/roles_permissions/fetch-all", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def fetch_all_role_of_organization(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
+    order: str = Query("asc", alias="order"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
 
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
+        cache_data_key = f"organization_roles_permissions_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            cached_Data = json.loads(cached_data)
+            cached_sorted_data = sorted(
+                cached_Data,
+                key=lambda x: datetime.fromisoformat(x["created_at"]),
+                reverse=True if order.lower() == "desc" else False,
             )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+            return {
+                "message": "Roles Fetched Successfully. Cached!",
+                "success": True,
+                "data": cached_sorted_data,
+            }
 
         config_module = (
             db.query(Models.ConfigModule)
@@ -1360,26 +896,32 @@ async def fetch_all_role_of_organization(
                 },
             )
 
+        sort_order = order.lower()
+
+        sort_func = asc if sort_order == "asc" else desc
+
         roles_permissions = (
             db.query(Models.ConfigRoleModule)
             .options(joinedload(Models.ConfigRoleModule.associated_employees))
             .filter(Models.ConfigRoleModule.config_module_id == config_module.id)
-            .all()
+            .order_by(sort_func(Models.ConfigRoleModule.created_at))
         )
 
-        # Replace the model_to_dict part with this:
+        data = [
+            {
+                **(model_to_filtered_dict(role_permission)),
+                "associated_employees": role_permission.associated_employees,
+                "employees": len(role_permission.associated_employees),
+            }
+            for role_permission in roles_permissions
+        ]
+
+        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
             "message": "Roles Fetched Successfully",
             "success": True,
-            "data": [
-                {
-                    **(model_to_filtered_dict(role_permission)),
-                    "associated_employees": role_permission.associated_employees,
-                    "employees": len(role_permission.associated_employees),
-                }
-                for role_permission in roles_permissions
-            ],
+            "data": data,
         }
 
     except HTTPException as http_exception:
@@ -1398,97 +940,76 @@ async def fetch_all_role_of_organization(
 
 # * ------------------------- This The Comman Function To Build The Hierarchy For The Permission Module  -------------------
 def build_hierarchy(modules, parent_id=None):
+    filtered_modules = [m for m in modules if m.parent_module_id == parent_id]
+
     result = []
-    for module in modules:
+    for module in filtered_modules:
         if module.parent_module_id == parent_id:
             module_data = {
                 "id": module.id,
                 "module_label": module.module_label,
                 "module_title": module.module_title,
                 "is_active": module.is_active,
-                "permissions": [
-                    {
-                        "id": p.id,
-                        "label": p.label,
-                        "is_allowed": p.is_allowed,
-                        "show_input": p.show_input,
-                    }
-                    for p in module.permissions
-                ],
+                "permissions": sorted(
+                    [
+                        {
+                            "id": p.id,
+                            "label": p.label,
+                            "is_allowed": p.is_allowed,
+                            "show_input": p.show_input,
+                        }
+                        for p in module.permissions
+                    ],
+                    key=lambda x: x["label"].lower(),
+                ),
                 "sub_modules": build_hierarchy(modules, module.id),
             }
             result.append(module_data)
-    return result
+
+    module_with_subs = [module for module in result if module["sub_modules"]]
+    module_without_subs = [module for module in result if not module["sub_modules"]]
+
+    module_with_subs.sort(key=lambda x: x["module_title"].lower())
+    module_without_subs.sort(key=lambda x: x["module_title"].lower())
+
+    final_result = module_with_subs + module_without_subs
+
+    return final_result
+
+
+def deactivate_module(module):
+    module.is_active = False
+    for permission in module.permissions:
+        if permission.show_input:
+            permission.is_allowed = False
+
+    for sub_module in module.sub_modules:
+        deactivate_module(sub_module)
 
 
 # * ------------------------- The Api To Fetch A Specific Role's Permission  -------------------
 @configRoute.get("/roles_permissions/fetch-role", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def fetch_roles_permission(
     request: Request,
     db: db_dependencies,
     role_id: str = Query(..., description="ID of the role to fetch"),
-    token: str = Depends(verify_token),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
 
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
+        cache_data_key = f"organization_roles_permissions_fetch_role_{role_id}"
 
-        user_id = token["user_id"]
+        cached_data = await cache_database.get(cache_data_key)
 
-        session_id = token["session_id"]
+        if cached_data:
+            cached_Data = json.loads(cached_data)
 
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+            return {
+                "message": "Role fetched successfully. Cached!",
+                "success": True,
+                "data": cached_Data,
+            }
 
         # Get all modules for this role (flat structure)
         all_modules = (
@@ -1521,21 +1042,26 @@ async def fetch_roles_permission(
                 },
             )
 
+        data = {
+            "id": role.id,
+            "role_name": role.role_name,
+            "is_editable": role.is_editable,
+            "description": role.description,
+            "source_type": role.source_type,
+            "status": role.status,
+            "created_by": role.created_by,
+            "created_at": role.created_at,
+            "updated_by": role.updated_by,
+            "updated_at": role.updated_at,
+            "modules": build_hierarchy(all_modules),
+        }
+
+        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
+
         return {
             "message": "Role fetched successfully",
             "success": True,
-            "data": {
-                "id": role.id,
-                "role_name": role.role_name,
-                "description": role.description,
-                "source_type": role.source_type,
-                "status": role.status,
-                "created_by": role.created_by,
-                "created_at": role.created_at,
-                "updated_by": role.updated_by,
-                "updated_at": role.updated_at,
-                "modules": build_hierarchy(all_modules),
-            },
+            "data": data,
         }
 
     except HTTPException as http_exception:
@@ -1557,73 +1083,16 @@ async def fetch_roles_permission(
 
 
 @configRoute.put("/roles_permissions/update", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(ROLES_MODULE_API_RATE_LIMITING)
 async def update(
     request: Request,
     db: db_dependencies,
     id: str = Query(..., description="Id Of The Module"),
     type: str = Query(..., description="type should be module or permission"),
-    token: str = Depends(verify_token),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    role_module_id: str = Query(..., description="Id Of The Module"),
 ):
     try:
-
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
 
         if type not in ["module", "permission"]:
             raise HTTPException(
@@ -1634,8 +1103,14 @@ async def update(
                 },
             )
 
-        if type == "module":
+        cache_data_key = f"organization_roles_permissions_fetch_role_{role_module_id}"
 
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        if type == "module":
             role_permission_module = (
                 db.query(Models.RoleAssociatedPermissionModule)
                 .filter(Models.RoleAssociatedPermissionModule.id == id)
@@ -1651,7 +1126,6 @@ async def update(
                 )
                 .first()
             )
-
             if not role_permission_module:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -1665,18 +1139,16 @@ async def update(
                 role_permission_module.is_active = False
 
                 for permission in role_permission_module.permissions:
-                    permission.is_allowed = False
-
-                for module in role_permission_module.sub_modules:
-                    module.is_active = False
-                    for permission in module.permissions:
+                    if permission.show_input:
                         permission.is_allowed = False
+
+                for sub_module in role_permission_module.sub_modules:
+                    deactivate_module(sub_module)
 
             else:
                 role_permission_module.is_active = True
 
             db.commit()
-            db.refresh(role_permission_module)
 
             return {
                 "success": True,
@@ -1700,7 +1172,6 @@ async def update(
             permission.is_allowed = False if permission.is_allowed else True
 
             db.commit()
-            db.refresh(permission)
 
             return {
                 "success": True,
@@ -1733,69 +1204,9 @@ async def Add_Edit_Roles_Permissions(
     edit_role_id: Optional[str] = Query(
         None, description="The Edit Role Id Is Required To Edit Role"
     ),
-    token: str = Depends(verify_token),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
-        personal_info = (
-            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
-        )
 
         if type.lower() not in ["add", "edit"]:
             raise HTTPException(
@@ -1805,6 +1216,17 @@ async def Add_Edit_Roles_Permissions(
                     "success": False,
                 },
             )
+
+        cache_data_key = f"organization_roles_permissions_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        personal_info = (
+            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
 
         if type.lower() == "add":
 
@@ -1857,12 +1279,13 @@ async def Add_Edit_Roles_Permissions(
                 )
             modules = build_hierarchy(role_permission_module)
             created_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
+                personal_info, ["user_id", "first_name", "last_name"]
             )
 
             config_role_module = Models.ConfigRoleModule(
                 role_name=data.role_name,
                 description=data.description,
+                is_editable=True,
                 status=data.status,
                 source_type="user_created",
                 config_module_id=config_module_id,
@@ -1879,7 +1302,6 @@ async def Add_Edit_Roles_Permissions(
 
                 config_role_module.associated_permissions.append(permission_module)
                 db.commit()
-                db.refresh(config_role_module)
 
             return {
                 "success": True,
@@ -1914,7 +1336,7 @@ async def Add_Edit_Roles_Permissions(
                 )
 
             update_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
+                personal_info, ["user_id", "first_name", "last_name"]
             )
 
             config_role_module = (
@@ -1929,14 +1351,13 @@ async def Add_Edit_Roles_Permissions(
             config_role_module.updated_by = json.dumps(update_by_user)
 
             db.commit()
-            db.refresh(config_role_module)
 
             return {"success": True, "message": "Roles Permission Updated Successfully"}
 
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:
-        db.rollback()  # ✅ Ensure rollback in case of error
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -1953,67 +1374,16 @@ async def Delete_Roles_Permission(
     request: Request,
     db: db_dependencies,
     id: str = Query(..., description="The Id Is Required To Delete a Role Module"),
-    token: str = Depends(verify_token),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
 
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
+        cache_data_key = f"organization_roles_permissions_{user.organization_id}"
 
-        user_id = token["user_id"]
+        cached_data = await cache_database.get(cache_data_key)
 
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
         config_role_module = (
             db.query(Models.ConfigRoleModule).filter(Models.ConfigRoleModule.id == id).first()
@@ -2057,69 +1427,32 @@ async def Delete_Roles_Permission(
 # ? ------------------------- This Is The Api For The Client Form Schema  -------------------
 
 
-@configRoute.get("/client_form_schema/fetch")
+@configRoute.get("/inquiry_form_schema/fetch")
 @limiter.limit(API_RATE_LIMITING)
-async def Client_Form_Schema(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+async def Fetch_Inquiry_Form_Schema(
+    request: Request,
+    db: db_dependencies,
+    order: str = Query("asc", alias="order"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
+
+        cache_data_key = f"organization_inquiry_form_schema_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            cached_Data = json.loads(cached_data)
+            cached_sorted_data = sorted(
+                cached_Data,
+                key=lambda x: datetime.fromisoformat(x["created_at"]),
+                reverse=True if order.lower() == "desc" else False,
             )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+            return {
+                "message": "Inquiry Form Schema Fetched Successfully. Cached!",
+                "success": True,
+                "data": cached_sorted_data,
+            }
 
         config_module = (
             db.query(Models.ConfigModule)
@@ -2135,17 +1468,24 @@ async def Client_Form_Schema(
                     "success": False,
                 },
             )
+        sort_order = order.lower()
 
-        client_form_schemas = (
-            db.query(Models.ClientFormSchema)
-            .filter(Models.ClientFormSchema.config_module_id == config_module.id)
-            .all()
+        sort_func = asc if sort_order == "asc" else desc
+
+        inquiry_form_schemas = (
+            db.query(Models.InquiryFormSchema)
+            .filter(Models.InquiryFormSchema.config_module_id == config_module.id)
+            .order_by(sort_func(Models.InquiryFormSchema.created_at))
         )
+
+        data = [model_to_filtered_dict(inquiry_form) for inquiry_form in inquiry_form_schemas]
+
+        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
             "success": True,
-            "message": "Client Form Schema Fetched Successfully",
-            "data": [model_to_filtered_dict(client_form) for client_form in client_form_schemas],
+            "message": "Inquiry Form Schema Fetched Successfully",
+            "data": data,
         }
 
     except HTTPException as http_exception:
@@ -2162,15 +1502,15 @@ async def Client_Form_Schema(
         )
 
 
-@configRoute.post(path="/client_form_schema/add-edit", status_code=status.HTTP_200_OK)
+@configRoute.post(path="/inquiry_form_schema/add-edit", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def add_edit_Client_Form_Schema(
+async def Add_Edit_Inquiry_Form_Schema(
     request: Request,
     db: db_dependencies,
-    data: ClientFormSchemaModel,
-    token: str = Depends(verify_token),
+    data: InquiryFormSchemaSchemaModel,
     type: str = Query(..., description="type Should be 'add' , 'edit'"),
     id: Optional[str] = Query(None, description="ID for edit operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
 
@@ -2182,67 +1522,42 @@ async def add_edit_Client_Form_Schema(
                     "success": False,
                 },
             )
+        cache_data_key = f"organization_inquiry_form_schema_{user.organization_id}"
 
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
+        cached_data = await cache_database.get(cache_data_key)
 
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
         personal_info = (
             db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
+
+        query = db.query(Models.InquiryFormSchema).filter(
+            or_(
+                func.lower(Models.InquiryFormSchema.form_id) == func.lower(data.form_id),
+                func.lower(Models.InquiryFormSchema.form_name) == func.lower(data.form_name),
+            )
+        )
+
+        if type == "edit" and id:
+            query = query.filter(
+                Models.InquiryFormSchema.id != id,
+            )
+
+        existing_form = query.first()
+
+        if existing_form:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Form Schema Already Exist",
+                    "success": False,
+                },
+            )
+
+        created_updated_by_user = model_to_filtered_dict(
+            personal_info, ["user_id", "first_name", "last_name"]
         )
 
         if type == "add":
@@ -2259,40 +1574,356 @@ async def add_edit_Client_Form_Schema(
                     detail={"message": "Config Module Not Found", "success": False},
                 )
 
-            existing_field = (
-                db.query(Models.ClientFormSchema)
-                .filter(
-                    func.lower(Models.ClientFormSchema.field_name) == func.lower(data.field_name)
-                )
-                .first()
+            inquiry_form = Models.InquiryFormSchema(
+                form_id=data.form_id,
+                form_name=data.form_name,
+                status=data.status,
+                description=data.description,
+                authorized_recipient_emails=json.dumps(data.authorized_recipient_emails),
+                email_notification=data.email_notification,
+                source_type="user_created",
+                config_module_id=config_module.id,
+                created_by=json.dumps(created_updated_by_user),
+                updated_by=None,
             )
 
-            if existing_field:
+            db.add(inquiry_form)
+            db.commit()
+
+            return {"success": True, "message": "Form Added Successfully"}
+
+        else:
+            if type == "edit" and not id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Field With This Name Is Already Exist",
+                        "message": "ID is required for edit operation",
                         "success": False,
                     },
                 )
 
-            created_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
+            inquiry_form = (
+                db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
             )
 
-            form_field = Models.ClientFormSchema(
+            if not inquiry_form:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"message": "Form Not Found", "success": False},
+                )
+
+            inquiry_form.form_id = data.form_id
+            inquiry_form.form_name = data.form_name
+            inquiry_form.status = data.status
+            inquiry_form.description = data.description
+            inquiry_form.updated_by = json.dumps(created_updated_by_user)
+            inquiry_form.authorized_recipient_emails = json.dumps(data.authorized_recipient_emails)
+
+            inquiry_form.email_notification = data.email_notification
+
+            db.commit()
+
+            return {"success": True, "message": "Form Updated Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Add , Edit Field Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.put(
+    path="/inquiry_form_schema/toggle/email-notification", status_code=status.HTTP_200_OK
+)
+@limiter.limit(API_RATE_LIMITING)
+async def delete_designation(
+    request: Request,
+    db: db_dependencies,
+    id: str = Query(..., description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+
+        cache_data_key = f"organization_inquiry_form_schema_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        inquiry_form = (
+            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
+        )
+
+        if not inquiry_form:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Form Not Found", "success": False},
+            )
+
+        inquiry_form.email_notification = True if not inquiry_form.email_notification else False
+
+        db.commit()
+
+        status = "enabled" if inquiry_form.email_notification else "disabled"
+
+        return {"success": True, "message": f"Email notifications have been {status} successfully."}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Delete Status Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.delete(path="/inquiry_form_schema/delete", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def delete_designation(
+    request: Request,
+    db: db_dependencies,
+    id: str = Query(..., description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+
+        cache_data_key = f"organization_inquiry_form_schema_{user.organization_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        inquiry_form_field = (
+            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
+        )
+
+        if not inquiry_form_field:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Form Not Found", "success": False},
+            )
+
+        db.delete(inquiry_form_field)
+        db.commit()
+
+        return {"success": True, "message": "Form Deleted Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable To Delete Status Right Now",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.get("/inquiry_form_fields/fetch")
+@limiter.limit(API_RATE_LIMITING)
+async def Client_Form_Schema(
+    request: Request,
+    db: db_dependencies,
+    form_schema_id: str = Query(..., alias="form_schema_id"),
+    order: str = Query("asc", alias="order"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+
+        cache_data_key = f"organization_inquiry_form_fields_{form_schema_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            cached_Data = json.loads(cached_data)
+            cached_sorted_data = sorted(
+                cached_Data,
+                key=lambda x: datetime.fromisoformat(x["created_at"]),
+                reverse=True if order.lower() == "desc" else False,
+            )
+            return {
+                "message": "Inquiry Form Fields Fetched Successfully. Cached!",
+                "success": True,
+                "data": cached_sorted_data,
+            }
+
+        config_module = (
+            db.query(Models.ConfigModule)
+            .filter(Models.ConfigModule.organization_id == user.organization_id)
+            .first()
+        )
+
+        if not config_module:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Config Module Not Found",
+                    "success": False,
+                },
+            )
+
+        inquiry_form_schema = (
+            db.query(Models.InquiryFormSchema)
+            .filter(Models.InquiryFormSchema.id == form_schema_id)
+            .first()
+        )
+
+        if not inquiry_form_schema:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Form Schema Not Found",
+                    "success": False,
+                },
+            )
+
+        sort_order = order.lower()
+
+        sort_func = asc if sort_order == "asc" else desc
+
+        form_fields = (
+            db.query(Models.InquiryFormFields)
+            .filter(Models.InquiryFormFields.inquiry_form_schema_id == inquiry_form_schema.id)
+            .order_by(sort_func(Models.InquiryFormFields.created_at))
+        )
+
+        data = [model_to_filtered_dict(field) for field in form_fields]
+
+        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
+
+        return {
+            "success": True,
+            "message": "Inquiry Form Fields Fetched Successfully",
+            "data": {
+                **model_to_filtered_dict(inquiry_form_schema, fields=["form_id", "form_name"]),
+                "form_fields": data,
+            },
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        db.rollback()  # ✅ Ensure rollback in case of error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error While Fetching The Client Form Schema",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@configRoute.post(path="/inquiry_form_fields/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def add_edit_Client_Form_Schema(
+    request: Request,
+    db: db_dependencies,
+    data: ClientFormSchemaModel,
+    type: str = Query(..., description="type Should be 'add' , 'edit'"),
+    form_schema_id: str = Query(..., alias="form_schema_id"),
+    id: Optional[str] = Query(None, description="ID for edit operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+
+        cache_data_key = f"organization_inquiry_form_fields_{form_schema_id}"
+
+        cached_data = await cache_database.get(cache_data_key)
+
+        if cached_data:
+            await cache_database.delete(cache_data_key)
+
+        if type not in ["add", "edit"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={
+                    "message": "Invalid type. Must be 'add' or 'edit'",
+                    "success": False,
+                },
+            )
+
+        personal_info = (
+            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
+
+        inquiry_form_schema = (
+            db.query(Models.InquiryFormSchema)
+            .filter(Models.InquiryFormSchema.id == form_schema_id)
+            .first()
+        )
+
+        if not inquiry_form_schema:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Form Schema Not Found", "success": False},
+            )
+
+        query = db.query(Models.InquiryFormFields).filter(
+            and_(
+                func.lower(Models.InquiryFormFields.field_name) == func.lower(data.field_name),
+                Models.InquiryFormFields.inquiry_form_schema_id == inquiry_form_schema.id,
+            )
+        )
+
+        if type == "edit" and id:
+            query = query.filter(
+                Models.InquiryFormFields.id != id,
+            )
+
+        if query.first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Field With This Name Is Already Exist",
+                    "success": False,
+                },
+            )
+
+        created_updated_by_user = model_to_filtered_dict(
+            personal_info, ["user_id", "first_name", "last_name"]
+        )
+
+        if type == "add":
+
+            config_module = (
+                db.query(Models.ConfigModule)
+                .filter(Models.ConfigModule.organization_id == user.organization_id)
+                .first()
+            )
+
+            if not config_module:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"message": "Config Module Not Found", "success": False},
+                )
+
+            form_field = Models.InquiryFormFields(
                 field_name=data.field_name,
                 is_required_field=data.is_required_field,
                 type=data.type,
                 source_type="user_created",
-                config_module_id=config_module.id,
-                created_by=json.dumps(created_by_user),
+                inquiry_form_schema_id=inquiry_form_schema.id,
+                created_by=json.dumps(created_updated_by_user),
                 updated_by=None,
             )
 
             db.add(form_field)
             db.commit()
-            db.refresh(form_field)
 
             return {"success": True, "message": "Field Added Successfully"}
 
@@ -2306,26 +1937,8 @@ async def add_edit_Client_Form_Schema(
                     },
                 )
 
-            existing_field = (
-                db.query(Models.ClientFormSchema)
-                .filter(
-                    func.lower(Models.ClientFormSchema.field_name) == func.lower(data.field_name),
-                    Models.ClientFormSchema.id != id,
-                )
-                .first()
-            )
-
-            if existing_field:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "message": "Field With This Name Is Already Exist",
-                        "success": False,
-                    },
-                )
-
             form_field = (
-                db.query(Models.ClientFormSchema).filter(Models.ClientFormSchema.id == id).first()
+                db.query(Models.InquiryFormFields).filter(Models.InquiryFormFields.id == id).first()
             )
 
             if not form_field:
@@ -2334,17 +1947,12 @@ async def add_edit_Client_Form_Schema(
                     detail={"message": "Field Not Found", "success": False},
                 )
 
-            updated_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
-
             form_field.field_name = data.field_name
             form_field.is_required_field = data.is_required_field
             form_field.type = data.type
-            form_field.updated_by = json.dumps(updated_by_user)
+            form_field.updated_by = json.dumps(created_updated_by_user)
 
             db.commit()
-            db.refresh(form_field)
 
             return {"success": True, "message": "Field Updated Successfully"}
 
@@ -2361,85 +1969,57 @@ async def add_edit_Client_Form_Schema(
         )
 
 
-@configRoute.delete(path="/client_form_schema/delete", status_code=status.HTTP_200_OK)
+@configRoute.delete(path="/inquiry_form_fields/delete", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def delete_designation(
     request: Request,
     db: db_dependencies,
-    token: str = Depends(verify_token),
     id: str = Query(..., description="ID for delete operation"),
+    form_schema_id: str = Query(..., alias="form_schema_id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
 
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
+        cache_data_key = f"organization_inquiry_form_fields_{form_schema_id}"
 
-        user_id = token["user_id"]
+        cached_data = await cache_database.get(cache_data_key)
 
-        session_id = token["session_id"]
+        if cached_data:
+            await cache_database.delete(cache_data_key)
 
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
+        inquiry_form_schema = (
+            db.query(Models.InquiryFormSchema)
+            .filter(Models.InquiryFormSchema.id == form_schema_id)
             .first()
         )
 
-        if not user or not user.account_status:
+        if not inquiry_form_schema:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
+                detail={"message": "Form Schema Not Found", "success": False},
             )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
         #
         # *  Once The User Is Authenticated Then We Will Move Further
         #
 
-        client_form_field = (
-            db.query(Models.ClientFormSchema).filter(Models.ClientFormSchema.id == id).first()
+        inquiry_form_field = (
+            db.query(Models.InquiryFormFields)
+            .filter(
+                and_(
+                    Models.InquiryFormFields.id == id,
+                    Models.InquiryFormFields.inquiry_form_schema_id == form_schema_id,
+                )
+            )
+            .first()
         )
 
-        if not client_form_field:
+        if not inquiry_form_field:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"message": "Filed Not Found", "success": False},
             )
 
-        db.delete(client_form_field)
+        db.delete(inquiry_form_field)
         db.commit()
 
         return {"success": True, "message": "Field Deleted Successfully"}

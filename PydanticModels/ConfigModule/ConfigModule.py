@@ -24,6 +24,15 @@ class ClientFormSchemaModel(BaseModel):
     type: str
 
 
+class InquiryFormSchemaSchemaModel(BaseModel):
+    form_id: str
+    form_name: str
+    description: str
+    status: bool
+    authorized_recipient_emails: List[str]
+    email_notification: bool
+
+
 class PermissionModule(BaseModel):
     label: str
     is_allowed: bool
@@ -41,7 +50,8 @@ class RoleAssociatedPermissionModule(BaseModel):
 class RolesPermission(BaseModel):
     role_name: str
     description: str
-    permission_module: List[RoleAssociatedPermissionModule]
+    is_editable: bool
+    permission_modules: List[RoleAssociatedPermissionModule]
 
 
 class CloneRole(BaseModel):

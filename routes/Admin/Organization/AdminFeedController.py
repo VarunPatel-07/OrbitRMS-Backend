@@ -1,0 +1,330 @@
+import json
+from typing import List, Optional
+from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
+import cloudinary
+
+from dotenv import load_dotenv
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
+
+from sqlalchemy import asc, desc
+from sqlalchemy.orm import joinedload
+
+from Config.EnvConfig import EnvConfig
+
+from Database.Database import db_dependencies
+from Helper.helper import filter_fields, model_to_filtered_dict
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
+from Middleware.verifyToken import verify_token
+
+from RateLimiting import limiter
+from SqlModels import Models
+
+load_dotenv(override=True)
+
+adminFeedControl = APIRouter(
+    prefix="/app/v1/admin/organization-updates", tags=["organization-updates"]
+)
+
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
+
+
+cloudinary.config(
+    cloud_name=EnvConfig.CLOUDINARY_CLOUD_NAME,
+    api_key=EnvConfig.CLOUDINARY_API_KEY,
+    api_secret=EnvConfig.CLOUDINARY_API_SECRET,
+)
+
+
+@adminFeedControl.post("/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def AddEditFeedPostController(
+    request: Request,
+    db: db_dependencies,
+    type: str = Query(..., description="The Type Must Be Add or Edit"),
+    description: str = File(...),
+    isCommentDisabled: bool = File(...),
+    isLikeDisabled: bool = File(...),
+    videos: List[str] = Form(default=[]),
+    images: List[str] = Form(default=[]),
+    id: Optional[str] = Query(None, description="ID for edit operation"),
+    token: str = Depends(verify_token),
+):
+    try:
+
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
+        if type not in ["add", "edit"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={"message": "Only Add Or Edit Is Allowed", "success": False},
+            )
+
+        if type == "add":
+
+            post_data = Models.AdminOrganizationUpdates(
+                images=json.dumps(images),
+                description=description,
+                user_id=admin_id,
+                isCommentDisabled=isCommentDisabled,
+                isLikeDisabled=isLikeDisabled,
+                source_type="system",
+            )
+
+            db.add(post_data)
+            db.commit()
+
+            return {
+                "message": "Post Uploaded Successfully",
+                "success": True,
+                "data": model_to_filtered_dict(post_data),
+            }
+
+        else:
+            if type == "edit" and not id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "ID is required for edit operation",
+                        "success": False,
+                    },
+                )
+
+            existing_post = (
+                db.query(Models.AdminOrganizationUpdates)
+                .filter(Models.AdminOrganizationUpdates.id == id)
+                .first()
+            )
+
+            if not existing_post:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={
+                        "message": "Post With This Id Not Found",
+                        "success": False,
+                    },
+                )
+
+            if not existing_post.user_id == admin_id:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={
+                        "message": "You Are Not Authorised",
+                        "success": False,
+                    },
+                )
+
+            existing_post.images = json.dumps(images)
+            existing_post.description = description
+            existing_post.isCommentDisabled = isCommentDisabled
+            existing_post.isLikeDisabled = isLikeDisabled
+
+            db.commit()
+            db.refresh(existing_post)
+
+            return {
+                "message": "Post Updated Successfully",
+                "success": True,
+                "data": model_to_filtered_dict(existing_post),
+            }
+
+        #
+        # *  Once The User Is Authenticated Then We Will Move Further
+        #
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Posting A Post",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@adminFeedControl.get("/fetch-post", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def FetchTheOrganizationPost(
+    request: Request,
+    db: db_dependencies,
+    order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
+    field_name: Optional[str] = Query(
+        None, description="This Is An Optional Field", alias="field_name"
+    ),
+    token: str = Depends(verify_token),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
+        if not order:
+            order = "asc"
+
+        query_data = db.query(Models.AdminOrganizationUpdates)
+
+        column_field = getattr(Models.AdminOrganizationUpdates, field_name, None)
+
+        if not column_field:
+            raise ValueError(f"{field_name} Not Found")
+
+        if order == "asc":
+
+            post_data = query_data.order_by(asc(column_field)).all()
+
+        elif order == "desc":
+
+            post_data = query_data.order_by(desc(column_field)).all()
+
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Invalid Input",
+                    "success": False,
+                },
+            )
+
+        _data = []
+
+        for data in post_data:
+            post_info = model_to_filtered_dict(data)
+
+            likes_info_array = []
+            comment_array = []
+
+            _data.append(
+                {
+                    "publisher": {},
+                    "likes": likes_info_array,
+                    "comments": comment_array,
+                    **post_info,
+                }
+            )
+
+        return {
+            "message": "Post Fetched Successfully",
+            "success": True,
+            "data": _data,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Fetching Posts",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@adminFeedControl.delete("/delete-post", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def HandelDeletePostFunction(
+    request: Request,
+    db: db_dependencies,
+    id: str = Query(None, description="ID for delete operation"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+
+        post = (
+            db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == id).first()
+        )
+
+        if not post:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Post With This Id Not Found",
+                    "success": False,
+                },
+            )
+
+        db.delete(post)
+        db.commit()
+
+        return {"success": True, "message": "Post Deleted Successfully"}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Deleting a Post",
+                "error": str(e),
+                "success": False,
+            },
+        )

@@ -1,6 +1,6 @@
-from Helper.helper import (
-    filter_fields,
-)
+from sqlalchemy import Boolean, String, and_, cast, func, or_
+
+from SqlModels import Models
 
 
 def apply_client_inquiry_query_filter(query_data, filters):
@@ -10,36 +10,42 @@ def apply_client_inquiry_query_filter(query_data, filters):
         operator = each_filter.get("operator")
         value = each_filter.get("value")
 
-        if operator == "is":
-            if value == "Active":
-                query_data = [item for item in query_data if item.data.get(field_name) is True]
-            elif value == "Inactive":
-                query_data = [item for item in query_data if item.data.get(field_name) is False]
+        all_conditions = []
 
-        if operator == "equals":
-            query_data = [item for item in query_data if str(item.data.get(field_name)) == value]
+        if field_name in ["form_id", "form_name"]:
+            normalized_db_name = func.replace(
+                func.trim(getattr(Models.ClientInquiresData, field_name)), "  ", " "
+            )
 
-        if operator == "contains":
-            query_data = [
-                item
-                for item in query_data
-                if isinstance(item.data.get(field_name), (str, int))
-                and value.lower() in str(item.data.get(field_name)).lower()
-            ]
+            values = value if isinstance(value, list) else [value]
 
-        if operator == "starts_with":
-            query_data = [
-                item
-                for item in query_data
-                if isinstance(item.data.get(field_name), (str, int))
-                and str(item.data.get(field_name)).lower().startswith(value.lower())
-            ]
+            conditions = [normalized_db_name.ilike(f"%{v.strip()}%") for v in values]
 
-        if operator == "ends_with":
-            query_data = [
-                item
-                for item in query_data
-                if isinstance(item.data.get(field_name), (str, int))
-                and str(item.data.get(field_name)).lower().endswith(value.lower())
-            ]
+            all_conditions.append(or_(*conditions))
+
+        else:
+            json_fields = cast(Models.ClientInquiresData.data[field_name].as_string(), String)
+
+            if operator == "equals":
+
+                all_conditions.append(json_fields == str(value))
+
+            elif operator == "contains":
+
+                all_conditions.append(json_fields.ilike(f"%{value}%"))
+
+            elif operator == "starts_with":
+                all_conditions.append(json_fields.ilike(f"{value}%"))
+
+            elif operator == "ends_with":
+                all_conditions.append(json_fields.ilike(f"%{value}"))
+
+            elif operator == "is":
+                if value == "Active":
+                    all_conditions.append(json_fields.cast(Boolean) == True)
+                elif value == "Inactive":
+                    all_conditions.append(json_fields.cast(Boolean) == False)
+
+    if all_conditions:
+        query_data = query_data.filter(and_(*all_conditions))
     return query_data

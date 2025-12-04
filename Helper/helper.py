@@ -1,9 +1,14 @@
 import base64
 import hashlib
+import json
+import math
 import os
+import random
 import secrets
 import string
+from datetime import datetime
 from typing import Dict, List, Optional, Union
+from zoneinfo import ZoneInfo
 
 from Crypto.Cipher import AES
 from dotenv import load_dotenv
@@ -11,11 +16,12 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 
 load_dotenv(override=True)
 
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
+ENCRYPTION_KEY = EnvConfig.ENCRYPTION_KEY.encode()
 
 
 def generate_full_name(first_name: str, last_name: str, middle_name: str = None) -> str:
@@ -289,3 +295,62 @@ def generatePasswordResetToken():
 
     token = secrets.token_urlsafe(32)
     return token
+
+
+def generateAdminSignature():
+    token = secrets.token_urlsafe(16)
+    return token
+
+
+def generateAdminAccessCode(length: int):
+    otp = "".join(random.choices(string.digits, k=length))
+    return otp
+
+
+def parse_iso_datetime(iso_str: str) -> datetime:
+    if not iso_str.endswith("Z"):
+
+        return iso_str
+    iso_str = iso_str.replace("Z", "+00:00")
+    date_time = datetime.fromisoformat(iso_str)
+    return date_time.astimezone(ZoneInfo("UTC"))
+
+
+def difference_between_dates(current_date, next_date):
+    def parse_date(date):
+        if isinstance(date, str):
+            return datetime.fromisoformat(date.replace("Z", "+00:00"))
+        elif isinstance(date, datetime):
+            return date
+        else:
+            raise ValueError(f"Invalid date type: {type(date)}")
+
+    current_date_obj = parse_date(current_date)
+    next_date_obj = parse_date(next_date)
+
+    difference = abs((current_date_obj - next_date_obj).total_seconds()) / 60
+    return int(math.floor(difference))
+
+
+def parse_date(date_str: str):
+    if date_str.endswith("Z"):
+        date_str = date_str.replace("Z", "+00:00")
+    dt = datetime.fromisoformat(date_str)
+
+    # Ensure all dates are offset-aware
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    return dt
+
+
+def validate_time_difference(start_date: str, end_date: str):
+
+    start_date = parse_date(start_date)
+    end_date = parse_date(end_date)
+
+    # Calculate the difference
+    time_diff = start_date - end_date
+    total_seconds = abs(time_diff.total_seconds())
+    minutes = int(total_seconds // 60)
+
+    return minutes

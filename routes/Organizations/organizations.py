@@ -10,16 +10,18 @@ from fastapi import (
     Request,
     status,
 )
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
-
+from sqlalchemy.sql import func
 from BackgroundDataHandler.DataSeederHelper import ClientInquiryInitiator
 from BackgroundDataHandler.initialDataSeeder import (
+    client_form_field_initial_data_seeder,
     department_data_initial_data_seeder,
     designation_initial_data_seeder,
     project_status_initial_data_seeder,
     roles_permission_initial_data_seeder_function,
-    client_form_field_initial_data_seeder,
 )
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import CreatePasswordHtmlBody
 from Helper.createModelInstance import cerate_model_instance
@@ -33,7 +35,9 @@ from Helper.helper import (
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
 )
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
+from PydanticModels.HelperPydanticModel import CreatePasswordPydanticBody
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
 )
@@ -45,9 +49,9 @@ load_dotenv(override=True)
 orgRouter = APIRouter(prefix="/app/v1/organization", tags=["organization"])
 
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+FRONTEND_URL = EnvConfig.FRONTEND_URL.strip()
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 
 #
@@ -80,8 +84,6 @@ async def verify_organization(
             )
         if not organization.email_verified:
             organization.email_verified = True
-            db.commit()
-            db.refresh(organization)
 
             user = (
                 db.query(Models.User)
@@ -110,7 +112,11 @@ async def verify_organization(
                 "recever_email": organization.primary_email,
                 "subject": "Complete Your Account Setup – Create Your Password",
                 "body": CreatePasswordHtmlBody(
-                    f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}&token={encrypted_token}"
+                    CreatePasswordPydanticBody(
+                        user_name="",
+                        organization_name=organization.organization_name,
+                        create_password_link=f"{FRONTEND_URL}/auth/create-password?user-id={encrypted_user_id}&token={encrypted_token}",
+                    )
                 ),
             }
 
@@ -123,16 +129,22 @@ async def verify_organization(
 
             db.add(config_module)
             db.commit()
-            db.refresh(config_module)
 
-            db.commit()
+            db.refresh(config_module)
             db.refresh(user)
 
             background_task.add_task(
                 roles_permission_initial_data_seeder_function, db, decrypted_org_id
             )
-            background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id)
-            background_task.add_task(department_data_initial_data_seeder, db, decrypted_org_id)
+            background_task.add_task(
+                designation_initial_data_seeder, db, decrypted_org_id, organization.industry_slug
+            )
+            background_task.add_task(
+                department_data_initial_data_seeder,
+                db,
+                decrypted_org_id,
+                organization.industry_slug,
+            )
             background_task.add_task(project_status_initial_data_seeder, db, decrypted_org_id)
             background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
 
@@ -151,6 +163,7 @@ async def verify_organization(
             )
 
             encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
+
             # todo need to add email
             return {
                 "message": "Organization already Verified",
@@ -171,6 +184,68 @@ async def verify_organization(
                 "error": str(e),
             },
         )
+
+
+# @orgRouter.get("/data-feeder", status_code=status.HTTP_200_OK)
+# @limiter.limit(API_RATE_LIMITING)
+# async def verify_organization(
+#     request: Request,
+#     db: db_dependencies,
+#     background_task: BackgroundTasks,
+#     organization_id: str = Query(..., alias="organization-id"),
+# ):
+#     try:
+#         decrypted_org_id = organization_id
+
+#         organization = (
+#             db.query(Models.OrganizationGeneralInfo)
+#             .filter(Models.OrganizationGeneralInfo.organization_id == decrypted_org_id)
+#             .first()
+#         )
+#         if not organization:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail={"message": "Organization Not Found", "success": False},
+#             )
+
+#         user = (
+#             db.query(Models.User)
+#             .join(Models.EmployeeInfo, Models.EmployeeInfo.user_id == Models.User.id)
+#             .filter(Models.EmployeeInfo.employee_email == organization.primary_email)
+#             .first()
+#         )
+#         if not user:
+#             raise HTTPException(
+#                 status_code=status.HTTP_401_UNAUTHORIZED,
+#                 detail={
+#                     "message": "User Not Found",
+#                     "success": False,
+#                 },
+#             )
+
+#         background_task.add_task(
+#             roles_permission_initial_data_seeder_function, db, decrypted_org_id
+#         )
+
+#         return {
+#             "message": "Organization Is Verified Successfully",
+#             "success": True,
+#             "data": {
+#                 "alreadyVerified": False,
+#             },
+#         }
+
+#     except HTTPException as http_exception:
+#         raise http_exception
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail={
+#                 "message": "Error Accrued While Adding Employee",
+#                 "success": False,
+#                 "error": str(e),
+#             },
+#         )
 
 
 #
@@ -217,25 +292,43 @@ async def onboard_organization(
             updated_data=data.general_info,
         )
 
+        fetch_admin_role = (
+            db.query(Models.ConfigRoleModule)
+            .filter(Models.ConfigRoleModule.role_name == "Administrator")
+            .first()
+        )
+
         user_info = (
             db.query(Models.EmployeeInfo)
             .filter(Models.EmployeeInfo.employee_email == data.general_info.primary_email)
             .first()
         )
 
+        user_info.employee_role_id = fetch_admin_role.id
+
+        db.add(user_info)
+
         updated_user_info = cerate_model_instance(
             model=Models.PersonalInfo,
             data=data.employee_profile_info,
+            fields=["-normalized_full_name"],
+        )
+
+        normalized_full_name = func.regexp_replace(
+            func.lower(
+                func.regexp_replace(func.trim(data.employee_profile_info.full_name), r"\s+", " ")
+            ),
+            r"\s+",
+            "",
         )
 
         updated_user_info.user_id = user_info.user_id
+        updated_user_info.normalized_full_name = normalized_full_name
         db.add(updated_user_info)
-        db.commit()
 
         address = cerate_model_instance(model=Models.OrganizationAddress, data=data.address)
         address.organization_id = organization.id
         db.add(address)
-        db.commit()
 
         contact_info_arr = []
 
@@ -250,13 +343,13 @@ async def onboard_organization(
         about_info = cerate_model_instance(model=Models.OrganizationAboutInfo, data=data.about_info)
         about_info.organization_id = organization.id
         db.add(about_info)
-        db.commit()
 
         organization_settings = cerate_model_instance(
             model=Models.OrganizationSettings, data=data.organization_settings
         )
         organization_settings.organization_id = organization.id
         db.add(organization_settings)
+
         db.commit()
 
         api_key, api_secret = generate_api_secrets_api_key()
@@ -299,7 +392,16 @@ async def fetch_organization_info(
         organization_id = urlsafe_data_decoding_function(organization_id)
 
         organization = (
-            db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
+            db.query(Models.Organization)
+            .options(
+                joinedload(Models.Organization.general_info),
+                joinedload(Models.Organization.address),
+                joinedload(Models.Organization.contact_info),
+                joinedload(Models.Organization.about_info),
+                joinedload(Models.Organization.organization_settings),
+            )
+            .filter(Models.Organization.id == organization_id)
+            .first()
         )
 
         if not organization:
@@ -311,60 +413,35 @@ async def fetch_organization_info(
                 },
             )
 
-        organization_general_info = (
-            db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.organization_id == organization.id)
-            .first()
-        )
-        organization_address = (
-            db.query(Models.OrganizationAddress)
-            .filter(Models.OrganizationAddress.organization_id == organization.id)
-            .first()
-        )
-
-        contact_info = (
-            db.query(Models.OrganizationContactInfo)
-            .filter(Models.OrganizationContactInfo.organization_id == organization.id)
-            .first()
-        )
-        about_info = (
-            db.query(Models.OrganizationAboutInfo)
-            .filter(Models.OrganizationAboutInfo.organization_id == organization.id)
-            .first()
-        )
-        organization_settings = (
-            db.query(Models.OrganizationSettings)
-            .filter(Models.OrganizationSettings.organization_id == organization.id)
-            .first()
-        )
-
         return {
             "success": True,
             "data": {
                 "general_info": (
-                    model_to_filtered_dict(organization_general_info, ["-id", "-organization_id"])
-                    if organization_general_info
-                    else ""
+                    filter_fields(organization.general_info, ["-id", "-organization_id"])
+                    if organization.general_info
+                    else None
                 ),
                 "address": (
-                    model_to_filtered_dict(organization_address, ["-id", "-organization_id"])
-                    if organization_address
-                    else ""
+                    filter_fields(organization.address[0], ["-id", "-organization_id"])
+                    if organization.address
+                    else None
                 ),
                 "contact_info": (
-                    model_to_filtered_dict(contact_info, ["-id", "-organization_id"])
-                    if contact_info
-                    else ""
+                    filter_fields(organization.contact_info[0], ["-id", "-organization_id"])
+                    if organization.contact_info
+                    else None
                 ),
                 "about_info": (
-                    model_to_filtered_dict(about_info, ["-id", "-organization_id"])
-                    if about_info
-                    else ""
+                    filter_fields(organization.about_info[0], ["-id", "-organization_id"])
+                    if organization.about_info
+                    else None
                 ),
                 "organization_settings": (
-                    model_to_filtered_dict(organization_settings, ["-id", "-organization_id"])
-                    if organization_settings
-                    else ""
+                    filter_fields(
+                        organization.organization_settings[0], ["-id", "-organization_id"]
+                    )
+                    if organization.organization_settings
+                    else None
                 ),
             },
         }
@@ -392,66 +469,11 @@ async def fetch_organization_info(
 @orgRouter.get("/fetch-reporting-manager", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def fetch_reporting_manager(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        #
-        # *  We Will Firstly Check For The User's Authentication
-        #
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
-                },
-            )
-
-        user_id = token["user_id"]
-
-        session_id = token["session_id"]
-
-        user = (
-            db.query(Models.User)
-            .options(joinedload(Models.User.sessions), joinedload(Models.User.organization))
-            .filter(Models.User.id == user_id)
-            .first()
-        )
-
-        if not user or not user.account_status:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
-                    "success": False,
-                },
-            )
-
-        if not user.organization.status:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
-                },
-            )
-
-        # We Will Also Check For The Relevant Session That This Particular Session Exists Or Not
-
-        if not any(session.id == session_id for session in user.sessions):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        #
-        # *  Once The User Is Authenticated Then We Will Move Further
-        #
 
         fetch_all_users = (
             db.query(Models.User)
@@ -493,10 +515,3 @@ async def fetch_reporting_manager(
                 "success": False,
             },
         )
-
-
-#
-#
-# ? ------------ Api To Fetch The Info Of The Organization ---------------------
-#
-#
