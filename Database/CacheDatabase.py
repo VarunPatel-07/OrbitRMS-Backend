@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from redis.asyncio import Redis
+from valkey import Valkey
 
 from Config.EnvConfig import EnvConfig
 
@@ -16,14 +16,15 @@ CACHED_DATABASE_PASSWORD = EnvConfig.CACHED_DATABASE_PASSWORD
 
 
 if BACKEND_APP_ENVIRONMENT == "PRODUCTION":
-    cache_database = Redis(
+    cache_database = Valkey(
         host=CACHED_DATABASE_HOST,
         port=CACHED_DATABASE_PORT,
         password=CACHED_DATABASE_PASSWORD,
         ssl=True,
+        ssl_cert_reqs=None,  # Aiven uses self-signed certs
         decode_responses=True,
     )
 else:
-    cache_database = Redis(
+    cache_database = Valkey(
         host=CACHED_DATABASE_HOST, port=CACHED_DATABASE_PORT, decode_responses=True
     )
