@@ -113,7 +113,25 @@ def WelcomeMailForNewlyAddedEmployee(data: WelcomeEmployeeMailModel):
     return html_content
 
 
-import os
+def WelcomeMailNewOrganization(data: WelcomeEmployeeMailModel):
+
+    base_url = os.path.dirname(__file__)
+    path = os.path.join(base_url, "Html", "welcome-new-org.html")
+    with open(path, "r") as file:
+        html_content = file.read()
+    html_content = (
+        (
+            html_content.replace("{user_name}", data.user_name)
+            .replace("{organization_name}", data.organization_name)
+            .replace("{create_password_link}", data.create_password_link)
+        )
+        .replace("{orbit_contact_emil}", ORBIT_CONTACT_EMAIL)
+        .replace("{facebook_url}", FACEBOOK_LINK)
+        .replace("{instagram_url}", INSTAGRAM_LINK)
+        .replace("{linked_in_url}", LINKEDIN_LINK)
+    )
+
+    return html_content
 
 
 def render_value(value):

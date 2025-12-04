@@ -50,9 +50,7 @@ def recursive_creation_helper(
         db.add(permission_module)
 
     for submodule in module_data.sub_modules:
-        recursive_creation_helper(
-            submodule, db, role_module_id, parent_module.id  # Set parent ID for submodules
-        )
+        recursive_creation_helper(submodule, db, role_module_id, parent_module.id)
 
     return parent_module
 
@@ -73,7 +71,6 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
             detail={"message": "Config Module Not Found", "success": False},
         )
 
- 
     config_role_module = Models.ConfigRoleModule(
         role_name=data.role_name,
         description=data.description,
@@ -111,7 +108,6 @@ def designation_data_seeder_helper_function(db, organization_id: str, data: Desi
             detail={"message": "Config Module Not Found", "success": False},
         )
 
-
     designations = Models.Designations(
         designations_name=data.designations_name,
         source_type="default",
@@ -138,7 +134,6 @@ def project_status_data_seeder_helper_function(db, organization_id: str, data: P
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"message": "Config Module Not Found", "success": False},
         )
-
 
     project_status = Models.ProjectStatus(
         status_name=data.status_name,
@@ -167,8 +162,6 @@ def department_data_seeder_helper_function(db, organization_id: str, data: Depar
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"message": "Config Module Not Found", "success": False},
         )
-
-
 
     department = Models.Department(
         department_name=data.department_name,

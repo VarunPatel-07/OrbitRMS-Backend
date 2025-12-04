@@ -1,8 +1,9 @@
 import aiohttp
-from Config.EnvConfig import EnvConfig
 from fastapi import Request, status
-from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from Config.EnvConfig import EnvConfig
 
 
 async def verify_recaptcha(token: str) -> str:

@@ -1,10 +1,14 @@
+aiohappyeyeballs==2.6.1
+aiohttp==3.13.2
 aiomysql==0.2.0
+aiosignal==1.4.0
 aiosmtplib==3.0.2
 alembic==1.14.0
 annotated-types==0.7.0
 anyio==4.8.0
 APScheduler==3.11.0
 arrow==1.2.3
+attrs==25.4.0
 Authlib==1.6.1
 babel==2.17.0
 bcrypt==4.2.1
@@ -29,9 +33,10 @@ fastapi==0.115.6
 fastapi-cli==0.0.7
 fastapi-mail==1.4.2
 filelock==3.17.0
+frozenlist==1.8.0
 git-filter-repo==2.47.0
 gitlint-core==0.19.1
-h11>=0.16.0
+h11==0.14.0
 httpcore==1.0.7
 httptools==0.6.4
 httpx==0.28.1
@@ -47,6 +52,7 @@ markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 mccabe==0.7.0
 mdurl==0.1.2
+multidict==6.7.0
 mypy-extensions==1.0.0
 nodeenv==1.9.1
 oauthlib==3.3.1
@@ -56,6 +62,7 @@ passlib==1.7.4
 pathspec==0.12.1
 platformdirs==4.3.6
 pre_commit==4.1.0
+propcache==0.4.1
 pycodestyle==2.12.1
 pycountry==24.6.1
 pycparser==2.22
@@ -98,3 +105,4 @@ virtualenv==20.29.1
 watchfiles==1.0.3
 websockets==14.1
 wrapt==1.17.2
+yarl==1.22.0

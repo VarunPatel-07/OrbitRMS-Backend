@@ -93,14 +93,13 @@ def designation_initial_data_seeder(db, organization_id: str, industry_slug: str
 
             if not isinstance(data_dict, dict):
                 raise ValueError("Expected a dict of designations")
-            
+
             industry_data = data_dict.get(industry_slug)
             if industry_data is None:
                 raise ValueError(f"Industry '{industry_slug}' not found in JSON file")
 
             if not isinstance(industry_data, list):
                 raise ValueError("Industry data must be a list of designations")
-
 
             for each_data in industry_data:
                 if not isinstance(each_data, dict):
@@ -221,7 +220,7 @@ def department_data_initial_data_seeder(db, organization_id: str, industry_slug:
 
             if not isinstance(data_dict, dict):
                 raise ValueError("Expected a dictionary of industries")
-            
+
             industry_data = data_dict.get(industry_slug)
             if industry_data is None:
                 raise ValueError(f"Industry '{industry_slug}' not found in JSON file")
