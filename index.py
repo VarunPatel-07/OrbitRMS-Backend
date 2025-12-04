@@ -70,9 +70,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-if not EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
+# if not EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
 
-    app.add_middleware(RecaptchaMiddleware)
+#     app.add_middleware(RecaptchaMiddleware)
 
 
 # Create database tables (consider using migrations instead)
