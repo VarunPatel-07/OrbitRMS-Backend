@@ -71,6 +71,12 @@ class EnvConfig:
     # SMTP email server address
     EMAIL_SERVER_ADDRESS = os.getenv("EMAIL_SERVER_ADDRESS")
 
+    BREVO_SMTP_USERNAME = os.getenv("BREVO_SMTP_USERNAME")
+    BREVO_SMTP_PASSWORD = os.getenv("BREVO_SMTP_PASSWORD")
+    BREVO_SMTP_SERVER = os.getenv("BREVO_SMTP_SERVER")
+    BREVO_SMTP_PORT = os.getenv("BREVO_SMTP_PORT")
+    BREVO_FROM_EMAIL = os.getenv("BREVO_FROM_EMAIL")
+
     # ^ ----------- Ending Of The All The EnvSecrets Related To Email/Mail Services ---------
 
     # ~ ----------- Starting Of The All The EnvSecrets Related To Cloudinary ---------
