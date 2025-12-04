@@ -18,18 +18,34 @@ class EmailSchema(BaseModel):
     body: Optional[str]
 
 
-config = ConnectionConfig(
-    MAIL_USERNAME=EnvConfig.EMAIL_ADDRESS,
-    MAIL_PASSWORD=EnvConfig.GOOGLE_APP_PASSWORD,
-    MAIL_FROM=EnvConfig.EMAIL_ADDRESS,
-    MAIL_FROM_NAME="OrbitRMS",
-    MAIL_PORT=int(EnvConfig.EMAIL_PORT),
-    MAIL_SERVER=EnvConfig.EMAIL_SERVER_ADDRESS,
-    MAIL_SSL_TLS=True,  # Enable SSL for port 465
-    MAIL_STARTTLS=False,  # Disable STARTTLS for port 465
-    USE_CREDENTIALS=True,
-    TIMEOUT=90,
-)
+global config
+
+if EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
+    config = ConnectionConfig(
+        MAIL_USERNAME=EnvConfig.EMAIL_ADDRESS,
+        MAIL_PASSWORD=EnvConfig.GOOGLE_APP_PASSWORD,
+        MAIL_FROM=EnvConfig.EMAIL_ADDRESS,
+        MAIL_FROM_NAME="OrbitRMS",
+        MAIL_PORT=int(EnvConfig.EMAIL_PORT),
+        MAIL_SERVER=EnvConfig.EMAIL_SERVER_ADDRESS,
+        MAIL_SSL_TLS=True,  # Enable SSL for port 465
+        MAIL_STARTTLS=False,  # Disable STARTTLS for port 465
+        USE_CREDENTIALS=True,
+        TIMEOUT=90,
+    )
+else:
+    config = ConnectionConfig(
+        MAIL_USERNAME=EnvConfig.BREVO_SMTP_USERNAME,
+        MAIL_PASSWORD=EnvConfig.BREVO_SMTP_PASSWORD,
+        MAIL_FROM=EnvConfig.BREVO_FROM_EMAIL,
+        MAIL_FROM_NAME="OrbitRMS",
+        MAIL_PORT=int(EnvConfig.BREVO_SMTP_PORT),
+        MAIL_SERVER=EnvConfig.BREVO_SMTP_SERVER,
+        MAIL_SSL_TLS=False,  # For port 587
+        MAIL_STARTTLS=True,  # STARTTLS must be True for Brevo 587
+        USE_CREDENTIALS=True,
+        TIMEOUT=90,
+    )
 
 
 def email_sender_function(email_data: EmailSchema, background_task: BackgroundTasks):
