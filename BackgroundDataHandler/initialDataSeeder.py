@@ -82,19 +82,27 @@ def roles_permission_initial_data_seeder_function(db, organization_id: str):
         )
 
 
-def designation_initial_data_seeder(db, organization_id: str):
+def designation_initial_data_seeder(db, organization_id: str, industry_slug: str):
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "data", "defaultDesignationsData.json")
 
     try:
         with open(path, "r") as file_content:
 
-            data_list = json.load(file_content)
+            data_dict = json.load(file_content)
 
-            if not isinstance(data_list, list):
-                raise ValueError("Expected a list of designations")
+            if not isinstance(data_dict, dict):
+                raise ValueError("Expected a dict of designations")
+            
+            industry_data = data_dict.get(industry_slug)
+            if industry_data is None:
+                raise ValueError(f"Industry '{industry_slug}' not found in JSON file")
 
-            for each_data in data_list:
+            if not isinstance(industry_data, list):
+                raise ValueError("Industry data must be a list of designations")
+
+
+            for each_data in industry_data:
                 if not isinstance(each_data, dict):
                     raise ValueError("Each designations should be a dictionary")
 
@@ -202,24 +210,31 @@ def project_status_initial_data_seeder(db, organization_id: str):
         )
 
 
-def department_data_initial_data_seeder(db, organization_id: str):
+def department_data_initial_data_seeder(db, organization_id: str, industry_slug: str):
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "data", "defaultDepartmentData.json")
 
     try:
         with open(path, "r") as file_content:
 
-            data_list = json.load(file_content)
+            data_dict = json.load(file_content)
 
-            if not isinstance(data_list, list):
-                raise ValueError("Expected a list of department")
+            if not isinstance(data_dict, dict):
+                raise ValueError("Expected a dictionary of industries")
+            
+            industry_data = data_dict.get(industry_slug)
+            if industry_data is None:
+                raise ValueError(f"Industry '{industry_slug}' not found in JSON file")
 
-            for each_data in data_list:
+            if not isinstance(industry_data, list):
+                raise ValueError("Industry data must be a list of departments")
+
+            for each_data in industry_data:
                 if not isinstance(each_data, dict):
                     raise ValueError("Each department should be a dictionary")
 
                 if "department_name" not in each_data:
-                    raise ValueError("Missing 'status_name' in department data")
+                    raise ValueError("Missing 'department_name' in department data")
 
                 try:
                     department_data = Department(**each_data)

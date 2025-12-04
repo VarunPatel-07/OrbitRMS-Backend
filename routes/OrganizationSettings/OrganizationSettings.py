@@ -4,18 +4,19 @@ from datetime import datetime
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy import and_, asc, desc, func
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, BackgroundTasks
+from BackgroundTasks.LeavesModule.LeavesModule import add_leaves_balance_in_employee
+from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
-from Helper.createModelInstance import cerate_model_instance
 from Helper.helper import filter_fields, model_to_filtered_dict
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
-from Middleware.verifyToken import verify_token
+
 from PydanticModels.OrganizationSettings.OrganizationSettings import (
     AddEditHolidayPydanticModel,
+    CreateLeaveTypePydanticModel,
 )
 from RateLimiting import limiter
 from SqlModels import Models
@@ -23,7 +24,7 @@ from SqlModels import Models
 orgSettings = APIRouter(prefix="/app/v1/org-setting", tags=["org-setting"])
 
 load_dotenv(override=True)
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING").strip()
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING.strip()
 
 
 def has_view_access(array_of_modules, label):
@@ -114,9 +115,7 @@ async def FetchTheInfoOfTheOrganization(
                     else None
                 ),
                 "organization_settings": (
-                    filter_fields(
-                        organization.organization_settings[0], ["-id", "-organization_id"]
-                    )
+                    filter_fields(organization.organization_settings, ["-id", "-organization_id"])
                     if has_view_access(all_modules, "organization_settings_details")
                     else None
                 ),
@@ -373,7 +372,7 @@ async def Fetch_Holiday(
 
 @orgSettings.delete(path="/holiday/delete", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def delete_project_status(
+async def delete_holiday(
     request: Request,
     db: db_dependencies,
     id: str = Query(..., description="ID for delete operation"),
@@ -407,6 +406,141 @@ async def delete_project_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Delete Holiday",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.post(path="/leaves/leave-type/create", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def create_leave_type(
+    request: Request,
+    db: db_dependencies,
+    background_task: BackgroundTasks,
+    data: CreateLeaveTypePydanticModel,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        find_leave = (
+            db.query(Models.LeavesSettings)
+            .filter(
+                or_(
+                    Models.LeavesSettings.leave_name == data.leave_name,
+                    Models.LeavesSettings.leave_code == data.leave_code,
+                )
+            )
+            .first()
+        )
+
+        if find_leave:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Leave Type With This Name Or Code AllReady Exist",
+                    "success": False,
+                },
+            )
+
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Organization Not Found",
+                    "success": False,
+                },
+            )
+
+        updated_created_by_user = model_to_filtered_dict(
+            user.personal_info, ["user_id", "first_name", "last_name"]
+        )
+
+        leave_data = Models.LeavesSettings(
+            leave_name=data.leave_name,
+            leave_code=data.leave_code,
+            is_paid=data.is_paid,
+            max_number_of_leave=data.max_number_of_leave,
+            refill_quarterly=data.refill_quarterly,
+            refill_from=data.refill_from,
+            description=data.description,
+            gender=json.dumps(data.gender),
+            employee_status=json.dumps(data.employee_status),
+            marital_status=json.dumps(data.marital_status),
+            status=data.status,
+            organization_id=organization.id,
+            created_by=json.dumps(updated_created_by_user),
+        )
+
+        db.add(leave_data)
+        db.commit()
+        db.refresh(leave_data)
+
+        background_task.add_task(
+            add_leaves_balance_in_employee,
+            organization_id=organization.id,
+            refill_quarterly=data.refill_quarterly,
+            max_number_of_leave=data.max_number_of_leave,
+            leave_type_id=leave_data.id,
+        )
+
+        return {
+            "success": True,
+            "message": f"Leave type '{leave_data.leave_name}' created successfully.",
+            "data": {"leave_data": leave_data},
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable Add Leave Type",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.get(path="/leaves/leave-type/fetch", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_all_leave_types(
+    request: Request, db: db_dependencies, user: dict = Depends(UserAuthenticatorMiddleware)
+):
+    try:
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+
+        query_data = (
+            db.query(Models.LeavesSettings)
+            .filter(Models.LeavesSettings.organization_id == organization.id)
+            .all()
+        )
+
+        data = [model_to_filtered_dict(_data) for _data in query_data]
+
+        return {
+            "success": True,
+            "message": "Leaves Type Fetched Successfully",
+            "data": data,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Unable Add Leave Type",
                 "success": False,
                 "error": str(e),
             },

@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
 from Helper.helper import filter_fields
@@ -20,7 +21,7 @@ from .EmployeeQueryFilters import apply_query_filter
 load_dotenv(override=True)
 adminOrgEmpControl = APIRouter(prefix="/app/v1/admin/organization/employees", tags=["admin"])
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 
 @adminOrgEmpControl.get(path="/fetch-all", status_code=status.HTTP_200_OK)

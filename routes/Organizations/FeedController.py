@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from typing import List, Optional
 
@@ -20,6 +21,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
 from Helper.helper import filter_fields, model_to_filtered_dict
@@ -33,13 +35,13 @@ load_dotenv(override=True)
 
 feedControl = APIRouter(prefix="/app/v1/feed", tags=["Feed"])
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    cloud_name=EnvConfig.CLOUDINARY_CLOUD_NAME,
+    api_key=EnvConfig.CLOUDINARY_API_KEY,
+    api_secret=EnvConfig.CLOUDINARY_API_SECRET,
 )
 
 
@@ -223,9 +225,13 @@ async def FetchTheOrganizationPost(
             )
 
             likes_info_array = []
+            comment_array = []
 
             for like in data.likes:
                 likes_info_array.append(like.user_id)
+            for comment in data.comments:
+
+                comment_array.append(comment.id)
 
             _data.append(
                 {
@@ -235,7 +241,7 @@ async def FetchTheOrganizationPost(
                         **publisher_employee_info,
                     },
                     "likes": likes_info_array,
-                    "comments": data.comments,
+                    "comments": comment_array,
                     **post_info,
                 }
             )
@@ -382,7 +388,10 @@ async def HandelLikeUnlikePostFunction(
         return {
             "message": "Comment registered",
             "success": True,
-            "data": {"commented": True, **event},
+            "data": {
+                "commented": True,
+                "user_id": user.id,
+            },
         }
 
     except HTTPException as http_exception:
@@ -398,6 +407,139 @@ async def HandelLikeUnlikePostFunction(
         )
 
 
+@feedControl.put("/comment/replay/toggle", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def HandelCommentReplayToggler(
+    request: Request,
+    db: db_dependencies,
+    data: FeedCommentData,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    post_id: str = Query(..., alias="post-id"),
+    comment_id: str = Query(..., alias="comment-id"),
+):
+    try:
+        cache_data_key = f"feed_post_{post_id}_comments"
+        cache_data = await cache_database.get(cache_data_key)
+        if cache_data:
+            await cache_database.delete(cache_data_key)
+
+        post_data = (
+            db.query(Models.OrganizationUpdates)
+            .filter(Models.OrganizationUpdates.id == post_id)
+            .first()
+        )
+        if not post_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Unable To Find The Post",
+                    "success": False,
+                },
+            )
+
+        parent_comment = (
+            db.query(Models.FeedComments).filter(Models.FeedComments.id == comment_id).first()
+        )
+
+        if not parent_comment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "Unable To Find The Comment",
+                    "success": False,
+                },
+            )
+
+        comment_reply = Models.FeedComments(
+            is_replay=True,
+            comment=data.comment,
+            parent_id=comment_id,
+            user_id=user.id,
+            organization_update_id=post_id,
+        )
+
+        db.add(comment_reply)
+        db.commit()
+
+        return {"message": "Comment Added Successfully", "success": True}
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Deleting a Post",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+def serialize_comment(comment):
+    comment_personal_info = (
+        filter_fields(
+            comment.user.personal_info,
+            ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
+        )
+        if comment.user
+        else {}
+    )
+    comment_employee_info = (
+        filter_fields(
+            comment.user.employee_info,
+            ["department", "designation", "employee_code"],
+        )
+        if comment.user
+        else {}
+    )
+    return {
+        "id": comment.id,
+        "user_id": comment.user_id,
+        "comment": comment.comment,
+        **comment_personal_info,
+        **comment_employee_info,
+    }
+
+
+def serialize_likes(likes):
+    comment_personal_info = (
+        filter_fields(
+            likes.user.personal_info,
+            ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
+        )
+        if likes.user
+        else {}
+    )
+    comment_employee_info = (
+        filter_fields(
+            likes.user.employee_info,
+            ["department", "designation", "employee_code"],
+        )
+        if likes.user
+        else {}
+    )
+    return {
+        "id": likes.id,
+        "user_id": likes.user_id,
+        "comment": likes.likes,
+        **comment_personal_info,
+        **comment_employee_info,
+    }
+
+
+def get_replies(comment_id, all_comments):
+    replies = []
+
+    for reply in all_comments:
+        if reply.parent_id == comment_id:
+            serialize = serialize_comment(reply)
+            replies.append(serialize)
+            replies.extend(get_replies(reply.id, all_comments))
+
+    return replies
+
+
 @feedControl.get("/fetch", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def FetchLikesAndComment(
@@ -406,6 +548,8 @@ async def FetchLikesAndComment(
     post_id: str = Query(..., alias="post-id"),
     user: dict = Depends(UserAuthenticatorMiddleware),
     type: str = Query(..., alias="type"),
+    page: int = Query(..., alias="page"),
+    limit: int = Query(..., alias="limit"),
 ):
     try:
         if type not in ["likes", "comments"]:
@@ -453,78 +597,135 @@ async def FetchLikesAndComment(
 
             for like in query_data.likes:
 
-                like_personal_info = (
-                    filter_fields(
-                        like.user.personal_info,
-                        ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
-                    )
-                    if like.user
-                    else {}
-                )
-
-                like_employee_info = (
-                    filter_fields(
-                        like.user.employee_info,
-                        ["department", "designation", "employee_code"],
-                    )
-                    if like.user
-                    else {}
-                )
-
-                likes_info_array.append(
-                    {**like_personal_info, "id": like.user_id, **like_employee_info, "comment": ""}
-                )
+                likes_info_array.append(serialize_likes(like))
 
                 await cache_database.set(
-                    cache_data_key, json.dumps(jsonable_encoder(likes_info_array)), ex=3600
+                    cache_data_key,
+                    json.dumps(
+                        jsonable_encoder(
+                            {
+                                "likes": likes_info_array,
+                                "total_likes": [like.id for like in query_data.likes],
+                            }
+                        )
+                    ),
+                    ex=3600,
                 )
             return {
                 "message": "Likes Fetched Successfully",
                 "success": True,
-                "data": likes_info_array,
+                "data": {
+                    "likes": likes_info_array,
+                    "total_likes": [like.id for like in query_data.likes],
+                },
             }
         else:
+            all_comment = query_data.comments
+
+            parent_comments = [comment for comment in all_comment if comment.parent_id is None]
+            comment_replies = [comment for comment in all_comment if comment.parent_id is not None]
 
             comment_info_array = []
 
-            for comment in query_data.comments:
+            page = page if page else 1
+            limit = limit if limit else 1
+            start = (page - 1) * limit
+            end = start + limit
 
-                comment_personal_info = (
-                    filter_fields(
-                        comment.user.personal_info,
-                        ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
-                    )
-                    if comment.user
-                    else {}
-                )
-
-                comment_employee_info = (
-                    filter_fields(
-                        comment.user.employee_info,
-                        ["department", "designation", "employee_code"],
-                    )
-                    if comment.user
-                    else {}
-                )
-
-                comment_info_array.append(
+            for parent in parent_comments:
+                parent_data = serialize_comment(parent)
+                parent_replies_array = get_replies(parent.id, comment_replies)
+                parent_data["replies"] = parent_replies_array[start:end]
+                parent_data["metadata"] = (
                     {
-                        **comment_personal_info,
-                        "id": comment.user_id,
-                        **comment_employee_info,
-                        "comment": comment.comment,
-                    }
-                )
+                        "total_data": len(parent_replies_array),
+                        "total_pages": math.ceil(len(parent_replies_array) / limit),
+                        "current_page": page,
+                        "record_per_page": limit,
+                    },
+                )[0]
 
-                await cache_database.set(
-                    cache_data_key, json.dumps(jsonable_encoder(comment_info_array)), ex=3600
-                )
+                comment_info_array.append(parent_data)
+
+            await cache_database.set(
+                cache_data_key,
+                json.dumps(
+                    jsonable_encoder(
+                        {
+                            "comments": comment_info_array,
+                            "total_comments": [comment.id for comment in all_comment],
+                        }
+                    )
+                ),
+                ex=3600,
+            )
 
             return {
                 "message": "Comments Fetched Successfully",
                 "success": True,
-                "data": comment_info_array,
+                "data": {
+                    "comments": comment_info_array,
+                    "total_comments": [comment.id for comment in all_comment],
+                },
             }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error while Deleting a Post",
+                "error": str(e),
+                "success": False,
+            },
+        )
+
+
+@feedControl.get("/fetch-replies", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def FetchLikesAndComment(
+    request: Request,
+    db: db_dependencies,
+    post_id: str = Query(..., alias="post-id"),
+    comment_id: str = Query(..., alias="comment-id"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    page: int = Query(..., alias="page"),
+    limit: int = Query(..., alias="limit"),
+):
+    try:
+
+        query_option = (
+            joinedload(Models.OrganizationUpdates.likes).joinedload(Models.FeedLikes.user)
+            if type == "likes"
+            else joinedload(Models.OrganizationUpdates.comments).joinedload(
+                Models.FeedComments.user
+            )
+        )
+
+        query_data = (
+            db.query(Models.OrganizationUpdates)
+            .options(query_option)
+            .filter(Models.OrganizationUpdates.id == post_id)
+            .first()
+        )
+
+        all_comment = query_data.comments
+
+        comment_replies = [comment for comment in all_comment if comment.parent_id is not None]
+
+        page = page if page else 1
+        limit = limit if limit else 1
+        start = (page - 1) * limit
+        end = start + limit
+
+        parent_replies_array = get_replies(comment_id, comment_replies)
+
+        return {
+            "message": "Comments Fetched Successfully",
+            "success": True,
+            "data": parent_replies_array[start:end],
+        }
 
     except HTTPException as http_exception:
         raise http_exception

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import joinedload
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
 from Helper.helper import (
@@ -32,7 +33,7 @@ from .MaintenanceModeQueryFilter import MaintenanceModeQueryFilter
 
 load_dotenv(override=True)
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 
 MaintenanceMode = APIRouter(prefix="/app/v1/admin/maintenance-mode")

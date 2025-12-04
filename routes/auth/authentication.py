@@ -17,13 +17,18 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, or_, and_
 from user_agents import parse as parse_user_agent
 
+from Config.EnvConfig import EnvConfig
 from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
-from Email.HtmlEmailBody import ResetPasswordHtmlBody, VerifyEmailHtmlBody
+from Email.HtmlEmailBody import (
+    ResetPasswordInstructionHtmlBody,
+    ResetPasswordHtmlBody,
+    VerifyEmailHtmlBody,
+)
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
@@ -36,6 +41,7 @@ from Helper.helper import (
     urlsafe_data_encoding_function,
 )
 from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
+from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
 from PydanticModels.authentication.AuthenticationModels import (
     CreatePassword,
@@ -45,14 +51,18 @@ from PydanticModels.authentication.AuthenticationModels import (
     SignIn,
     VerifyMetaTag,
 )
+from PydanticModels.HelperPydanticModel import (
+    ResetPasswordInstructionPydanticBody,
+    VerifyEmailPydanticBody,
+)
 from RateLimiting import limiter
 from SqlModels import Models
 
 load_dotenv(override=True)
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+FRONTEND_URL = EnvConfig.FRONTEND_URL.strip()
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 authRoutes = APIRouter(prefix="/app/v1/auth", tags=["auth"])
 
@@ -71,14 +81,18 @@ async def create_organization(
     try:
         find_organization = (
             db.query(Models.OrganizationGeneralInfo)
-            .filter(Models.OrganizationGeneralInfo.primary_email == organization_info.primary_email)
+            .filter(
+                Models.OrganizationGeneralInfo.primary_email == organization_info.primary_email,
+            )
             .first()
         )
+        domain = organization_info.primary_email.split("@")[1]
+
         check_for_the_email_domain = (
-            db.query(Models.OrganizationGeneralInfo)
+            db.query(Models.Organization)
+            .join(Models.OrganizationGeneralInfo)
             .filter(
-                func.substring_index(Models.OrganizationGeneralInfo.primary_email, "@", -1)
-                == organization_info.primary_email.split("@")[1]
+                Models.OrganizationGeneralInfo.primary_email.like(f"%@{domain}"),
             )
             .first()
         )
@@ -149,7 +163,10 @@ async def create_organization(
             "recever_email": organization_info.primary_email,
             "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
             "body": VerifyEmailHtmlBody(
-                f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}"
+                VerifyEmailPydanticBody(
+                    confirm_my_email=f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}",
+                    organization_name=organization_info.organization_name,
+                )
             ),
         }
 
@@ -202,17 +219,17 @@ async def create_password(
 
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"message": "user not found", "success": False},
             )
         if not organization:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"message": "organization not found", "success": False},
             )
         if not user.account_status:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": "Account is deactivated. Access denied.",
                     "success": False,
@@ -221,7 +238,7 @@ async def create_password(
 
         if not organization.status:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": "Organization is deactivated. Access denied.",
                     "success": False,
@@ -357,6 +374,14 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
                     "success": False,
                 },
             )
+        if user.reset_password_token:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": "You’re currently resetting your password. Complete it before logging in.",
+                    "success": False,
+                },
+            )
 
         ip = get_client_ip(request)
         # Getting The Full UserAgent String
@@ -373,7 +398,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
         if "brave" in sec_ch_ua_string:
             browser = "Brave"
 
-        device_fingerprint = f"{browser }|{user_agent.os.family}|{user_agent.device.family}|{ip}"
+        device_fingerprint = f"{browser}|{user_agent.os.family}|{user_agent.device.family}|{ip}"
 
         hash_device_fingerprint = hash_fingerprint(device_fingerprint)
 
@@ -411,6 +436,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
                 data=device_info, model=Models.Sessions, fields=["-user_id"]
             )
             user_sessions.user_id = user.id
+            user_sessions.user_location_info = json.dumps(user_info.user_position)
             db.add(user_sessions)
             db.commit()
             db.refresh(user_sessions)
@@ -517,7 +543,13 @@ async def fetch_sessions(request: Request, db: db_dependencies, token: str = Dep
         # *  Once The User Is Authenticated Then We Will Move Further
         #
 
-        _data = [filter_fields(data) for data in user.sessions]
+        _data = [
+            {
+                **filter_fields(data, ["-user_location_info"]),
+                "user_location_info": json.loads(data.user_location_info),
+            }
+            for data in user.sessions
+        ]
 
         return {
             "message": "user verified successfully",
@@ -807,7 +839,7 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                         else None
                     ),
                     "organization_settings": (
-                        model_to_filtered_dict(organization.organization_settings[0])
+                        model_to_filtered_dict(organization.organization_settings)
                         if organization.organization_settings
                         else None
                     ),
@@ -1224,6 +1256,96 @@ async def create_organization(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Error Accrued While Adding Employee",
+                "success": False,
+                "error": str(e),
+            },
+        )
+
+
+@authRoutes.post("/employee/password/reset-instructions", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def reset_password_instructions(
+    request: Request,
+    db: db_dependencies,
+    data: ResendVerificationMail,
+    background_task: BackgroundTasks,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    user_id: str = Query(..., alias="user-id"),
+):
+    try:
+        employee = (
+            db.query(Models.User)
+            .options(joinedload(Models.User.personal_info))
+            .filter(Models.User.id == user_id)
+            .first()
+        )
+
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "Employee Not Found",
+                    "success": False,
+                },
+            )
+
+        organization = (
+            db.query(Models.Organization)
+            .options(joinedload(Models.Organization.general_info))
+            .filter(Models.Organization.id == employee.organization_id)
+            .first()
+        )
+
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "Organization Not Found",
+                    "success": False,
+                },
+            )
+
+        encrypted_user_id = urlsafe_data_encoding_function(employee.id)
+
+        reset_password_token = generatePasswordResetToken()
+
+        employee.reset_password_token = reset_password_token
+
+        encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+
+        db.query(Models.Sessions).filter(Models.Sessions.user_id == employee.id).delete()
+
+        db.commit()
+        db.refresh(employee)
+
+        email_data = {
+            "recever_email": data.email,
+            "subject": "Reset Your Password for Your OrbitRMS Account",
+            "body": ResetPasswordInstructionHtmlBody(
+                ResetPasswordInstructionPydanticBody(
+                    reset_password_link=f"{FRONTEND_URL}/auth/reset-password?user-id={encrypted_user_id}&token={encrypted_token}",
+                    organization_name=organization.general_info.organization_name,
+                    user_name=employee.personal_info.full_name,
+                )
+            ),
+        }
+
+        email_instance = EmailSchema(**email_data)
+
+        email_sender_function(email_instance, background_task)
+
+        return {
+            "message": "Reset Password Link Sent SuccessFully",
+            "success": True,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Error Accrued While Password Reset Instruction",
                 "success": False,
                 "error": str(e),
             },

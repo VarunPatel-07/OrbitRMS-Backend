@@ -6,21 +6,23 @@ import cloudinary.uploader
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from RateLimiting import limiter
 
 load_dotenv(override=True)
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
-
-
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
+CLOUDINARY_API_SECRET = EnvConfig.CLOUDINARY_API_SECRET
+CLOUDINARY_API_KEY = EnvConfig.CLOUDINARY_API_KEY
+CLOUDINARY_CLOUD_NAME = EnvConfig.CLOUDINARY_CLOUD_NAME
 # --- NOW We Are Configuring The Cloudinary ---
 
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET,
 )
 
 
@@ -71,7 +73,6 @@ async def GetCloudUploadSignature(
         time_stamp = round(datetime.now().timestamp())
 
         params = {"timestamp": time_stamp}
-        CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
 
         signature = cloudinary.utils.api_sign_request(params, CLOUDINARY_API_SECRET)
 
@@ -81,8 +82,8 @@ async def GetCloudUploadSignature(
             "data": {
                 "time_stamp": time_stamp,
                 "signature": signature,
-                "api_key": os.getenv("CLOUDINARY_API_KEY"),
-                "cloud_name": os.getenv("CLOUDINARY_CLOUD_NAME"),
+                "api_key": CLOUDINARY_API_KEY,
+                "cloud_name": CLOUDINARY_CLOUD_NAME,
             },
         }
 

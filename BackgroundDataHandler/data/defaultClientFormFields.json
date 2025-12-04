@@ -3,7 +3,9 @@
     "form_id": "ContactForm",
     "form_name": "Contact Form",
     "description": "A contact form schema for collecting user details, subscription preferences, budget, and personal description.",
-    "status": true
+    "status": true,
+    "authorized_recipient_emails": [],
+    "email_notification": false
   },
   "form_fields": [
     {

@@ -16,6 +16,7 @@ from fastapi import (
 from sqlalchemy.orm import joinedload
 from user_agents import parse as parse_user_agent
 
+from Config.EnvConfig import EnvConfig
 from Constant.constant import (
     MAX_RESET_ATTEMPTS,
     RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME,
@@ -56,10 +57,10 @@ from SqlModels import Models
 load_dotenv(override=True)
 
 
-API_RATE_LIMITING = os.getenv("API_RATE_LIMITING")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
-ORBITRMS_OWNER_EMAIL = os.getenv("ORBITRMS_OWNER_EMAIL")
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
+ADMIN_EMAIL = EnvConfig.ADMIN_EMAIL
+ADMIN_PASSWORD = EnvConfig.ADMIN_PASSWORD
+ORBITRMS_OWNER_EMAIL = EnvConfig.ORBITRMS_OWNER_EMAIL
 
 
 adminAuthRoute = APIRouter(prefix="/app/v1/admin/auth", tags=["admin"])

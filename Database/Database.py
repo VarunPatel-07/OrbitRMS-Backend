@@ -27,6 +27,7 @@ database = Database(EnvConfig.DATABASE_CONNECTION_STRING)
 
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
     except Exception as e:

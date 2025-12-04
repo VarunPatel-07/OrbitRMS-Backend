@@ -1,83 +1,306 @@
-[
-  {
-    "department_name": "Requirement Analysis"
-  },
-  {
-    "department_name": "UI/UX Design"
-  },
-  {
-    "department_name": "Frontend Development"
-  },
-  {
-    "department_name": "Backend Development"
-  },
-  {
-    "department_name": "Mobile Development"
-  },
-  {
-    "department_name": "Full Stack Development"
-  },
-  {
-    "department_name": "DevOps"
-  },
-  {
-    "department_name": "Quality Assurance"
-  },
-  {
-    "department_name": "Project Management"
-  },
-  {
-    "department_name": "Product Management"
-  },
-  {
-    "department_name": "Technical Support"
-  },
-  {
-    "department_name": "Cybersecurity"
-  },
-  {
-    "department_name": "Data Science"
-  },
-  {
-    "department_name": "Machine Learning"
-  },
-  {
-    "department_name": "Business Intelligence"
-  },
-  {
-    "department_name": "System Administration"
-  },
-  {
-    "department_name": "Cloud Infrastructure"
-  },
-  {
-    "department_name": "HR (Human Resources)"
-  },
-  {
-    "department_name": "Administration"
-  },
-  {
-    "department_name": "Finance"
-  },
-  {
-    "department_name": "Sales"
-  },
-  {
-    "department_name": "Marketing"
-  },
-  {
-    "department_name": "Legal"
-  },
-  {
-    "department_name": "Customer Support"
-  },
-  {
-    "department_name": "Training & Development"
-  },
-  {
-    "department_name": "Content Writing"
-  },
-  {
-    "department_name": "Technical Documentation"
-  }
-]
+{
+  "software_company": [
+    {
+      "department_name": "Requirement Analysis"
+    },
+    {
+      "department_name": "UI/UX Design"
+    },
+    {
+      "department_name": "Frontend Development"
+    },
+    {
+      "department_name": "Backend Development"
+    },
+    {
+      "department_name": "Mobile Development"
+    },
+    {
+      "department_name": "Full Stack Development"
+    },
+    {
+      "department_name": "DevOps"
+    },
+    {
+      "department_name": "Quality Assurance"
+    },
+    {
+      "department_name": "Project Management"
+    },
+    {
+      "department_name": "Product Management"
+    },
+    {
+      "department_name": "Technical Support"
+    },
+    {
+      "department_name": "Cybersecurity"
+    },
+    {
+      "department_name": "Data Science"
+    },
+    {
+      "department_name": "Machine Learning"
+    },
+    {
+      "department_name": "Business Intelligence"
+    },
+    {
+      "department_name": "System Administration"
+    },
+    {
+      "department_name": "Cloud Infrastructure"
+    },
+    {
+      "department_name": "HR (Human Resources)"
+    },
+    {
+      "department_name": "Administration"
+    },
+    {
+      "department_name": "Finance"
+    },
+    {
+      "department_name": "Sales"
+    },
+    {
+      "department_name": "Marketing"
+    },
+    {
+      "department_name": "Legal"
+    },
+    {
+      "department_name": "Customer Support"
+    },
+    {
+      "department_name": "Training & Development"
+    },
+    {
+      "department_name": "Content Writing"
+    },
+    {
+      "department_name": "Technical Documentation"
+    }
+  ],
+  "consultancy_firm": [
+    {
+      "department_name": "Consulting Services"
+    },
+    {
+      "department_name": "Business Strategy"
+    },
+    {
+      "department_name": "Research & Analysis"
+    },
+    {
+      "department_name": "Client Management"
+    },
+    {
+      "department_name": "Project Management"
+    },
+    {
+      "department_name": "Operations"
+    },
+    {
+      "department_name": "HR (Human Resources)"
+    },
+    {
+      "department_name": "Administration"
+    },
+    {
+      "department_name": "Finance"
+    },
+    {
+      "department_name": "Sales"
+    },
+    {
+      "department_name": "Marketing"
+    },
+    {
+      "department_name": "Legal"
+    },
+    {
+      "department_name": "Customer Support"
+    },
+    {
+      "department_name": "Training & Development"
+    },
+    {
+      "department_name": "Content Writing"
+    }
+  ],
+  "media_agency": [
+    {
+      "department_name": "Creative Department"
+    },
+    {
+      "department_name": "Art & Design"
+    },
+    {
+      "department_name": "Video Production"
+    },
+    {
+      "department_name": "Photography"
+    },
+    {
+      "department_name": "Content & Copywriting"
+    },
+    {
+      "department_name": "Media Planning"
+    },
+    {
+      "department_name": "Media Buying"
+    },
+    {
+      "department_name": "Social Media"
+    },
+    {
+      "department_name": "Digital Marketing"
+    },
+    {
+      "department_name": "Client Servicing"
+    },
+    {
+      "department_name": "Production Management"
+    },
+    {
+      "department_name": "HR (Human Resources)"
+    },
+    {
+      "department_name": "Administration"
+    },
+    {
+      "department_name": "Finance"
+    },
+    {
+      "department_name": "Sales"
+    },
+    {
+      "department_name": "Marketing"
+    },
+    {
+      "department_name": "Legal"
+    },
+    {
+      "department_name": "Customer Support"
+    },
+    {
+      "department_name": "Training & Development"
+    },
+    {
+      "department_name": "Content Writing"
+    }
+  ],
+  "architecture_interior_design_studio": [
+    {
+      "department_name": "Architecture"
+    },
+    {
+      "department_name": "Interior Design"
+    },
+    {
+      "department_name": "3D Visualization"
+    },
+    {
+      "department_name": "Drafting"
+    },
+    {
+      "department_name": "Project Coordination"
+    },
+    {
+      "department_name": "Site Supervision"
+    },
+    {
+      "department_name": "Procurement"
+    },
+    {
+      "department_name": "Client Coordination"
+    },
+    {
+      "department_name": "HR (Human Resources)"
+    },
+    {
+      "department_name": "Administration"
+    },
+    {
+      "department_name": "Finance"
+    },
+    {
+      "department_name": "Sales"
+    },
+    {
+      "department_name": "Marketing"
+    },
+    {
+      "department_name": "Legal"
+    },
+    {
+      "department_name": "Customer Support"
+    },
+    {
+      "department_name": "Training & Development"
+    },
+    {
+      "department_name": "Content Writing"
+    }
+  ],
+  "marketing_agency": [
+    {
+      "department_name": "Marketing Strategy"
+    },
+    {
+      "department_name": "Branding"
+    },
+    {
+      "department_name": "Digital Marketing"
+    },
+    {
+      "department_name": "SEO & SEM"
+    },
+    {
+      "department_name": "Social Media"
+    },
+    {
+      "department_name": "Performance Marketing"
+    },
+    {
+      "department_name": "Content Creation"
+    },
+    {
+      "department_name": "Creative & Design"
+    },
+    {
+      "department_name": "Client Servicing"
+    },
+    {
+      "department_name": "Market Research"
+    },
+    {
+      "department_name": "HR (Human Resources)"
+    },
+    {
+      "department_name": "Administration"
+    },
+    {
+      "department_name": "Finance"
+    },
+    {
+      "department_name": "Sales"
+    },
+    {
+      "department_name": "Marketing"
+    },
+    {
+      "department_name": "Legal"
+    },
+    {
+      "department_name": "Customer Support"
+    },
+    {
+      "department_name": "Training & Development"
+    },
+    {
+      "department_name": "Content Writing"
+    }
+  ]
+}
