@@ -76,7 +76,8 @@ async def AddEditFeedPostController(
                 isCommentDisabled=isCommentDisabled,
                 isLikeDisabled=isLikeDisabled,
                 organization_id=user.organization_id,
-                source_type="user_created",
+                source_type="user",
+                announcement_type="general",
             )
 
             db.add(post_data)
@@ -167,7 +168,7 @@ async def FetchTheOrganizationPost(
         if not order:
             order = "asc"
 
-        query_data = (
+        organization_updates = (
             db.query(Models.OrganizationUpdates)
             .options(
                 joinedload(Models.OrganizationUpdates.publisher).joinedload(
@@ -178,22 +179,14 @@ async def FetchTheOrganizationPost(
                 ),
             )
             .filter(Models.OrganizationUpdates.organization_id == user.organization_id)
+            .all()
         )
 
-        column_field = getattr(Models.OrganizationUpdates, field_name, None)
+        admin_updates = db.query(Models.AdminOrganizationUpdates).all()
 
-        if not column_field:
-            raise ValueError(f"{field_name} Not Found")
+        query_data = organization_updates + admin_updates
 
-        if order == "asc":
-
-            post_data = query_data.order_by(asc(column_field)).all()
-
-        elif order == "desc":
-
-            post_data = query_data.order_by(desc(column_field)).all()
-
-        else:
+        if order not in ["asc", "desc"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
@@ -202,44 +195,60 @@ async def FetchTheOrganizationPost(
                 },
             )
 
+        reverse = True if order == "desc" else False
+
+        post_data = sorted(query_data, key=lambda x: getattr(x, field_name, None), reverse=reverse)
+
         _data = []
 
         for data in post_data:
+
             post_info = model_to_filtered_dict(data)
 
-            publisher_personal_info = (
-                filter_fields(
-                    data.publisher.personal_info,
-                    ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
-                )
-                if data.publisher
-                else {}
-            )
-
-            publisher_employee_info = (
-                filter_fields(
-                    data.publisher.employee_info, ["department", "designation", "employee_code"]
-                )
-                if data.publisher
-                else {}
-            )
+            publisher = {}
 
             likes_info_array = []
             comment_array = []
 
-            for like in data.likes:
-                likes_info_array.append(like.user_id)
-            for comment in data.comments:
+            if data.source_type not in ["announcement_team"]:
+                publisher_personal_info = (
+                    filter_fields(
+                        data.publisher.personal_info,
+                        ["full_name", "first_name", "middle_name", "last_name", "profile_picture"],
+                    )
+                    if data.publisher
+                    else {}
+                )
 
-                comment_array.append(comment.id)
+                publisher_employee_info = (
+                    filter_fields(
+                        data.publisher.employee_info, ["department", "designation", "employee_code"]
+                    )
+                    if data.publisher
+                    else {}
+                )
+
+                likes_info_array = [like.user_id for like in data.likes]
+                comment_array = [comment.id for comment in data.comments]
+
+                publisher = {
+                    **publisher_personal_info,
+                    "id": data.publisher.id,
+                    **publisher_employee_info,
+                }
+
+            else:
+                publisher = {
+                    "full_name": "Team OrbitRMS",
+                    "first_name": "Team",
+                    "middle_name": "",
+                    "last_name": "OrbitRMS",
+                    "profile_picture": "https://res.cloudinary.com/ditphgtvl/image/upload/v1764827862/orbit-logo_dbry37.png",
+                }
 
             _data.append(
                 {
-                    "publisher": {
-                        **publisher_personal_info,
-                        "id": data.publisher.id,
-                        **publisher_employee_info,
-                    },
+                    "publisher": publisher,
                     "likes": likes_info_array,
                     "comments": comment_array,
                     **post_info,

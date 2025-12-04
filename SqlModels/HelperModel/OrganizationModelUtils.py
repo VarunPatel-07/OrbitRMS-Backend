@@ -1,7 +1,18 @@
 import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Integer, Enum, Date
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.mysql import CHAR, JSON
 from sqlalchemy.orm import backref, relationship
 

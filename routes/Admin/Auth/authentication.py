@@ -332,7 +332,7 @@ async def Admin_Panel_Verify_OTP_Function(
             "admin_signature": admin_sessions.admin_signature,
         }
 
-        token = create_jwt_token(data=sub)
+        token = create_jwt_token(data=sub, expires_date=timedelta(hours=3))
 
         otp_expiry_key = f"{signature}_otp_expiry"
         otp_expiry = await cache_database.get(otp_expiry_key)
