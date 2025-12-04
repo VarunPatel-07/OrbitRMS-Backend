@@ -1,8 +1,7 @@
 import json
 from typing import List, Optional
-from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
-import cloudinary
 
+import cloudinary
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -14,17 +13,15 @@ from fastapi import (
     Request,
     status,
 )
-
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import joinedload
 
 from Config.EnvConfig import EnvConfig
-
 from Database.Database import db_dependencies
+from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
 from Helper.helper import filter_fields, model_to_filtered_dict
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
-
 from RateLimiting import limiter
 from SqlModels import Models
 
@@ -104,9 +101,10 @@ async def AddEditFeedPostController(
                 images=json.dumps(images),
                 description=description,
                 user_id=admin_id,
-                isCommentDisabled=isCommentDisabled,
-                isLikeDisabled=isLikeDisabled,
-                source_type="system",
+                isCommentDisabled=True,
+                isLikeDisabled=True,
+                source_type="announcement_team",
+                announcement_type="product_update",
             )
 
             db.add(post_data)
@@ -154,8 +152,6 @@ async def AddEditFeedPostController(
 
             existing_post.images = json.dumps(images)
             existing_post.description = description
-            existing_post.isCommentDisabled = isCommentDisabled
-            existing_post.isLikeDisabled = isLikeDisabled
 
             db.commit()
             db.refresh(existing_post)
@@ -263,7 +259,13 @@ async def FetchTheOrganizationPost(
 
             _data.append(
                 {
-                    "publisher": {},
+                    "publisher": {
+                        "full_name": "Team OrbitRMS",
+                        "first_name": "Team",
+                        "middle_name": "",
+                        "last_name": "OrbitRMS",
+                        "profile_picture": "https://res.cloudinary.com/ditphgtvl/image/upload/v1764827862/orbit-logo_dbry37.png",
+                    },
                     "likes": likes_info_array,
                     "comments": comment_array,
                     **post_info,
@@ -295,12 +297,46 @@ async def HandelDeletePostFunction(
     request: Request,
     db: db_dependencies,
     id: str = Query(None, description="ID for delete operation"),
-    user: dict = Depends(UserAuthenticatorMiddleware),
+    token: str = Depends(verify_token),
 ):
     try:
 
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Unauthorized", "success": False},
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ADMIN_NOT_FOUND, "success": False},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid session", "success": False},
+            )
+
         post = (
-            db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == id).first()
+            db.query(Models.AdminOrganizationUpdates)
+            .filter(Models.AdminOrganizationUpdates.id == id)
+            .first()
         )
 
         if not post:

@@ -17,7 +17,7 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql import func, or_, and_
+from sqlalchemy.sql import and_, func, or_
 from user_agents import parse as parse_user_agent
 
 from Config.EnvConfig import EnvConfig
@@ -25,8 +25,8 @@ from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import (
-    ResetPasswordInstructionHtmlBody,
     ResetPasswordHtmlBody,
+    ResetPasswordInstructionHtmlBody,
     VerifyEmailHtmlBody,
 )
 from Helper.createModelInstance import cerate_model_instance
@@ -443,7 +443,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
         sub = {"user_id": user.id, "session_id": user_sessions.id}
 
-        token = create_jwt_token(data=sub)
+        token = create_jwt_token(data=sub, expires_date=timedelta(days=15))
 
         encrypted_org_id = urlsafe_data_encoding_function(organization.id)
 
@@ -1240,7 +1240,10 @@ async def create_organization(
             "recever_email": organization_info.primary_email,
             "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
             "body": VerifyEmailHtmlBody(
-                f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}"
+                VerifyEmailPydanticBody(
+                    confirm_my_email=f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}",
+                    organization_name=organization_info.organization_name,
+                )
             ),
         }
 

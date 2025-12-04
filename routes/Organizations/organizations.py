@@ -13,6 +13,7 @@ from fastapi import (
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
+
 from BackgroundDataHandler.DataSeederHelper import ClientInquiryInitiator
 from BackgroundDataHandler.initialDataSeeder import (
     client_form_field_initial_data_seeder,
@@ -23,7 +24,7 @@ from BackgroundDataHandler.initialDataSeeder import (
 )
 from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
-from Email.HtmlEmailBody import CreatePasswordHtmlBody
+from Email.HtmlEmailBody import CreatePasswordHtmlBody, WelcomeMailNewOrganization
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
@@ -37,7 +38,10 @@ from Helper.helper import (
 )
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from Middleware.verifyToken import verify_token
-from PydanticModels.HelperPydanticModel import CreatePasswordPydanticBody
+from PydanticModels.HelperPydanticModel import (
+    CreatePasswordPydanticBody,
+    WelcomeEmployeeMailModel,
+)
 from PydanticModels.Organizations.organizations import (
     OnboardingOrganization,
 )
@@ -355,6 +359,22 @@ async def onboard_organization(
         api_key, api_secret = generate_api_secrets_api_key()
 
         background_task.add_task(ClientInquiryInitiator, db, organization_id, api_key, api_secret)
+
+        emil_body_data = {
+            "user_name": data.employee_profile_info.full_name,
+            "organization_name": data.general_info.organization_name,
+            "create_password_link": FRONTEND_URL,
+        }
+
+        email_data = {
+            "recever_email": data.employee_info.employee_email,
+            "subject": f"Welcome {data.personal_info.full_name} to {data.general_info.organization_name} – We're excited to have you onboard!",
+            "body": WelcomeMailNewOrganization(WelcomeEmployeeMailModel(**emil_body_data)),
+        }
+
+        email_instance = EmailSchema(**email_data)
+
+        email_sender_function(email_instance, background_task)
 
         return {
             "message": f"successfully onboarded {data.general_info.organization_name} organization",

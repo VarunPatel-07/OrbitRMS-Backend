@@ -170,7 +170,9 @@ class RoleAssociatedPermissionModule(BaseModel):
         "RoleAssociatedPermissionModule", back_populates="parent_module", cascade="all, delete"
     )
 
-    permissions = relationship("PermissionModule", back_populates="associated_permissions_module", cascade="all, delete")
+    permissions = relationship(
+        "PermissionModule", back_populates="associated_permissions_module", cascade="all, delete"
+    )
 
 
 class PermissionModule(BaseModel):

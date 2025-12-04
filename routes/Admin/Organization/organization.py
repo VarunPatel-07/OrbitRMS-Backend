@@ -5,24 +5,36 @@ from typing import Optional
 from urllib.parse import unquote
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from sqlalchemy.orm import aliased, joinedload
-from PydanticModels.Admin.AdminAuthenticationModel import ResendVerificationMail
+
 from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
+from Email.HtmlEmailBody import CreatePasswordHtmlBody, VerifyEmailHtmlBody
 from ErrorMessages.AuthErrorMessage import ADMIN_NOT_FOUND
+from Helper.emailSender import EmailSchema, email_sender_function
 from Helper.helper import (
     filter_fields,
+    generatePasswordResetToken,
     model_to_filtered_dict,
     urlsafe_data_encoding_function,
-    generatePasswordResetToken,
 )
-from Email.HtmlEmailBody import VerifyEmailHtmlBody, CreatePasswordHtmlBody
-from Helper.emailSender import EmailSchema, email_sender_function
 from Middleware.verifyToken import verify_token
+from PydanticModels.Admin.AdminAuthenticationModel import ResendVerificationMail
+from PydanticModels.HelperPydanticModel import (
+    CreatePasswordPydanticBody,
+    VerifyEmailPydanticBody,
+)
 from RateLimiting import limiter
 from SqlModels import Models
-from PydanticModels.HelperPydanticModel import VerifyEmailPydanticBody, CreatePasswordPydanticBody
 
 from .OrganizationQueryFilters import Apply_Organization_Query_Filter
 

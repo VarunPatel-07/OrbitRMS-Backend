@@ -360,7 +360,7 @@ async def add_edit_department(
             )
 
         updated_created_by_user = model_to_filtered_dict(
-            personal_info,["user_id", "first_name", "last_name"]
+            personal_info, ["user_id", "first_name", "last_name"]
         )
 
         if type == "add":
@@ -1751,14 +1751,15 @@ async def Client_Form_Schema(
         if cached_data:
             cached_Data = json.loads(cached_data)
             cached_sorted_data = sorted(
-                cached_Data,
+                cached_Data.get("form_fields"),
                 key=lambda x: datetime.fromisoformat(x["created_at"]),
                 reverse=True if order.lower() == "desc" else False,
             )
+            cached_Data["form_fields"] = cached_sorted_data
             return {
                 "message": "Inquiry Form Fields Fetched Successfully. Cached!",
                 "success": True,
-                "data": cached_sorted_data,
+                "data": cached_Data,
             }
 
         config_module = (
@@ -1803,15 +1804,19 @@ async def Client_Form_Schema(
 
         data = [model_to_filtered_dict(field) for field in form_fields]
 
-        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
+        filtered_data: dict = {
+            **model_to_filtered_dict(inquiry_form_schema, fields=["form_id", "form_name"]),
+            "form_fields": data,
+        }
+
+        await cache_database.set(
+            cache_data_key, json.dumps(jsonable_encoder(filtered_data)), ex=3600
+        )
 
         return {
             "success": True,
             "message": "Inquiry Form Fields Fetched Successfully",
-            "data": {
-                **model_to_filtered_dict(inquiry_form_schema, fields=["form_id", "form_name"]),
-                "form_fields": data,
-            },
+            "data": filtered_data,
         }
 
     except HTTPException as http_exception:

@@ -8,7 +8,10 @@ from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import expression
 
 from Database.Base import BaseModel
-from SqlModels.HelperModel.AdminModelHelperUtils import OrbitAdminSessions, AdminOrganizationUpdates
+from SqlModels.HelperModel.AdminModelHelperUtils import (
+    AdminOrganizationUpdates,
+    OrbitAdminSessions,
+)
 from SqlModels.HelperModel.ConfigModelUtils import (
     ConfigRoleModule,
     Department,
@@ -23,13 +26,13 @@ from SqlModels.HelperModel.ConfigModelUtils import (
 from SqlModels.HelperModel.OrganizationModelUtils import (
     FeedComments,
     FeedLikes,
+    LeaveBalance,
+    LeavesSettings,
     OrganizationAboutInfo,
     OrganizationAddress,
     OrganizationContactInfo,
     OrganizationGeneralInfo,
     OrganizationSettings,
-    LeavesSettings,
-    LeaveBalance,
 )
 from SqlModels.HelperModel.SocialMediaModule import SocialMediaAccount, SocialMediaPosts
 from SqlModels.HelperModel.UserModelUtils import (

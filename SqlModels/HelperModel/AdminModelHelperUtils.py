@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Enum
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.mysql import CHAR
 from sqlalchemy.orm import relationship
 
@@ -55,8 +55,6 @@ class AdminOrganizationUpdates(BaseModel):
 
     isLikeDisabled = Column(Boolean, default=False, nullable=True)
 
-    # comments = relationship("FeedComments", back_populates="organization_updates", cascade="all, delete")
-
     user_id = Column(
         CHAR(36),
         ForeignKey("orbit_admin.id", ondelete="CASCADE", onupdate="CASCADE"),
@@ -65,9 +63,25 @@ class AdminOrganizationUpdates(BaseModel):
     publisher = relationship("Admin", back_populates="organization_updates", uselist=False)
 
     source_type = Column(
-        Enum("default", "system", "user_created", name="source_type_enum"),
+        Enum(
+            "system",
+            "announcement_team",
+            "user",
+            name="source_type_enum",
+        ),
         nullable=False,
-        default="system",
+        default="user",
+    )
+
+    announcement_type = Column(
+        Enum(
+            "general",
+            "product_update",
+            "birthday_wish",
+            "work_anniversary_wish",
+            name="announcement_type_enum",
+        ),
+        nullable=True,
     )
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
