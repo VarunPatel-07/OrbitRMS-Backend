@@ -19,7 +19,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, func, or_
 from user_agents import parse as parse_user_agent
-
+from BackgroundTasks.Authentication.AuthBackgroundTask import HandelUserSignUpInBackGround
 from Config.EnvConfig import EnvConfig
 from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 from Database.CacheDatabase import cache_database
@@ -92,7 +92,7 @@ async def create_organization(
             db.query(Models.Organization)
             .join(Models.OrganizationGeneralInfo)
             .filter(
-                Models.OrganizationGeneralInfo.primary_email.like(f"%@{domain}"),
+                Models.OrganizationGeneralInfo.indexed_email_domain == domain,
             )
             .first()
         )
@@ -121,64 +121,14 @@ async def create_organization(
 
         db.add(create_org)
         db.commit()
-        db.refresh(create_org)
-
-        organization = cerate_model_instance(
-            model=Models.OrganizationGeneralInfo,
-            data=organization_info,
-            fields=["-country_info"],
+        background_task.add_task(
+            HandelUserSignUpInBackGround, create_org.id, organization_info, background_task
         )
-        user_info = Models.User(password="")
-        user_info.organization_id = create_org.id
-        db.add(user_info)
-        db.commit()
-        db.refresh(user_info)
-        user_employee_info = Models.EmployeeInfo(
-            status="Confirmed",
-            organization_name=organization_info.organization_name,
-            employee_code="",
-            department="",
-            designation="",
-            employee_email=organization_info.primary_email,
-        )
-        user_employee_info.user_id = user_info.id
-        db.add(user_employee_info)
-        db.commit()
-        db.refresh(user_employee_info)
-        organization.organization_id = create_org.id
-
-        organization.country_info = json.dumps(
-            organization_info.country_info.dict()
-            if hasattr(organization_info.country_info, "dict")
-            else organization_info.country_info
-        )
-
-        db.add(organization)
-        db.commit()
-        db.refresh(organization)
-
-        encrypted_org_id = urlsafe_data_encoding_function(create_org.id)
-
-        email_data = {
-            "recever_email": organization_info.primary_email,
-            "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
-            "body": VerifyEmailHtmlBody(
-                VerifyEmailPydanticBody(
-                    confirm_my_email=f"{FRONTEND_URL}/verification/verify-email?organization-id={encrypted_org_id}",
-                    organization_name=organization_info.organization_name,
-                )
-            ),
-        }
-
-        email_instance = EmailSchema(**email_data)
-
-        send_mail = email_sender_function(email_instance, background_task)
 
         return {
             "success": True,
             "title": "Organization Created",
-            "message": f"Your organization has been successfully created. A confirmation email with further details has been sent to {user_employee_info.employee_email}. Please check your inbox and follow the instructions to complete the setup.",
-            "email_status": send_mail,
+            "message": f"Your organization has been successfully created. A confirmation email with further details has been sent to {organization_info.primary_email}. Please check your inbox and follow the instructions to complete the setup.",
         }
     except HTTPException as http_exception:
         raise http_exception
