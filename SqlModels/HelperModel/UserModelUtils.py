@@ -185,6 +185,7 @@ class Sessions(BaseModel):
     is_pc = Column(Boolean, nullable=True, default=False)
     is_bot = Column(Boolean, nullable=True, default=False)
     fingerprint = Column(String(500), nullable=True, default=False)
+    user_location_info = Column(Text, nullable=True, default=None)
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
     updated_at = Column(
