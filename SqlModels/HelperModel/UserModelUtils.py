@@ -25,7 +25,7 @@ class PersonalInfo(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # todo: add the new field about
-    normalized_full_name = Column(String(255), nullable=False)
+    normalized_full_name = Column(String(255), nullable=False, index=True)
     first_name = Column(String(255), nullable=False)
     middle_name = Column(String(255), nullable=True, default=None)
     last_name = Column(String(255), nullable=False)
@@ -66,7 +66,7 @@ class EmployeeInfo(BaseModel):
         back_populates="associated_employees",
         foreign_keys=[employee_role_id],
     )
-    employee_email = Column(String(255), nullable=False, default=None)
+    employee_email = Column(String(255), nullable=False, default=None, index=True)
     user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, unique=True)
     user = relationship("User", back_populates="employee_info", foreign_keys=[user_id])
 

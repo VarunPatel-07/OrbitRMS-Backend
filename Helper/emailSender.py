@@ -8,6 +8,9 @@ from pydantic import BaseModel
 
 from Config.EnvConfig import EnvConfig
 
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+
 load_dotenv(override=True)
 
 
@@ -18,7 +21,7 @@ class EmailSchema(BaseModel):
     body: Optional[str]
 
 
-global config
+config = None
 
 if EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
     config = ConnectionConfig(
@@ -33,7 +36,7 @@ if EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
         USE_CREDENTIALS=True,
         TIMEOUT=90,
     )
-else:
+elif EnvConfig.BACKEND_APP_ENVIRONMENT == "PRODUCTION":
     config = ConnectionConfig(
         MAIL_USERNAME=EnvConfig.BREVO_SMTP_USERNAME,
         MAIL_PASSWORD=EnvConfig.BREVO_SMTP_PASSWORD,
@@ -46,36 +49,62 @@ else:
         USE_CREDENTIALS=True,
         TIMEOUT=90,
     )
+else:
+    config = None
 
 
 def email_sender_function(email_data: EmailSchema, background_task: BackgroundTasks):
-    try:
-        # create the email message
-        message = MessageSchema(
-            subject=email_data.subject,
-            recipients=(
-                [email_data.recever_email]
-                if isinstance(email_data.recever_email, str)
-                else email_data.recever_email
-            ),
-            body=email_data.body,
-            subtype="html",
+    if EnvConfig.BACKEND_APP_ENVIRONMENT in ["DEVELOPMENT", "PRODUCTION"]:
+        try:
+            # create the email message
+            message = MessageSchema(
+                subject=email_data.subject,
+                recipients=(
+                    [email_data.recever_email]
+                    if isinstance(email_data.recever_email, str)
+                    else email_data.recever_email
+                ),
+                body=email_data.body,
+                subtype="html",
+            )
+
+            # create fast mail instance
+
+            fast_mail = FastMail(config)
+
+            # send mail in the background
+
+            background_task.add_task(fast_mail.send_message, message)
+
+            return {"message": "Email sent successfully!", "success": True}
+
+        except Exception as e:
+
+            return {
+                "message": "unable to send Email Try Again Letter",
+                "success": False,
+                "error": str(e),
+            }
+    else:
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key["api-key"] = EnvConfig.BREVO_HTTP_API_KEY
+
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+            sib_api_v3_sdk.ApiClient(configuration)
         )
 
-        # create fast mail instance
+        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+            sender={"name": "OrbitRMS", "email": EnvConfig.BREVO_FROM_EMAIL},
+            to=(
+                [{"email": email_data.recever_email}]
+                if isinstance(email_data.recever_email, str)
+                else [{"email": email} for email in email_data.recever_email]
+            ),
+            subject=email_data.subject,
+            html_content=email_data.body,
+        )
 
-        fast_mail = FastMail(config)
+        # Run in background
+        background_task.add_task(api_instance.send_transac_email, send_smtp_email)
 
-        # send mail in the background
-
-        background_task.add_task(fast_mail.send_message, message)
-
-        return {"message": "Email sent successfully!", "success": True}
-
-    except Exception as e:
-
-        return {
-            "message": "unable to send Email Try Again Letter",
-            "success": False,
-            "error": str(e),
-        }
+        return {"message": "Email sent via Brevo HTTP API", "success": True}

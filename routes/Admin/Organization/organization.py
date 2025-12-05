@@ -56,7 +56,7 @@ async def Fetch_All__Organization(
     filter: Optional[str] = Query(None),
 ):
     try:
-        if not token:
+        if token is None or not isinstance(token, dict):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": "Unauthorized", "success": False},
@@ -131,10 +131,16 @@ async def Fetch_All__Organization(
             "data": [
                 {
                     **model_to_filtered_dict(org),
-                    "primary_email": org.general_info.primary_email,
-                    "primary_number": org.general_info.primary_number,
-                    "organization_name": org.general_info.organization_name,
-                    "organization_image": org.general_info.organization_profile_picture,
+                    **(
+                        {
+                            "primary_email": org.general_info.primary_email,
+                            "primary_number": org.general_info.primary_number,
+                            "organization_name": org.general_info.organization_name,
+                            "organization_image": org.general_info.organization_profile_picture,
+                        }
+                        if org.general_info
+                        else {}
+                    ),
                     "email_domain_slug": (
                         org.organization_settings.email_domain_slug
                         if org.organization_settings
@@ -436,7 +442,7 @@ async def Resend_Email_Verification_Link(
             db.query(Models.Organization)
             .join(Models.OrganizationGeneralInfo)
             .filter(
-                Models.OrganizationGeneralInfo.primary_email.like(f"%@{domain}"),
+                Models.OrganizationGeneralInfo.indexed_email_domain == domain,
                 Models.Organization.status.is_(True),
             )
             .first()
@@ -482,6 +488,7 @@ async def Resend_Email_Verification_Link(
         )
 
         organization_general_info.primary_email = data.email
+        organization_general_info.indexed_email_domain = domain
 
         employee.employee_email = data.email
 

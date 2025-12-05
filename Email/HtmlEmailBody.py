@@ -123,7 +123,7 @@ def WelcomeMailNewOrganization(data: WelcomeEmployeeMailModel):
         (
             html_content.replace("{user_name}", data.user_name)
             .replace("{organization_name}", data.organization_name)
-            .replace("{create_password_link}", data.create_password_link)
+            .replace("{organization_dashboard_link}", data.organization_dashboard_link)
         )
         .replace("{orbit_contact_emil}", ORBIT_CONTACT_EMAIL)
         .replace("{facebook_url}", FACEBOOK_LINK)
