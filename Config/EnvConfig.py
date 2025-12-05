@@ -76,6 +76,7 @@ class EnvConfig:
     BREVO_SMTP_SERVER = os.getenv("BREVO_SMTP_SERVER")
     BREVO_SMTP_PORT = os.getenv("BREVO_SMTP_PORT")
     BREVO_FROM_EMAIL = os.getenv("BREVO_FROM_EMAIL")
+    BREVO_HTTP_API_KEY = os.getenv("BREVO_HTTP_API_KEY")
 
     # ^ ----------- Ending Of The All The EnvSecrets Related To Email/Mail Services ---------
 

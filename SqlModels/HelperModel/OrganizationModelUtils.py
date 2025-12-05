@@ -25,7 +25,8 @@ class OrganizationGeneralInfo(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     organization_name = Column(String(255), nullable=False, default=None)
-    primary_email = Column(String(255), nullable=False, default=None)
+    primary_email = Column(String(255), nullable=False, default=None, index=True)
+    indexed_email_domain = Column(String(255), nullable=False, default=None, index=True)
     primary_number = Column(String(255), nullable=False, default=None)
     country_info = Column(JSON, nullable=True)
     portal_url = Column(String(255), nullable=False, default=None)
