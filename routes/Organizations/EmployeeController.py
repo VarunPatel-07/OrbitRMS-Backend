@@ -452,41 +452,44 @@ async def handel_fetch_profile_info(
                         ),
                     }
                     if (
-                        has_view_access(all_modules, "employee_information")
-                        or employee_id == user.id
+                        employee_data.employee_info
+                        and (
+                            has_view_access(all_modules, "employee_information")
+                            or employee_id == user.id
+                        )
                     )
                     else None
                 ),
                 "personal_info": (
                     filter_fields(employee_data.personal_info)
                     if (
-                        (
-                            employee_data.personal_info
-                            and has_view_access(all_modules, "personal_information")
+                        employee_data.personal_info
+                        and (
+                            has_view_access(all_modules, "personal_information")
+                            or employee_id == user.id
                         )
-                        or employee_id == user.id
                     )
                     else None
                 ),
                 "personal_contact_info": (
                     filter_fields(employee_data.personal_contact_info)
                     if (
-                        (
-                            employee_data.personal_contact_info
-                            and has_view_access(all_modules, "personal_contact_information")
+                        employee_data.personal_contact_info
+                        and (
+                            has_view_access(all_modules, "personal_contact_information")
+                            or employee_id == user.id
                         )
-                        or employee_id == user.id
                     )
                     else None
                 ),
                 "family_info": (
                     filter_fields(employee_data.family_info[0])
                     if (
-                        (
-                            employee_data.family_info
-                            and has_view_access(all_modules, "family_information")
+                        employee_data.family_info
+                        and (
+                            has_view_access(all_modules, "family_information")
+                            or employee_id == user.id
                         )
-                        or employee_id == user.id
                     )
                     else None
                 ),
