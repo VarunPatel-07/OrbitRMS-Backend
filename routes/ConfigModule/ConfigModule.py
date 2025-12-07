@@ -1277,7 +1277,7 @@ async def Add_Edit_Roles_Permissions(
                         "success": False,
                     },
                 )
-            modules = build_hierarchy(role_permission_module)
+            
             created_by_user = model_to_filtered_dict(
                 personal_info, ["user_id", "first_name", "last_name"]
             )
@@ -1294,6 +1294,9 @@ async def Add_Edit_Roles_Permissions(
             db.add(config_role_module)
             db.flush()
 
+
+            modules = build_hierarchy(role_permission_module)
+
             for module in modules:
 
                 permission_module = recursive_creation_helper(
@@ -1301,7 +1304,8 @@ async def Add_Edit_Roles_Permissions(
                 )
 
                 config_role_module.associated_permissions.append(permission_module)
-                db.commit()
+
+            db.commit()
 
             return {
                 "success": True,
