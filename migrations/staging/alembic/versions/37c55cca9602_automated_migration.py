@@ -1,8 +1,8 @@
 """automated-migration
 
-Revision ID: 2731165a0181
+Revision ID: 37c55cca9602
 Revises: 
-Create Date: 2025-12-04 17:20:25.537546
+Create Date: 2025-12-07 18:17:54.159313
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision: str = '2731165a0181'
+revision: str = '37c55cca9602'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -140,6 +140,7 @@ def upgrade() -> None:
     sa.Column('id', mysql.CHAR(length=36), nullable=False),
     sa.Column('organization_name', sa.String(length=255), nullable=False),
     sa.Column('primary_email', sa.String(length=255), nullable=False),
+    sa.Column('indexed_email_domain', sa.String(length=255), nullable=False),
     sa.Column('primary_number', sa.String(length=255), nullable=False),
     sa.Column('country_info', mysql.JSON(), nullable=True),
     sa.Column('portal_url', sa.String(length=255), nullable=False),
@@ -158,6 +159,8 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_organization_general_info_indexed_email_domain'), 'organization_general_info', ['indexed_email_domain'], unique=False)
+    op.create_index(op.f('ix_organization_general_info_primary_email'), 'organization_general_info', ['primary_email'], unique=False)
     op.create_table('organization_leaves_settings',
     sa.Column('id', mysql.CHAR(length=36), nullable=False),
     sa.Column('leave_name', sa.String(length=255), nullable=False),
@@ -406,7 +409,8 @@ def upgrade() -> None:
     sa.Column('isLikeDisabled', sa.Boolean(), nullable=True),
     sa.Column('user_id', mysql.CHAR(length=36), nullable=False),
     sa.Column('organization_id', mysql.CHAR(length=36), nullable=False),
-    sa.Column('source_type', sa.Enum('default', 'system', 'user_created', name='source_type_enum'), nullable=False),
+    sa.Column('source_type', sa.Enum('system', 'announcement_team', 'user', name='source_type_enum'), nullable=False),
+    sa.Column('announcement_type', sa.Enum('general', 'product_update', 'birthday_wish', 'work_anniversary_wish', name='announcement_type_enum'), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], onupdate='CASCADE', ondelete='CASCADE'),
@@ -440,6 +444,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_personal_info_normalized_full_name'), 'personal_info', ['normalized_full_name'], unique=False)
     op.create_table('session',
     sa.Column('id', mysql.CHAR(length=36), nullable=False),
     sa.Column('ip_address', sa.String(length=255), nullable=True),
@@ -453,6 +458,7 @@ def upgrade() -> None:
     sa.Column('is_pc', sa.Boolean(), nullable=True),
     sa.Column('is_bot', sa.Boolean(), nullable=True),
     sa.Column('fingerprint', sa.String(length=500), nullable=True),
+    sa.Column('user_location_info', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('user_id', mysql.CHAR(length=36), nullable=False),
@@ -523,6 +529,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
     )
+    op.create_index(op.f('ix_employee_info_employee_email'), 'employee_info', ['employee_email'], unique=False)
     op.create_table('feed_comments',
     sa.Column('id', mysql.CHAR(length=36), nullable=False),
     sa.Column('is_replay', sa.Boolean(), nullable=False),
@@ -585,6 +592,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_feed_comments_parent_id'), table_name='feed_comments')
     op.drop_index(op.f('ix_feed_comments_organization_update_id'), table_name='feed_comments')
     op.drop_table('feed_comments')
+    op.drop_index(op.f('ix_employee_info_employee_email'), table_name='employee_info')
     op.drop_table('employee_info')
     op.drop_table('emergency_contacts')
     op.drop_table('config_role_associated_permissions')
@@ -592,6 +600,7 @@ def downgrade() -> None:
     op.drop_table('attendance_leave_notify')
     op.drop_table('social_link')
     op.drop_table('session')
+    op.drop_index(op.f('ix_personal_info_normalized_full_name'), table_name='personal_info')
     op.drop_table('personal_info')
     op.drop_table('personal_contact_info')
     op.drop_index(op.f('ix_organization_updates_user_id'), table_name='organization_updates')
@@ -615,6 +624,8 @@ def downgrade() -> None:
     op.drop_table('organization_settings')
     op.drop_index(op.f('ix_organization_leaves_settings_organization_id'), table_name='organization_leaves_settings')
     op.drop_table('organization_leaves_settings')
+    op.drop_index(op.f('ix_organization_general_info_primary_email'), table_name='organization_general_info')
+    op.drop_index(op.f('ix_organization_general_info_indexed_email_domain'), table_name='organization_general_info')
     op.drop_table('organization_general_info')
     op.drop_table('organization_contact_info')
     op.drop_table('organization_address')

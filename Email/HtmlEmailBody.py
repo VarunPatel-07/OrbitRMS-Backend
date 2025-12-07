@@ -8,6 +8,7 @@ from PydanticModels.HelperPydanticModel import (
     NewClientInquiryMailPydanticBody,
     VerifyEmailPydanticBody,
     WelcomeEmployeeMailModel,
+    NewOrganizationCreatedSuccessFully,
 )
 
 load_dotenv(override=True)
@@ -113,7 +114,7 @@ def WelcomeMailForNewlyAddedEmployee(data: WelcomeEmployeeMailModel):
     return html_content
 
 
-def WelcomeMailNewOrganization(data: WelcomeEmployeeMailModel):
+def WelcomeMailNewOrganization(data: NewOrganizationCreatedSuccessFully):
 
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "Html", "welcome-new-org.html")

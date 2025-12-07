@@ -2,7 +2,7 @@ from fastapi import BackgroundTasks
 from Helper.emailSender import EmailSchema, email_sender_function
 from PydanticModels.Organizations.organizations import OnboardingOrganization
 from Config.EnvConfig import EnvConfig
-from PydanticModels.HelperPydanticModel import WelcomeEmployeeMailModel
+from PydanticModels.HelperPydanticModel import NewOrganizationCreatedSuccessFully
 from Email.HtmlEmailBody import WelcomeMailNewOrganization
 
 FRONTEND_URL = EnvConfig.FRONTEND_URL
@@ -18,7 +18,7 @@ def OnboardingCompletedMailSending(data: OnboardingOrganization, background_task
     email_data = {
         "recever_email": data.general_info.primary_email,
         "subject": f"Welcome {data.employee_profile_info.full_name} to {data.general_info.organization_name} – We're excited to have you onboard!",
-        "body": WelcomeMailNewOrganization(WelcomeEmployeeMailModel(**emil_body_data)),
+        "body": WelcomeMailNewOrganization(NewOrganizationCreatedSuccessFully(**emil_body_data)),
     }
 
     email_instance = EmailSchema(**email_data)

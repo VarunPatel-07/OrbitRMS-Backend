@@ -375,9 +375,25 @@ class OrganizationUpdates(BaseModel):
     )
 
     source_type = Column(
-        Enum("default", "system", "user_created", name="source_type_enum"),
+        Enum(
+            "system",
+            "announcement_team",
+            "user",
+            name="source_type_enum",
+        ),
         nullable=False,
-        default="system",
+        default="user",
+    )
+
+    announcement_type = Column(
+        Enum(
+            "general",
+            "product_update",
+            "birthday_wish",
+            "work_anniversary_wish",
+            name="announcement_type_enum",
+        ),
+        nullable=True,
     )
 
     organization = relationship("Organization", back_populates="org_updates")
