@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 from Crypto.Cipher import AES
 from dotenv import load_dotenv
 from fastapi import HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
 
@@ -354,3 +355,11 @@ def validate_time_difference(start_date: str, end_date: str):
     minutes = int(total_seconds // 60)
 
     return minutes
+
+
+def redirect_with_error(portal_slug: str, code: str):
+    base_url = f"{EnvConfig.FRONTEND_URL}/{portal_slug}/social-media"
+
+    return RedirectResponse(
+        url=(f"{base_url}" f"?status=error" f"&modal=oauthError" f"&code={code}")
+    )
