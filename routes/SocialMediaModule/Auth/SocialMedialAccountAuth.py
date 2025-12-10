@@ -13,7 +13,8 @@ from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from RateLimiting import limiter
 from SqlModels import Models
-
+from Helper.helper import redirect_with_error
+from Constant.constant import USER_FRIENDLY_ERRORS
 from ..Services.FacebookService import FacebookService
 from ..Services.TwitterService import TwitterService
 from ..SocialMediaModuleHelper.UserValidatorFunction import UserValidatorFunction
@@ -101,8 +102,9 @@ async def facebook_callback(
             return RedirectResponse(url=f"{EnvConfig.FRONTEND_URL}/auth/sign-in")
 
         if error:
-            raise HTTPException(
-                status_code=400, detail=f"Facebook authentication failed: {error_description}"
+
+            return redirect_with_error(
+                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_auth_denied
             )
 
         # Exchange code for token
@@ -111,8 +113,9 @@ async def facebook_callback(
             if not token_data.get("access_token"):
                 raise ValueError("No access token in response")
         except Exception as e:
-
-            raise HTTPException(status_code=400, detail="Failed to exchange code for token")
+            return redirect_with_error(
+                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_token_exchange_failed
+            )
 
         access_token = token_data["access_token"]
 
@@ -126,9 +129,10 @@ async def facebook_callback(
                 raise ValueError("No long-lived access token received")
 
         except Exception as e:
-
-            raise HTTPException(status_code=400, detail="Failed to obtain long-lived token")
-        print(expires_in)
+            return redirect_with_error(
+                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_token_exchange_failed
+            )
+            # raise HTTPException(status_code=400, detail="Failed to obtain long-lived token")
 
         expires_at = datetime.now() + timedelta(seconds=expires_in) if expires_in else None
 
@@ -140,10 +144,13 @@ async def facebook_callback(
                 raise ValueError("No pages found for this user")
         except Exception as e:
             logger.error(f"Failed to get user pages: {str(e)}")
-            raise HTTPException(
-                status_code=400,
-                detail={"message": "Failed to retrieve Facebook pages", "error": str(e)},
+            return redirect_with_error(
+                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_no_pages_found
             )
+            # raise HTTPException(
+            #     status_code=400,
+            #     detail={"message": "Failed to retrieve Facebook pages", "error": str(e)},
+            # )
 
         # Process pages (here we'll just take the first one)
         for page in pages:
@@ -153,7 +160,10 @@ async def facebook_callback(
             page_access_token = page.get("access_token")
 
             if not all([page_id, page_name, page_access_token]):
-                raise HTTPException(status_code=400, detail="Incomplete page data received")
+                return redirect_with_error(
+                    organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_no_pages_found
+                )
+                # raise HTTPException(status_code=400, detail="Incomplete page data received")
 
             existing_account = (
                 db.query(Models.SocialMediaAccount)
@@ -236,13 +246,16 @@ async def facebook_callback(
         raise  # Re-raise already handled exceptions
     except Exception as e:
         logger.error(f"Unexpected error in Facebook callback: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "message": "An unexpected error occurred during Facebook authentication",
-                "error": str(e),
-            },
+        return redirect_with_error(
+            organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_unexpected
         )
+        # raise HTTPException(
+        #     status_code=500,
+        #     detail={
+        #         "message": "An unexpected error occurred during Facebook authentication",
+        #         "error": str(e),
+        #     },
+        # )
 
 
 @SocialAccountAuth.get("/login/twitter", status_code=status.HTTP_200_OK)
@@ -323,10 +336,13 @@ async def twitter_callback_handler(
             return RedirectResponse(url=f"{EnvConfig.FRONTEND_URL}/auth/sign-in")
 
         if error:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Twitter authentication failed: {error_description}",
+            return redirect_with_error(
+                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.tw_auth_denied
             )
+            # raise HTTPException(
+            #     status_code=400,
+            #     detail=f"Twitter authentication failed: {error_description}",
+            # )
 
         # Exchange code for token
         full_url = str(request.url)  # includes ?code=...&state=...
@@ -337,7 +353,10 @@ async def twitter_callback_handler(
         expires_in = token_data.get("expires_in")
 
         if not access_token:
-            raise HTTPException(status_code=400, detail="No access token received from Twitter")
+            return redirect_with_error(
+                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.tw_token_exchange_failed
+            )
+        # raise HTTPException(status_code=400, detail="No access token received from Twitter")
 
         expires_at = datetime.now() + timedelta(seconds=expires_in) if expires_in else None
 
@@ -383,7 +402,10 @@ async def twitter_callback_handler(
         raise
     except Exception as e:
         logger.error(f"Unexpected error in Twitter callback: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail={"message": "Unexpected error during Twitter authentication", "error": str(e)},
+        return redirect_with_error(
+            organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.tw_unexpected
         )
+        # raise HTTPException(
+        #     status_code=500,
+        #     detail={"message": "Unexpected error during Twitter authentication", "error": str(e)},
+        # )
