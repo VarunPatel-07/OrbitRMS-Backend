@@ -111,3 +111,10 @@ migrations/*/versions/*.py
 
 
 /test
+
+# this is the thing that we don't want in the production version or in the staging version
+dev_db_migration.sh
+docker-run.sh
+local-run.sh
+docker-compose.docker-run.yml
+docker-compose.yml
