@@ -1,19 +1,28 @@
 import base64
+import hashlib
+import json
+import math
 import os
+import random
 import secrets
+import string
+from datetime import datetime
 from typing import Dict, List, Optional, Union
+from zoneinfo import ZoneInfo
 
 from Crypto.Cipher import AES
 from dotenv import load_dotenv
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
 
+from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 
 load_dotenv(override=True)
 
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
+ENCRYPTION_KEY = EnvConfig.ENCRYPTION_KEY.encode()
 
 
 def generate_full_name(first_name: str, last_name: str, middle_name: str = None) -> str:
@@ -25,7 +34,7 @@ def generate_full_name(first_name: str, last_name: str, middle_name: str = None)
 
 def generate_random_secret_key() -> str:
     generated_secret_key = secrets.token_urlsafe(16)
-    print(generated_secret_key)
+
     return generated_secret_key
 
 
@@ -162,12 +171,13 @@ def urlsafe_data_decoding_function(encrypted_data: str) -> str:
         else:
             raise ValueError("Decrypted data is not in bytes format.")
 
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "message": "Decryption failed: Data may have been altered or corrupted!",
                 "success": False,
+                "error": str(e),
             },
         )
     except Exception as e:
@@ -189,35 +199,167 @@ def update_model_data(
     id_field: str = "id",
     filter_fields: list = None,
 ):
-    print(model_id)
-    print(updated_data)
-    print(id_field)
-    print(getattr(model, id_field))
+
     record = db.query(model).filter(getattr(model, id_field) == model_id).first()
 
-    updated_data_dict = updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
     if not record:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"{model.__name__} not found"
+        print(f"Record with {id_field}={model_id} not found")
+        return None
+    else:
+        updated_data_dict = (
+            updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
         )
-    if filter_fields:
-        include_field = set()
-        exclude_field = set()
+        if not isinstance(updated_data_dict, dict):
+            print(f"Expected updated_data to be a dict, but got {type(updated_data_dict)}")
+            return None
+        else:
 
-        for field in filter_fields:
-            if field.startswith("-"):
-                exclude_field.add(field.strip("-"))
-            else:
-                include_field.add(field)
-        updated_data = {
-            field: value
-            for field, value in updated_data_dict.items()
-            if (field in include_field and field not in exclude_field)
-        }
-    for field, value in updated_data_dict.items():
-        if hasattr(record, field) and value is not None:
-            setattr(record, field, value)
+            if filter_fields:
+                include_field = set()
+                exclude_field = set()
 
-    db.commit()
-    db.refresh(record)
-    return record
+                for field in filter_fields:
+                    if field.startswith("-"):
+                        exclude_field.add(field.strip("-"))
+                    else:
+                        include_field.add(field)
+                updated_data_dict = {
+                    field: value
+                    for field, value in updated_data_dict.items()
+                    if (field in include_field and field not in exclude_field)
+                }
+            for field, value in updated_data_dict.items():
+                if hasattr(record, field) and value is not None:
+                    setattr(record, field, value)
+
+            db.commit()
+            db.refresh(record)
+            return record
+
+
+def get_client_ip(request: Request) -> str:
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.headers.get("X-Real-IP", request.client.host)
+
+    return ip
+
+
+def hash_fingerprint(fingerprint: str) -> str:
+    return hashlib.sha256(fingerprint.encode()).hexdigest()
+
+
+def generate_api_secrets_api_key():
+    api_key = "api_" + "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(24)
+    )
+    api_secret = secrets.token_urlsafe(32)
+
+    return api_key, api_secret
+
+
+def is_valid_type(value, field_type):
+    try:
+        if field_type == "string":
+            return isinstance(value, str)
+        elif field_type == "boolean":
+            return isinstance(value, bool)
+        elif field_type == "number":
+            return isinstance(value, int)
+        elif field_type == "array":
+            return isinstance(value, List)
+        elif field_type == "object":
+            return isinstance(value, dict)
+        elif field_type == "array of string":
+            return isinstance(value, list) and all(isinstance(item, str) for item in value)
+        elif field_type == "array of object":
+            return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+
+        return False
+    except:
+        return False
+
+
+def validate_field(vale):
+    if vale is None:
+        return False
+    if isinstance(vale, str) and vale.strip() == "":
+        return False
+    if isinstance(vale, (list, Dict)) and len(vale) == 0:
+        return False
+    return True
+
+
+def generatePasswordResetToken():
+
+    token = secrets.token_urlsafe(32)
+    return token
+
+
+def generateAdminSignature():
+    token = secrets.token_urlsafe(16)
+    return token
+
+
+def generateAdminAccessCode(length: int):
+    otp = "".join(random.choices(string.digits, k=length))
+    return otp
+
+
+def parse_iso_datetime(iso_str: str) -> datetime:
+    if not iso_str.endswith("Z"):
+
+        return iso_str
+    iso_str = iso_str.replace("Z", "+00:00")
+    date_time = datetime.fromisoformat(iso_str)
+    return date_time.astimezone(ZoneInfo("UTC"))
+
+
+def difference_between_dates(current_date, next_date):
+    def parse_date(date):
+        if isinstance(date, str):
+            return datetime.fromisoformat(date.replace("Z", "+00:00"))
+        elif isinstance(date, datetime):
+            return date
+        else:
+            raise ValueError(f"Invalid date type: {type(date)}")
+
+    current_date_obj = parse_date(current_date)
+    next_date_obj = parse_date(next_date)
+
+    difference = abs((current_date_obj - next_date_obj).total_seconds()) / 60
+    return int(math.floor(difference))
+
+
+def parse_date(date_str: str):
+    if date_str.endswith("Z"):
+        date_str = date_str.replace("Z", "+00:00")
+    dt = datetime.fromisoformat(date_str)
+
+    # Ensure all dates are offset-aware
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    return dt
+
+
+def validate_time_difference(start_date: str, end_date: str):
+
+    start_date = parse_date(start_date)
+    end_date = parse_date(end_date)
+
+    # Calculate the difference
+    time_diff = start_date - end_date
+    total_seconds = abs(time_diff.total_seconds())
+    minutes = int(total_seconds // 60)
+
+    return minutes
+
+
+def redirect_with_error(portal_slug: str, code: str):
+    base_url = f"{EnvConfig.FRONTEND_URL}/{portal_slug}/social-media"
+
+    return RedirectResponse(
+        url=(f"{base_url}" f"?status=error" f"&modal=oauthError" f"&code={code}")
+    )

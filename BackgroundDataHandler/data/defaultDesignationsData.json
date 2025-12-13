@@ -1,0 +1,333 @@
+{
+  "consultancy_firm": [
+    {
+      "designations_name": "Consultant"
+    },
+    {
+      "designations_name": "Senior Consultant"
+    },
+    {
+      "designations_name": "Principal Consultant"
+    },
+    {
+      "designations_name": "Management Consultant"
+    },
+    {
+      "designations_name": "Strategy Consultant"
+    },
+    {
+      "designations_name": "Financial Advisor"
+    },
+    {
+      "designations_name": "Business Analyst"
+    },
+    {
+      "designations_name": "Engagement Manager"
+    },
+    {
+      "designations_name": "Client Partner"
+    },
+    {
+      "designations_name": "Project Manager"
+    },
+    {
+      "designations_name": "Operations Manager"
+    },
+    {
+      "designations_name": "Research Analyst"
+    },
+    {
+      "designations_name": "Chief Executive Officer (CEO)"
+    },
+    {
+      "designations_name": "Chief Operating Officer (COO)"
+    },
+    {
+      "designations_name": "Chief Financial Officer (CFO)"
+    },
+    {
+      "designations_name": "HR Manager"
+    },
+    {
+      "designations_name": "Admin Executive"
+    },
+    {
+      "designations_name": "Finance Executive"
+    },
+    {
+      "designations_name": "Marketing Manager"
+    },
+    {
+      "designations_name": "Sales Executive"
+    },
+    {
+      "designations_name": "Customer Support Executive"
+    },
+    {
+      "designations_name": "Manager"
+    }
+  ],
+  "media_agency": [
+    {
+      "designations_name": "Creative Director"
+    },
+    {
+      "designations_name": "Art Director"
+    },
+    {
+      "designations_name": "Graphic Designer"
+    },
+    {
+      "designations_name": "Video Editor"
+    },
+    {
+      "designations_name": "Photographer"
+    },
+    {
+      "designations_name": "Content Writer"
+    },
+    {
+      "designations_name": "Copywriter"
+    },
+    {
+      "designations_name": "Media Planner"
+    },
+    {
+      "designations_name": "Media Buyer"
+    },
+    {
+      "designations_name": "Social Media Manager"
+    },
+    {
+      "designations_name": "Digital Marketing Executive"
+    },
+    {
+      "designations_name": "Client Servicing Executive"
+    },
+    {
+      "designations_name": "Production Manager"
+    },
+    {
+      "designations_name": "Marketing Manager"
+    },
+    {
+      "designations_name": "Chief Executive Officer (CEO)"
+    },
+    {
+      "designations_name": "Chief Operating Officer (COO)"
+    },
+    {
+      "designations_name": "Chief Financial Officer (CFO)"
+    },
+    {
+      "designations_name": "HR Manager"
+    },
+    {
+      "designations_name": "Admin Executive"
+    },
+    {
+      "designations_name": "Finance Executive"
+    },
+    {
+      "designations_name": "Sales Executive"
+    },
+    {
+      "designations_name": "Customer Support Executive"
+    },
+    {
+      "designations_name": "Manager"
+    }
+  ],
+  "architecture_interior_design_studio": [
+    {
+      "designations_name": "Principal Architect"
+    },
+    {
+      "designations_name": "Senior Architect"
+    },
+    {
+      "designations_name": "Junior Architect"
+    },
+    {
+      "designations_name": "Interior Designer"
+    },
+    {
+      "designations_name": "Senior Interior Designer"
+    },
+    {
+      "designations_name": "3D Visualizer"
+    },
+    {
+      "designations_name": "Drafter"
+    },
+    {
+      "designations_name": "Project Coordinator"
+    },
+    {
+      "designations_name": "Site Supervisor"
+    },
+    {
+      "designations_name": "Procurement Manager"
+    },
+    {
+      "designations_name": "Client Coordinator"
+    },
+    {
+      "designations_name": "Chief Executive Officer (CEO)"
+    },
+    {
+      "designations_name": "Chief Operating Officer (COO)"
+    },
+    {
+      "designations_name": "Chief Financial Officer (CFO)"
+    },
+    {
+      "designations_name": "HR Manager"
+    },
+    {
+      "designations_name": "Admin Executive"
+    },
+    {
+      "designations_name": "Finance Executive"
+    },
+    {
+      "designations_name": "Marketing Manager"
+    },
+    {
+      "designations_name": "Sales Executive"
+    },
+    {
+      "designations_name": "Customer Support Executive"
+    },
+    {
+      "designations_name": "Manager"
+    }
+  ],
+  "software_company": [
+    {
+      "designations_name": "Chief Executive Officer (CEO)"
+    },
+    {
+      "designations_name": "Chief Technology Officer (CTO)"
+    },
+    {
+      "designations_name": "Software Engineer"
+    },
+    {
+      "designations_name": "Senior Software Engineer"
+    },
+    {
+      "designations_name": "Technical Lead"
+    },
+    {
+      "designations_name": "DevOps Engineer"
+    },
+    {
+      "designations_name": "QA Engineer"
+    },
+    {
+      "designations_name": "UI/UX Designer"
+    },
+    {
+      "designations_name": "Product Manager"
+    },
+    {
+      "designations_name": "Project Manager"
+    },
+    {
+      "designations_name": "Business Analyst"
+    },
+    {
+      "designations_name": "HR Manager"
+    },
+    {
+      "designations_name": "Admin Executive"
+    },
+    {
+      "designations_name": "Finance Executive"
+    },
+    {
+      "designations_name": "Marketing Manager"
+    },
+    {
+      "designations_name": "Sales Executive"
+    },
+    {
+      "designations_name": "Customer Support Executive"
+    },
+    {
+      "designations_name": "Manager"
+    },
+    {
+      "designations_name": "Chief Operating Officer (COO)"
+    },
+    {
+      "designations_name": "Chief Financial Officer (CFO)"
+    }
+  ],
+  "marketing_agency": [
+    {
+      "designations_name": "Marketing Manager"
+    },
+    {
+      "designations_name": "Brand Manager"
+    },
+    {
+      "designations_name": "Digital Marketing Specialist"
+    },
+    {
+      "designations_name": "SEO Specialist"
+    },
+    {
+      "designations_name": "Performance Marketer"
+    },
+    {
+      "designations_name": "Content Writer"
+    },
+    {
+      "designations_name": "Social Media Manager"
+    },
+    {
+      "designations_name": "Creative Director"
+    },
+    {
+      "designations_name": "Graphic Designer"
+    },
+    {
+      "designations_name": "Marketing Executive"
+    },
+    {
+      "designations_name": "Client Servicing Executive"
+    },
+    {
+      "designations_name": "Market Research Analyst"
+    },
+    {
+      "designations_name": "Chief Executive Officer (CEO)"
+    },
+    {
+      "designations_name": "Chief Operating Officer (COO)"
+    },
+    {
+      "designations_name": "Chief Financial Officer (CFO)"
+    },
+    {
+      "designations_name": "HR Manager"
+    },
+    {
+      "designations_name": "Admin Executive"
+    },
+    {
+      "designations_name": "Finance Executive"
+    },
+    {
+      "designations_name": "Sales Executive"
+    },
+    {
+      "designations_name": "Customer Support Executive"
+    },
+    {
+      "designations_name": "Manager"
+    }
+  ]
+}

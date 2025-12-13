@@ -132,17 +132,20 @@ We welcome contributions to enhance the OrbitRMS-Backend. Please follow these st
 5.  **Push to Your Fork**: Upload your changes to your forked repository.
 6.  **Submit a Pull Request**: Navigate to the original repository and create a pull request.
 
+For detailed guidelines, refer to:  
+[Contributing to OrbitRMS-Backend](https://docs.google.com/document/d/1TA4HpZc3RydXbkW1ScLz5gHCGze1U_XjOdtqug-dfcY/edit?usp=sharing)
+
 Please ensure your code adheres to the project's coding standards and includes relevant tests.
 
 ## License
 
-This project is licensed under the [MIT License](https://chatgpt.com/c/LICENSE).
+This project is licensed under the [MIT License](/LICENSE).
 
 ## Contact
 
 For any inquiries or support, please contact:
 
 - **Varun Patel**
-- **Email**: <varun.patel@example.com>
+- **Email**: <contact.varunpatel.dev@gmail.com>
 - **Website**: [https://varunpatel.vercel.app/](https://varunpatel.vercel.app/)
 - **GitHub**: [VarunPatel-07](https://github.com/VarunPatel-07)
