@@ -29,9 +29,9 @@ class Children(BaseModel):
     gender: str
     date_of_birth: str
 
-    class Config:
-        # Exclude the family_info attribute during serialization to avoid circular references
-        fields = {"family_info": {"exclude": True}}
+    model_config = {
+        "json_schema_extra": {"family_info": {"exclude": True}}  # ✅ Use this instead of 'fields'
+    }
 
 
 class FamilyInfo(BaseModel):
@@ -52,7 +52,7 @@ class EmployeeInfo(BaseModel):
     employee_code: str
     department: str
     designation: str
-    reporting_to: dict
+    reporting_to_id: str
     employee_role: str
     employee_email: EmailStr
 
@@ -62,8 +62,8 @@ class PersonalInfo(BaseModel):
     middle_name: Optional[str]
     last_name: str
     full_name: str
-    profile_picture: Optional[HttpUrl]
-    profile_picture_bg: Optional[HttpUrl]
+    profile_picture: Optional[str]
+    profile_picture_bg: Optional[str]
     gender: str
     date_of_birth: datetime
     blood_group: str

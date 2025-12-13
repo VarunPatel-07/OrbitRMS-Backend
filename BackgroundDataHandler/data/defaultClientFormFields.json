@@ -1,0 +1,37 @@
+{
+  "form_schema": {
+    "form_id": "ContactForm",
+    "form_name": "Contact Form",
+    "description": "A contact form schema for collecting user details, subscription preferences, budget, and personal description.",
+    "status": true,
+    "authorized_recipient_emails": [],
+    "email_notification": false
+  },
+  "form_fields": [
+    {
+      "field_name": "full_name",
+      "is_required_field": true,
+      "type": "string"
+    },
+    {
+      "field_name": "email",
+      "is_required_field": true,
+      "type": "string"
+    },
+    {
+      "field_name": "subscribe_newsletter",
+      "is_required_field": false,
+      "type": "boolean"
+    },
+    {
+      "field_name": "budget",
+      "is_required_field": false,
+      "type": "number"
+    },
+    {
+      "field_name": "tell_us_about_you",
+      "is_required_field": false,
+      "type": "string"
+    }
+  ]
+}
