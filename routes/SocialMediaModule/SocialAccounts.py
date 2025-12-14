@@ -279,3 +279,96 @@ async def Post_Content_To_Social_Media(
                 "error": str(e),
             },
         )
+
+
+#  This are The Api That Will Be Used To Disconnect The the Social Media Account
+@SocialAccount.put("/status/toggle", status_code=status.HTTP_200_OK)
+@limiter.limit(EnvConfig.API_RATE_LIMITING)
+async def handel_disconnecting_social_media_account(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    account_id: str = Query(..., alias="id"),
+):
+    organization = (
+        db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
+    )
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "Unable To Find Organization", "success": False},
+        )
+
+    social_media_account = (
+        db.query(Models.SocialMediaAccount)
+        .filter(
+            Models.SocialMediaAccount.organization_id == organization.id,
+            Models.SocialMediaAccount.id == account_id,
+        )
+        .first()
+    )
+
+    if not social_media_account:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Unable To Find SocialMedia Account", "success": False},
+        )
+
+    message = ""
+
+    if social_media_account.is_active:
+        social_media_account.is_active = False
+        message = "Account Deactivated SuccessFully"
+    else:
+        social_media_account.is_active = True
+        message = "Account Activated SuccessFully"
+
+    db.commit()
+
+    return {
+        "message": message,
+        "success": True,
+    }
+
+
+@SocialAccount.put("/disconnect", status_code=status.HTTP_200_OK)
+@limiter.limit(EnvConfig.API_RATE_LIMITING)
+async def handel_disconnecting_social_media_account(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    account_id: str = Query(..., alias="id"),
+):
+    organization = (
+        db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
+    )
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "Unable To Find Organization", "success": False},
+        )
+
+    social_media_account = (
+        db.query(Models.SocialMediaAccount)
+        .filter(
+            Models.SocialMediaAccount.organization_id == organization.id,
+            Models.SocialMediaAccount.id == account_id,
+        )
+        .first()
+    )
+
+    if not social_media_account:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Unable To Find SocialMedia Account", "success": False},
+        )
+
+    db.delete(social_media_account)
+    db.commit()
+
+    return {
+        "message": "Social Media Account Disconnected SuccessFully",
+        "success": True,
+    }
