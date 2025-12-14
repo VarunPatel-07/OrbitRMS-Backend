@@ -737,8 +737,6 @@ async def edit_employee_profile(
             db.flush()
             contact_info_id = new_personal_contact_info.id
 
-        print("contact_info_id", contact_info_id)
-
         existing_contacts = {
             str(c.id): c
             for c in db.query(Models.EmergencyContact)
@@ -787,8 +785,11 @@ async def edit_employee_profile(
             )
 
         else:
-            db.add(Models.FamilyInfo(user_id=employee.id, **family_info_data))
+            find_family_info = Models.FamilyInfo(user_id=employee.id, **family_info_data)
+            db.add(find_family_info)
+            db.flush()
 
+        existing_child_array = {}
         if data.family_info.marital_status in alignable_for_child_info:
 
             existing_child_array = {
@@ -822,9 +823,9 @@ async def edit_employee_profile(
                 [
                     {
                         **_child.dict(exclude={"family_info_id", "id"}),
-                        "family_info_id": _child.id,
+                        "family_info_id": find_family_info.id,
                     }
-                    for _child in children_array_to_update
+                    for _child in children_array_to_add
                 ],
             )
 
