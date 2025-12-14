@@ -68,7 +68,7 @@ app.add_middleware(
     allow_origins=(
         [
             "https://app.orbitrms.com",
-            "https://admin.app.orbitrms.com",
+            "https://admin.orbitrms.com",
         ]
         if BACKEND_APP_ENVIRONMENT == "PRODUCTION"
         else ["*"]
