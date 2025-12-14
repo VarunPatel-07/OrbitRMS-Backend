@@ -48,6 +48,7 @@ from SqlModels.Models import BaseModel
 load_dotenv(override=True)
 
 BACKEND_APP_ENVIRONMENT = EnvConfig.BACKEND_APP_ENVIRONMENT
+API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 app = FastAPI(
     title="OrbitRMS",
@@ -64,9 +65,20 @@ app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins. You can specify specific origins instead of "*".
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, PUT, etc.)
+    allow_origins=(
+        [
+            "https://app.orbitrms.com",
+            "https://admin.app.orbitrms.com",
+        ]
+        if BACKEND_APP_ENVIRONMENT == "PRODUCTION"
+        else ["*"]
+    ),  # Allows all origins. You can specify specific origins instead of "*".
+    allow_credentials=True if BACKEND_APP_ENVIRONMENT == "PRODUCTION" else False,
+    allow_methods=(
+        ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        if BACKEND_APP_ENVIRONMENT == "PRODUCTION"
+        else ["*"]
+    ),  # Allows all HTTP methods (GET, POST, PUT, etc.)
     allow_headers=["*"],  # Allows all headers
 )
 
@@ -143,6 +155,7 @@ async def shutdown_event():
 
 # Basic health check route
 @app.api_route(path="/", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def root_health_check(request: Request):
     await cache_database.set("hello", "Valkey from FastAPI!", ex=10 * 24 * 3600)
     db_status = "healthy"
@@ -179,6 +192,7 @@ async def root_health_check(request: Request):
 
 
 @app.api_route("/health", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
 async def health_status(request: Request):
     db_status = "healthy"
 
