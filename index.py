@@ -101,7 +101,7 @@ app.add_middleware(
 public_api_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["POST"],
+    allow_methods=["POST", "OPTIONS"],
     allow_headers=["*"],
     allow_credentials=False,
 )
