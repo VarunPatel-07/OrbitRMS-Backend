@@ -63,7 +63,6 @@ app = FastAPI(
     docs_url=None if BACKEND_APP_ENVIRONMENT == "PRODUCTION" else "/docs",
     openapi_url=None if BACKEND_APP_ENVIRONMENT == "PRODUCTION" else "/openapi.json",
 )
-
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 

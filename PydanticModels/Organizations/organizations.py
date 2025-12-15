@@ -1,0 +1,90 @@
+from datetime import datetime
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel
+
+from PydanticModels.UserModels import PersonalInfo
+
+
+class CountryInfo(BaseModel):
+    country_name: str
+    country_flag: str
+    country_number_code: str
+    country_code: str
+
+
+class OrganizationGeneralInfo(BaseModel):
+    organization_name: str
+    primary_email: str
+    primary_number: str
+    country_info: Optional[dict] = None
+    portal_url: str
+    portal_slug: str
+    website_url: Optional[str] = None
+    is_meta_verified: bool
+    meta_key: str
+    meta_value: str
+    terms_accepted: bool
+    email_verified: bool
+    organization_profile_picture: str = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationAddress(BaseModel):
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    country: Optional[str] = None
+    country_code: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationContactInfo(BaseModel):
+    phone_number: Optional[str] = None
+    company_email: Optional[str] = None
+    country_info: str
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationAboutInfo(BaseModel):
+    about: Optional[str] = None
+    established_science: Optional[datetime] = None
+    registration_number: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationSettings(BaseModel):
+    email_domain_slug: Optional[str] = None
+    employee_code_prefix: Optional[str] = None
+    intern_code_prefix: Optional[str] = None
+    default_timezone: Optional[str] = None
+    default_dateformat: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OnboardingOrganization(BaseModel):
+    general_info: OrganizationGeneralInfo
+    address: OrganizationAddress
+    contact_info: List[OrganizationContactInfo]
+    about_info: OrganizationAboutInfo
+    organization_settings: OrganizationSettings
+    status: bool
+    employee_profile_info: PersonalInfo
+
+    class Config:
+        from_attributes = True
+
+
+class AuthorizedRecipientEmail(BaseModel):
+    authorized_recipient: List[str]

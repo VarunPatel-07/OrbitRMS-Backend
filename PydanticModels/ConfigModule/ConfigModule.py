@@ -1,0 +1,67 @@
+from __future__ import annotations
+
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict
+
+
+class ProjectStatus(BaseModel):
+    status_name: str
+    status_color: str
+
+
+class Department(BaseModel):
+    department_name: str
+
+
+class Designations(BaseModel):
+    designations_name: str
+
+
+class ClientFormSchemaModel(BaseModel):
+    field_name: str
+    is_required_field: bool
+    type: str
+
+
+class InquiryFormSchemaSchemaModel(BaseModel):
+    form_id: str
+    form_name: str
+    description: str
+    status: bool
+    authorized_recipient_emails: List[str]
+    email_notification: bool
+
+
+class PermissionModule(BaseModel):
+    label: str
+    is_allowed: bool
+    show_input: bool
+
+
+class RoleAssociatedPermissionModule(BaseModel):
+    module_label: str
+    module_title: str
+    is_active: bool
+    permissions: List[PermissionModule]
+    sub_modules: List["RoleAssociatedPermissionModule"] = []
+
+
+class RolesPermission(BaseModel):
+    role_name: str
+    description: str
+    is_editable: bool
+    permission_modules: List[RoleAssociatedPermissionModule]
+
+
+class CloneRole(BaseModel):
+    clone_role_name: str
+    clone_role_id: str
+    config_module_id: str
+
+
+class AddRolesPermission(BaseModel):
+    role_name: str
+    description: str
+    status: bool
+    clone_role_info: Optional[CloneRole]
