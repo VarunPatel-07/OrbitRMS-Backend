@@ -1,9 +1,10 @@
 from fastapi import BackgroundTasks
-from Helper.emailSender import EmailSchema, email_sender_function
-from PydanticModels.Organizations.organizations import OnboardingOrganization
+
 from Config.EnvConfig import EnvConfig
-from PydanticModels.HelperPydanticModel import NewOrganizationCreatedSuccessFully
 from Email.HtmlEmailBody import WelcomeMailNewOrganization
+from Helper.emailSender import EmailSchema, email_sender_function
+from PydanticModels.HelperPydanticModel import NewOrganizationCreatedSuccessFully
+from PydanticModels.Organizations.organizations import OnboardingOrganization
 
 FRONTEND_URL = EnvConfig.FRONTEND_URL
 

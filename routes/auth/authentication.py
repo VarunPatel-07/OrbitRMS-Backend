@@ -19,7 +19,10 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, func, or_
 from user_agents import parse as parse_user_agent
-from BackgroundTasks.Authentication.AuthBackgroundTask import HandelUserSignUpInBackGround
+
+from BackgroundTasks.Authentication.AuthBackgroundTask import (
+    HandelUserSignUpInBackGround,
+)
 from Config.EnvConfig import EnvConfig
 from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 from Database.CacheDatabase import cache_database

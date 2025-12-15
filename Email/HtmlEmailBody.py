@@ -6,9 +6,9 @@ from Config.EnvConfig import EnvConfig
 from PydanticModels.HelperPydanticModel import (
     CreatePasswordPydanticBody,
     NewClientInquiryMailPydanticBody,
+    NewOrganizationCreatedSuccessFully,
     VerifyEmailPydanticBody,
     WelcomeEmployeeMailModel,
-    NewOrganizationCreatedSuccessFully,
 )
 
 load_dotenv(override=True)

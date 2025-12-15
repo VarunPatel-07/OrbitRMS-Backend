@@ -29,6 +29,7 @@ from routes.ApiManager.ApiManager import ApiManager
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
 from routes.ClientInquires.ClientInquires import clientInquires
+from routes.ClientInquires.SubmitClientInquiry import publicInquiryRouter
 from routes.ConfigModule.ConfigModule import configRoute
 from routes.CountryInfo.CountryInfo import countryApiRouter
 from routes.ImageUploadation.ImageUploadation import imgRoute
@@ -58,6 +59,21 @@ app = FastAPI(
         "name": "Varun Patel",
         "email": "varunspatelo7@gmail.com",
     },
+    redoc_url=None,
+    docs_url=None if BACKEND_APP_ENVIRONMENT == "PRODUCTION" else "/docs",
+    openapi_url=None if BACKEND_APP_ENVIRONMENT == "PRODUCTION" else "/openapi.json",
+)
+public_api_app = FastAPI(
+    title="OrbitRMS",
+    description="Detailed API description.",
+    version="1.0.0",
+    contact={
+        "name": "Varun Patel",
+        "email": "varunspatelo7@gmail.com",
+    },
+    redoc_url=None,
+    docs_url=None,
+    openapi_url=None,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
@@ -82,6 +98,13 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+public_api_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["POST"],
+    allow_headers=["*"],
+    allow_credentials=False,
+)
 # if not EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
 
 #     app.add_middleware(RecaptchaMiddleware)
@@ -91,6 +114,8 @@ app.add_middleware(
 BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 
 
+public_api_app.include_router(publicInquiryRouter)
+app.mount("/public/v1", public_api_app)
 # Include application routes
 app.include_router(authRoutes)
 app.include_router(orgRouter)
