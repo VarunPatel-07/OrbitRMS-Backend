@@ -1,25 +1,25 @@
+import json
+
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from Config.EnvConfig import EnvConfig
 from Database.Database import SessionLocal
-from SqlModels import Models
-from Helper.createModelInstance import cerate_model_instance
-from PydanticModels.authentication.AuthenticationModels import (
-    RegisterOrganizationInfo,
-)
-from fastapi import BackgroundTasks
-from Helper.helper import (
-    urlsafe_data_encoding_function,
-)
-import json
-from PydanticModels.HelperPydanticModel import (
-    VerifyEmailPydanticBody,
-)
-
 from Email.HtmlEmailBody import (
     VerifyEmailHtmlBody,
 )
+from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
+from Helper.helper import (
+    urlsafe_data_encoding_function,
+)
+from PydanticModels.authentication.AuthenticationModels import (
+    RegisterOrganizationInfo,
+)
+from PydanticModels.HelperPydanticModel import (
+    VerifyEmailPydanticBody,
+)
+from SqlModels import Models
 
 FRONTEND_URL = EnvConfig.FRONTEND_URL
 

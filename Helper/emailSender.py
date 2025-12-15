@@ -1,15 +1,14 @@
 import os
 from typing import List, Optional
 
+import sib_api_v3_sdk
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
 from pydantic import BaseModel
+from sib_api_v3_sdk.rest import ApiException
 
 from Config.EnvConfig import EnvConfig
-
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
 
 load_dotenv(override=True)
 
