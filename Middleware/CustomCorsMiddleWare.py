@@ -13,7 +13,7 @@ ALLOWED_APP_ORIGINS = {
 class CustomCorsModule(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
 
-        # ✅ Handle preflight FIRST (before limiter/auth)
+        
         if request.method == "OPTIONS":
             response = Response(status_code=200)
         else:

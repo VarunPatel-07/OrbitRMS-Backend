@@ -70,11 +70,6 @@ app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 app.add_middleware(CustomCorsModule)
 
 
-# if not EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
-
-#     app.add_middleware(RecaptchaMiddleware)
-
-
 # Create database tables (consider using migrations instead)
 BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 
