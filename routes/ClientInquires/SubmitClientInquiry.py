@@ -28,7 +28,7 @@ API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 FRONTEND_URL = EnvConfig.FRONTEND_URL.strip()
 
-publicInquiryRouter = APIRouter(prefix="/inquires", tags=["clientInquires"])
+publicInquiryRouter = APIRouter(prefix="/inquiries", tags=["clientInquires"])
 
 
 @publicInquiryRouter.post(path="/submit", status_code=status.HTTP_200_OK)
