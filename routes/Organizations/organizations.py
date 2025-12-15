@@ -22,6 +22,9 @@ from BackgroundDataHandler.initialDataSeeder import (
     project_status_initial_data_seeder,
     roles_permission_initial_data_seeder_function,
 )
+from BackgroundTasks.BackgroundMailInitiator.Background_Mail_Initiator import (
+    OnboardingCompletedMailSending,
+)
 from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
 from Email.HtmlEmailBody import CreatePasswordHtmlBody
@@ -36,9 +39,6 @@ from Helper.helper import (
     urlsafe_data_encoding_function,
 )
 from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
-from BackgroundTasks.BackgroundMailInitiator.Background_Mail_Initiator import (
-    OnboardingCompletedMailSending,
-)
 from PydanticModels.HelperPydanticModel import (
     CreatePasswordPydanticBody,
 )

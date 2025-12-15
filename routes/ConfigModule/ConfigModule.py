@@ -1277,7 +1277,7 @@ async def Add_Edit_Roles_Permissions(
                         "success": False,
                     },
                 )
-            
+
             created_by_user = model_to_filtered_dict(
                 personal_info, ["user_id", "first_name", "last_name"]
             )
@@ -1293,7 +1293,6 @@ async def Add_Edit_Roles_Permissions(
             )
             db.add(config_role_module)
             db.flush()
-
 
             modules = build_hierarchy(role_permission_module)
 
