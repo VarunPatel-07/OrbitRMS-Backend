@@ -61,8 +61,10 @@ celerybeat-schedule
 *.sage.py
 
 # dotenv environment variables file
-.env
+*.env
+.env.production
 .venv
+/test
 env/
 venv/
 ENV/

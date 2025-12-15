@@ -5,11 +5,10 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
+
 from fastapi.responses import Response
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
-from starlette.middleware.sessions import SessionMiddleware
 
 from BackgroundDataHandler.DataSeederHelper import initializing_OrbitAdmin_On_App_start
 from Config.EnvConfig import EnvConfig
@@ -25,6 +24,7 @@ from routes.Admin.Organization.AdminFeedController import adminFeedControl
 from routes.Admin.Organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.Admin.Organization.organization import adminOrgRoute
 from routes.ApiManager.ApiManager import ApiManager
+from Middleware.CustomCorsMiddleWare import CustomCorsModule
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -63,59 +63,18 @@ app = FastAPI(
     docs_url=None if BACKEND_APP_ENVIRONMENT == "PRODUCTION" else "/docs",
     openapi_url=None if BACKEND_APP_ENVIRONMENT == "PRODUCTION" else "/openapi.json",
 )
-public_api_app = FastAPI(
-    title="OrbitRMS",
-    description="Detailed API description.",
-    version="1.0.0",
-    contact={
-        "name": "Varun Patel",
-        "email": "varunspatelo7@gmail.com",
-    },
-    redoc_url=None,
-    docs_url=None,
-    openapi_url=None,
-)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=(
-        [
-            "https://app.orbitrms.com",
-            "https://admin.orbitrms.com",
-        ]
-        if BACKEND_APP_ENVIRONMENT == "PRODUCTION"
-        else ["*"]
-    ),  # Allows all origins. You can specify specific origins instead of "*".
-    allow_credentials=True if BACKEND_APP_ENVIRONMENT == "PRODUCTION" else False,
-    allow_methods=(
-        ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-        if BACKEND_APP_ENVIRONMENT == "PRODUCTION"
-        else ["*"]
-    ),  # Allows all HTTP methods (GET, POST, PUT, etc.)
-    allow_headers=["*"],  # Allows all headers
-)
-
-public_api_app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["POST", "OPTIONS"],
-    allow_headers=["*"],
-    allow_credentials=False,
-)
-# if not EnvConfig.BACKEND_APP_ENVIRONMENT == "DEVELOPMENT":
-
-#     app.add_middleware(RecaptchaMiddleware)
+app.add_middleware(CustomCorsModule)
 
 
 # Create database tables (consider using migrations instead)
 BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 
 
-public_api_app.include_router(publicInquiryRouter)
-app.mount("/public/v1", public_api_app)
+app.include_router(publicInquiryRouter)
 # Include application routes
 app.include_router(authRoutes)
 app.include_router(orgRouter)
