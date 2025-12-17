@@ -1,5 +1,3 @@
-import os
-
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -22,11 +20,13 @@ from BackgroundDataHandler.initialDataSeeder import (
     project_status_initial_data_seeder,
     roles_permission_initial_data_seeder_function,
 )
+from Helper.jwtHelper import hash_passwords
 from BackgroundTasks.BackgroundMailInitiator.Background_Mail_Initiator import (
     OnboardingCompletedMailSending,
 )
 from Config.EnvConfig import EnvConfig
 from Database.Database import db_dependencies
+from Database.CacheDatabase import cache_database
 from Email.HtmlEmailBody import CreatePasswordHtmlBody
 from Helper.createModelInstance import cerate_model_instance
 from Helper.emailSender import EmailSchema, email_sender_function
@@ -106,9 +106,13 @@ async def verify_organization(
 
             encrypted_user_id = urlsafe_data_encoding_function(user.id)
 
+
             reset_password_token = generatePasswordResetToken()
 
-            user.reset_password_token = reset_password_token
+            hash_token = hash_passwords(reset_password_token)
+
+            password_cache_key = f"set_reset_password_token_{user.id}"
+            await cache_database.set(password_cache_key, hash_token, ex=600)
 
             encrypted_token = urlsafe_data_encoding_function(reset_password_token)
 

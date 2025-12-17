@@ -5,7 +5,6 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
-
 from fastapi.responses import Response
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
@@ -15,6 +14,7 @@ from Config.EnvConfig import EnvConfig
 from Database.CacheDatabase import cache_database
 from Database.Database import DATABASE_ENGINE, SessionLocal, database
 from Helper.helper import get_client_ip
+from Middleware.CustomCorsMiddleWare import CustomCorsModule
 from Middleware.RecaptchaVerifier import RecaptchaMiddleware
 from RateLimiting import custom_rate_limit_handler, limiter
 from routes.Admin.Auth.authentication import adminAuthRoute
@@ -24,7 +24,6 @@ from routes.Admin.Organization.AdminFeedController import adminFeedControl
 from routes.Admin.Organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.Admin.Organization.organization import adminOrgRoute
 from routes.ApiManager.ApiManager import ApiManager
-from Middleware.CustomCorsMiddleWare import CustomCorsModule
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
