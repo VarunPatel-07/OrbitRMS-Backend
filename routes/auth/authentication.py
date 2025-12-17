@@ -1,5 +1,4 @@
 import json
-import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -27,6 +26,7 @@ from Config.EnvConfig import EnvConfig
 from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 from Database.CacheDatabase import cache_database
 from Database.Database import db_dependencies
+from Database.CacheDatabase import cache_database
 from Email.HtmlEmailBody import (
     ResetPasswordHtmlBody,
     ResetPasswordInstructionHtmlBody,
@@ -200,7 +200,21 @@ async def create_password(
 
         decrypted_token = urlsafe_data_decoding_function(token)
 
-        compare_token = decrypted_token == user.reset_password_token
+        password_cache_key = f"set_reset_password_token_{user.id}"
+        reset_password_token = await cache_database.get(password_cache_key)
+
+        if not reset_password_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "This link is no longer valid. Please try again.",
+                    "success": False,
+                },
+            )
+
+        compare_token = verify_password(
+            plain_password=decrypted_token, hashed_password=reset_password_token
+        )
 
         if compare_token:
 
@@ -221,9 +235,11 @@ async def create_password(
 
             user.password = hash_password
             user.password_created = True
-            user.reset_password_token = ""
+
             db.commit()
             db.refresh(user)
+
+            await cache_database.delete(password_cache_key)
 
             return {
                 "message": f"the password is {type} successfully",
@@ -1017,9 +1033,14 @@ async def HandelPasswordReset(
 
         reset_password_token = generatePasswordResetToken()
 
-        user.reset_password_token = reset_password_token
+        hash_token = hash_passwords(reset_password_token)
+
+        password_cache_key = f"set_reset_password_token_{user.id}"
+        await cache_database.set(password_cache_key, hash_token, ex=600)
 
         encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+
+        hash_token = hash_passwords(reset_password_token)
 
         db.commit()
         db.refresh(user)
