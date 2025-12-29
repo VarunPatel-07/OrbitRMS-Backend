@@ -23,7 +23,7 @@ from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.createModelInstance import cerate_model_instance
 from utils.helper.helper import model_to_filtered_dict
 

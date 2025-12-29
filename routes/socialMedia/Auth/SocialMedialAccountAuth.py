@@ -10,10 +10,10 @@ from sqlalchemy import and_, asc, desc, func
 from sqlalchemy.orm import joinedload
 
 from config.EnvConfig import EnvConfig
-from constant.constant import USER_FRIENDLY_ERRORS
+from constants.constant import USER_FRIENDLY_ERRORS
 from database.Database import db_dependencies
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.helper import redirect_with_error
 
 from ..Services.FacebookService import FacebookService

@@ -16,7 +16,7 @@ from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import NewClientInquiryAccruedMail
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
     is_valid_type,

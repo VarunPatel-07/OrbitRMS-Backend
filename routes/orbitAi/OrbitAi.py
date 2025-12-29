@@ -17,7 +17,7 @@ from openai import OpenAI
 
 from config.EnvConfig import EnvConfig
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 
 cloudinary.config(
     cloud_name=EnvConfig.CLOUDINARY_CLOUD_NAME,

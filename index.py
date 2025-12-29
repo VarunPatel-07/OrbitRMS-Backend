@@ -9,7 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 
 from config.EnvConfig import EnvConfig
-from constant.constant import SERVER_ERROR_STATUS_CODE
+from constants.constant import SERVER_ERROR_STATUS_CODE
 from database.CacheDatabase import cache_database
 from database.Database import DATABASE_ENGINE, SessionLocal, database
 from jobs.backgroundHandler.DataSeederHelper import initializing_OrbitAdmin_On_App_start
@@ -18,7 +18,7 @@ from jobs.schedulers.BulkLikeFeeder import BulkLikeFeeder
 from jobs.schedulers.MaintenanceModeScheduler import ping_maintenance_mode_scheduler
 from middleware.CustomCorsMiddleWare import CustomCorsModule
 from models.sql.Models import BaseModel
-from RateLimiting import custom_rate_limit_handler, limiter
+from middleware.RateLimiting import custom_rate_limit_handler, limiter
 from routes.admin.auth.authentication import adminAuthRoute
 from routes.admin.imageUploadation.ImageUploadation import adminImgRoute
 from routes.admin.logsManager.logsController import logsController

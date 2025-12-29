@@ -22,7 +22,7 @@ ORBIT_CONTACT_EMAIL = EnvConfig.ORBIT_CONTACT_EMAIL.strip()
 def VerifyEmailHtmlBody(data: VerifyEmailPydanticBody):
 
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "Html", "email-verification.html")
+    path = os.path.join(base_url, "html", "email-verification.html")
     with open(path, "r") as file:
         html_content = file.read()
     html_content = (
@@ -41,7 +41,7 @@ def VerifyEmailHtmlBody(data: VerifyEmailPydanticBody):
 
 def CreatePasswordHtmlBody(data: CreatePasswordPydanticBody):
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "Html", "create-password.html")
+    path = os.path.join(base_url, "html", "create-password.html")
     with open(path, "r") as file:
         html_content = file.read()
 
@@ -58,7 +58,7 @@ def CreatePasswordHtmlBody(data: CreatePasswordPydanticBody):
 
 def ResetPasswordHtmlBody(url: str):
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "Html", "reset-password.html")
+    path = os.path.join(base_url, "html", "reset-password.html")
     with open(path, "r") as file:
         html_content = file.read()
 
@@ -75,7 +75,7 @@ def ResetPasswordHtmlBody(url: str):
 def ResetPasswordInstructionHtmlBody(data: NewClientInquiryMailPydanticBody):
 
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "Html", "rest-password-instruction.html")
+    path = os.path.join(base_url, "html", "rest-password-instruction.html")
     with open(path, "r") as file:
         html_content = file.read()
     html_content = (
@@ -96,7 +96,7 @@ def ResetPasswordInstructionHtmlBody(data: NewClientInquiryMailPydanticBody):
 def WelcomeMailForNewlyAddedEmployee(data: WelcomeEmployeeMailModel):
 
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "Html", "welcome-new-user-mail.html")
+    path = os.path.join(base_url, "html", "welcome-new-user-mail.html")
     with open(path, "r") as file:
         html_content = file.read()
     html_content = (
@@ -117,7 +117,7 @@ def WelcomeMailForNewlyAddedEmployee(data: WelcomeEmployeeMailModel):
 def WelcomeMailNewOrganization(data: NewOrganizationCreatedSuccessFully):
 
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "Html", "welcome-new-org.html")
+    path = os.path.join(base_url, "html", "welcome-new-org.html")
     with open(path, "r") as file:
         html_content = file.read()
     html_content = (
@@ -256,7 +256,7 @@ def NewClientInquiryAccruedMail(
 ):
 
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "Html", "new-client-inquiry-mail.html")
+    path = os.path.join(base_url, "html", "new-client-inquiry-mail.html")
 
     with open(path, "r") as file:
         html_content = file.read()
@@ -281,7 +281,7 @@ def NewClientInquiryAccruedMail(
 def NewAdminLoginGeneratedOtp(Otp_Code: str):
 
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "Html", "admin-access-code.html")
+    path = os.path.join(base_url, "html", "admin-access-code.html")
     with open(path, "r") as file:
         html_content = file.read()
     html_content = (

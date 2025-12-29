@@ -20,7 +20,7 @@ from models.pydantic.Admin.AdminAuthenticationModel import (
     ScheduleMaintenanceModeData,
 )
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.helper import (
     model_to_filtered_dict,
     parse_date,

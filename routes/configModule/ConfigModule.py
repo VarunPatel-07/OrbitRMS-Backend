@@ -24,7 +24,7 @@ from models.pydantic.ConfigModule.ConfigModule import (
     RoleAssociatedPermissionModule,
 )
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.helper import model_to_filtered_dict
 
 load_dotenv(override=True)

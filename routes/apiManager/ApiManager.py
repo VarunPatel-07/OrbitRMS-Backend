@@ -17,7 +17,7 @@ from database.Database import db_dependencies
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.pydantic.Organizations.organizations import AuthorizedRecipientEmail
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.helper import generate_api_secrets_api_key, model_to_filtered_dict
 
 load_dotenv(override=True)

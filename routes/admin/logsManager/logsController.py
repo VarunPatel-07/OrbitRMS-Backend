@@ -15,7 +15,7 @@ from database.Database import db_dependencies
 from middleware.verifyToken import verify_token
 from models.pydantic.Admin.AdminAuthenticationModel import DownloadFileApiPydanticModal
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.responseMessages import AuthErrorMessage
 
 logsController = APIRouter(prefix="/app/v1/admin/monitoring")

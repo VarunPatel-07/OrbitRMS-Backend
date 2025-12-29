@@ -2,7 +2,7 @@ import re
 
 from babel.dates import get_date_format
 
-from constant.countryLocaleMapping import country_locale_mapping, dependent_date_format
+from constants.countryLocaleMapping import country_locale_mapping, dependent_date_format
 
 
 def get_locale_from_country_code(country_code):

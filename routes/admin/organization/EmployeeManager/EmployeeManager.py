@@ -12,7 +12,7 @@ from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from middleware.verifyToken import verify_token
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields
 from utils.responseMessages.AuthErrorMessage import ADMIN_NOT_FOUND
 

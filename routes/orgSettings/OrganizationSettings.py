@@ -27,7 +27,7 @@ from models.pydantic.OrganizationSettings.OrganizationSettings import (
     CreateLeaveTypePydanticModel,
 )
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields, model_to_filtered_dict
 
 orgSettings = APIRouter(prefix="/app/v1/org-setting", tags=["org-setting"])

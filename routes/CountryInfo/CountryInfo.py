@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from config.EnvConfig import EnvConfig
 from database.CacheDatabase import cache_database
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.formateDateOnTheBaseOfTheCountry import (
     formateDateOnTheBaseOfTheCountry,
 )

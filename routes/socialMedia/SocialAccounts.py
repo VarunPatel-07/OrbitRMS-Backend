@@ -28,7 +28,7 @@ from models.pydantic.SocialMediaModule.SocialMediaModule import (
     SocialMediaPostBackgroundTaskData,
 )
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.helper import model_to_filtered_dict
 
 from .Services.FacebookService import FacebookService

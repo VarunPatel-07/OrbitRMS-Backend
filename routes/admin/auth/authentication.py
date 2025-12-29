@@ -17,7 +17,7 @@ from sqlalchemy.orm import joinedload
 from user_agents import parse as parse_user_agent
 
 from config.EnvConfig import EnvConfig
-from constant.constant import (
+from constants.constant import (
     MAX_RESET_ATTEMPTS,
     RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME,
     RESET_TTL_SECONDS,
@@ -31,7 +31,7 @@ from models.pydantic.Admin.AdminAuthenticationModel import (
     AdminVerifyOTP,
 )
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.createModelInstance import cerate_model_instance
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (

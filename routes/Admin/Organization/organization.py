@@ -26,7 +26,7 @@ from models.pydantic.HelperPydanticModel import (
     VerifyEmailPydanticBody,
 )
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
     filter_fields,

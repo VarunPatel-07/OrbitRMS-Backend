@@ -20,7 +20,7 @@ from sqlalchemy.sql import and_, func, or_
 from user_agents import parse as parse_user_agent
 
 from config.EnvConfig import EnvConfig
-from constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
+from constants.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
 from jobs.backgroundTasks.authentication.AuthBackgroundTask import (
@@ -46,7 +46,7 @@ from models.pydantic.HelperPydanticModel import (
     VerifyEmailPydanticBody,
 )
 from models.sql import Models
-from RateLimiting import limiter
+from middleware.RateLimiting import limiter
 from utils.helper.createModelInstance import cerate_model_instance
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
