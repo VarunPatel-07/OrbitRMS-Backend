@@ -1,0 +1,41 @@
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel
+
+
+class AdminSignInPayload(BaseModel):
+    email: str
+    password: str
+
+
+class AdminVerifyOTP(BaseModel):
+    otp: str
+
+
+class MaintenanceModeData(BaseModel):
+    message: str
+    reason: str
+
+
+class ScheduleMaintenanceModeData(BaseModel):
+    message: str
+    reason: str
+    started_at: str
+    ended_at: str
+
+
+class ScheduleMaintenanceModeCancellationData(BaseModel):
+    reason: str
+
+
+class MaintenanceModeMessageData(BaseModel):
+    message: str
+
+
+class ResendVerificationMail(BaseModel):
+    email: str
+
+
+class DownloadFileApiPydanticModal(BaseModel):
+    file_path: str
+    file_name: str

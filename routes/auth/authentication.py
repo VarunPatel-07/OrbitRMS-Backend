@@ -19,22 +19,37 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, func, or_
 from user_agents import parse as parse_user_agent
 
-from BackgroundTasks.Authentication.AuthBackgroundTask import (
+from config.EnvConfig import EnvConfig
+from constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
+from database.CacheDatabase import cache_database
+from database.Database import db_dependencies
+from jobs.backgroundTasks.authentication.AuthBackgroundTask import (
     HandelUserSignUpInBackGround,
 )
-from Config.EnvConfig import EnvConfig
-from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
-from Database.CacheDatabase import cache_database
-from Database.Database import db_dependencies
-from Database.CacheDatabase import cache_database
-from Email.HtmlEmailBody import (
+from mailer.HtmlEmailBody import (
     ResetPasswordHtmlBody,
     ResetPasswordInstructionHtmlBody,
     VerifyEmailHtmlBody,
 )
-from Helper.createModelInstance import cerate_model_instance
-from Helper.emailSender import EmailSchema, email_sender_function
-from Helper.helper import (
+from middleware.UserAuthenticator import UserAuthenticatorMiddleware
+from middleware.verifyToken import verify_token
+from models.pydantic.authentication.AuthenticationModels import (
+    CreatePassword,
+    PasswordResetPydanticModel,
+    RegisterOrganizationInfo,
+    ResendVerificationMail,
+    SignIn,
+    VerifyMetaTag,
+)
+from models.pydantic.HelperPydanticModel import (
+    ResetPasswordInstructionPydanticBody,
+    VerifyEmailPydanticBody,
+)
+from models.sql import Models
+from RateLimiting import limiter
+from utils.helper.createModelInstance import cerate_model_instance
+from utils.helper.emailSender import EmailSchema, email_sender_function
+from utils.helper.helper import (
     filter_fields,
     generatePasswordResetToken,
     get_client_ip,
@@ -43,23 +58,7 @@ from Helper.helper import (
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
 )
-from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
-from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
-from Middleware.verifyToken import verify_token
-from PydanticModels.authentication.AuthenticationModels import (
-    CreatePassword,
-    PasswordResetPydanticModel,
-    RegisterOrganizationInfo,
-    ResendVerificationMail,
-    SignIn,
-    VerifyMetaTag,
-)
-from PydanticModels.HelperPydanticModel import (
-    ResetPasswordInstructionPydanticBody,
-    VerifyEmailPydanticBody,
-)
-from RateLimiting import limiter
-from SqlModels import Models
+from utils.helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
 
 load_dotenv(override=True)
 
@@ -296,11 +295,13 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
             .first()
         )
 
+        print(user)
+
         if not user:
 
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid Email Or Password", "success": False},
+                detail={"message": "User Not Found", "success": False},
             )
 
         check_password = verify_password(
