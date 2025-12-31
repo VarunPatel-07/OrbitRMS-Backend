@@ -26,6 +26,8 @@ from jobs.backgroundHandler.initialDataSeeder import (
 from jobs.backgroundTasks.emailDispatcher.Background_Mail_Initiator import (
     OnboardingCompletedMailSending,
 )
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+from constants.constant import SUCCESS
 from mailer.HtmlEmailBody import CreatePasswordHtmlBody
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.pydantic.HelperPydanticModel import (
@@ -84,7 +86,7 @@ async def verify_organization(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Organization Not Found", "success": False},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
         if not organization.email_verified:
             organization.email_verified = True
@@ -99,8 +101,8 @@ async def verify_organization(
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={
-                        "message": "User Not Found",
-                        "success": False,
+                        "message": ERROR_MESSAGE.USER_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -156,8 +158,8 @@ async def verify_organization(
             background_task.add_task(client_form_field_initial_data_seeder, db, decrypted_org_id)
 
             return {
-                "message": "Organization Is Verified Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.ORGANIZATION_VERIFIED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": {
                     "alreadyVerified": False,
                 },
@@ -171,10 +173,9 @@ async def verify_organization(
 
             encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
 
-            # todo need to add email
             return {
-                "message": "Organization already Verified",
-                "success": True,
+                "message": ERROR_MESSAGE.ALREADY_VERIFIED,
+                "success": SUCCESS.TRUE,
                 "data": {
                     "alreadyVerified": True,
                 },
@@ -186,8 +187,8 @@ async def verify_organization(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Adding Employee",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_VERIFYING,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -280,15 +281,15 @@ async def onboard_organization(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Organization Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
         organization.status = data.status
         organization.organization_created = True
 
-        updated_general_info = update_model_data(
+        update_model_data(
             db=db,
             model=Models.OrganizationGeneralInfo,
             model_id=organization_id,
@@ -366,7 +367,7 @@ async def onboard_organization(
 
         return {
             "message": f"successfully onboarded {data.general_info.organization_name} organization",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -375,7 +376,8 @@ async def onboard_organization(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while onboarding the organization",
+                "message": ERROR_MESSAGE.ERROR_WHILE_ONBOARDING,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -416,8 +418,8 @@ async def fetch_organization_info(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Unable To Find Organization With This Organization Id",
-                    "success": False,
+                    "message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -460,9 +462,9 @@ async def fetch_organization_info(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while fetching the organization info",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ORGANIZATION,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -518,8 +520,8 @@ async def fetch_reporting_manager(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while fetching All The Reporting Manager",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_REPORTING_MANAGER,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )

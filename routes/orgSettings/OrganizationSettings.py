@@ -15,7 +15,7 @@ from fastapi import (
 )
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from jobs.backgroundTasks.leavesModule.LeavesModule import (
@@ -91,13 +91,13 @@ async def FetchTheInfoOfTheOrganization(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Organization Not Found", "success": False},
+                detail={"message": "Organization Not Found", "success": SUCCESS.FALSE},
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
         return {
             "message": "Info Fetched Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": {
                 **model_to_filtered_dict(organization),
                 "general_info": (
@@ -139,7 +139,7 @@ async def FetchTheInfoOfTheOrganization(
             detail={
                 "message": "error while fetching All The Reporting Manager",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -160,7 +160,7 @@ async def AddEditHoliday(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
                     "message": "Invalid type. Must be 'add' or 'edit'",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -180,7 +180,7 @@ async def AddEditHoliday(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                         "message": "Unable To Find Config Module",
                     },
                 )
@@ -200,7 +200,7 @@ async def AddEditHoliday(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "message": "Holiday With This Name Is Already Exist",
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                     },
                 )
             created_by_user = model_to_filtered_dict(
@@ -223,7 +223,7 @@ async def AddEditHoliday(
             db.add(holiday)
             db.commit()
             db.refresh(holiday)
-            return {"success": True, "message": "Holiday Added Successfully"}
+            return {"success": SUCCESS.TRUE, "message": "Holiday Added Successfully"}
 
         else:
             if type == "edit" and not id:
@@ -231,7 +231,7 @@ async def AddEditHoliday(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "message": "ID is required for edit operation",
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -251,7 +251,7 @@ async def AddEditHoliday(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "message": "Holiday With This Name Is Already Exist",
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -266,7 +266,7 @@ async def AddEditHoliday(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
                         "message": "Holiday Not Found",
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -286,7 +286,7 @@ async def AddEditHoliday(
             db.commit()
             db.refresh(holiday)
 
-            return {"success": True, "message": "Holiday Updated Successfully"}
+            return {"success": SUCCESS.TRUE, "message": "Holiday Updated Successfully"}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -295,7 +295,7 @@ async def AddEditHoliday(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Add Status Right Now",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -329,7 +329,7 @@ async def Fetch_Holiday(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": "Config Module Not Found",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -356,12 +356,12 @@ async def Fetch_Holiday(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
                     "message": "Invalid Input",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
         return {
-            "success": True,
+            "success": SUCCESS.TRUE,
             "message": "Holiday Fetched Successfully",
             "data": [model_to_filtered_dict(holiday) for holiday in holidays],
         }
@@ -373,7 +373,7 @@ async def Fetch_Holiday(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Fetch Holiday",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -401,12 +401,12 @@ async def delete_holiday(
         if not holidays:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Holiday Not Found", "success": False},
+                detail={"message": "Holiday Not Found", "success": SUCCESS.FALSE},
             )
         db.delete(holidays)
         db.commit()
 
-        return {"message": "Holiday Deleted Successfully", "success": True}
+        return {"message": "Holiday Deleted Successfully", "success": SUCCESS.TRUE}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -415,7 +415,7 @@ async def delete_holiday(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Delete Holiday",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -447,7 +447,7 @@ async def create_leave_type(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": "Leave Type With This Name Or Code AllReady Exist",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -462,7 +462,7 @@ async def create_leave_type(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": "Organization Not Found",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -499,7 +499,7 @@ async def create_leave_type(
         )
 
         return {
-            "success": True,
+            "success": SUCCESS.TRUE,
             "message": f"Leave type '{leave_data.leave_name}' created successfully.",
             "data": {"leave_data": leave_data},
         }
@@ -511,7 +511,7 @@ async def create_leave_type(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable Add Leave Type",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -538,7 +538,7 @@ async def fetch_all_leave_types(
         data = [model_to_filtered_dict(_data) for _data in query_data]
 
         return {
-            "success": True,
+            "success": SUCCESS.TRUE,
             "message": "Leaves Type Fetched Successfully",
             "data": data,
         }
@@ -550,7 +550,7 @@ async def fetch_all_leave_types(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable Add Leave Type",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

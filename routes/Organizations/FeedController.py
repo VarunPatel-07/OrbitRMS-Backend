@@ -30,6 +30,8 @@ from models.pydantic.Organizations.FeedControllerPydenticModal import FeedCommen
 from models.sql import Models
 from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields, model_to_filtered_dict
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+from constants.constant import SUCCESS
 
 load_dotenv(override=True)
 
@@ -64,7 +66,7 @@ async def AddEditFeedPostController(
         if type not in ["add", "edit"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-                detail={"message": "Only Add Or Edit Is Allowed", "success": False},
+                detail={"message": ERROR_MESSAGE.ONLY_ADD_OR_EDIT_ALLOWED, "success": SUCCESS.FALSE},
             )
 
         if type == "add":
@@ -84,8 +86,8 @@ async def AddEditFeedPostController(
             db.commit()
 
             return {
-                "message": "Post Uploaded Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.POST_UPLOADED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": model_to_filtered_dict(post_data),
             }
 
@@ -94,8 +96,8 @@ async def AddEditFeedPostController(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "ID is required for edit operation",
-                        "success": False,
+                        "message": ERROR_MESSAGE.ID_REQUIRED_FOR_EDIT,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -109,8 +111,8 @@ async def AddEditFeedPostController(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Post With This Id Not Found",
-                        "success": False,
+                        "message": ERROR_MESSAGE.POST_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -118,8 +120,8 @@ async def AddEditFeedPostController(
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={
-                        "message": "You Are Not Authorised",
-                        "success": False,
+                        "message": ERROR_MESSAGE.NOT_AUTHORIZED,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -132,8 +134,8 @@ async def AddEditFeedPostController(
             db.refresh(existing_post)
 
             return {
-                "message": "Post Updated Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.POST_UPDATED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": model_to_filtered_dict(existing_post),
             }
 
@@ -146,9 +148,9 @@ async def AddEditFeedPostController(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Posting A Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_POSTING,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -190,8 +192,8 @@ async def FetchTheOrganizationPost(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Invalid Input",
-                    "success": False,
+                    "message": ERROR_MESSAGE.INVALID_INPUT,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -256,8 +258,8 @@ async def FetchTheOrganizationPost(
             )
 
         return {
-            "message": "Post Fetched Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.POST_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": _data,
         }
 
@@ -267,9 +269,9 @@ async def FetchTheOrganizationPost(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Fetching Posts",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_POSTS,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -292,15 +294,15 @@ async def HandelDeletePostFunction(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Post With This Id Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.POST_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
         db.delete(post)
         db.commit()
 
-        return {"success": True, "message": "Post Deleted Successfully"}
+        return {"success": SUCCESS.TRUE, "message": SUCCESS_MESSAGE.POST_DELETED_SUCCESSFULLY}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -308,9 +310,9 @@ async def HandelDeletePostFunction(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Deleting a Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_DELETING_POST,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -338,8 +340,8 @@ async def HandelLikeUnlikePostFunction(
             await cache_database.rpush("likes_queue", json.dumps(event))
 
             return {
-                "message": "Like removed",
-                "success": True,
+                "message": SUCCESS_MESSAGE.LIKE_REMOVED,
+                "success": SUCCESS.TRUE,
                 "data": {"liked": False, "action": "unlike"},
             }
 
@@ -351,8 +353,8 @@ async def HandelLikeUnlikePostFunction(
         await cache_database.rpush("likes_queue", json.dumps(event))
 
         return {
-            "message": "Like registered",
-            "success": True,
+            "message": SUCCESS_MESSAGE.LIKE_REGISTERED,
+            "success": SUCCESS.TRUE,
             "data": {"liked": True, "action": "like"},
         }
 
@@ -362,9 +364,9 @@ async def HandelLikeUnlikePostFunction(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Deleting a Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_LIKING_POST,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -395,8 +397,8 @@ async def HandelLikeUnlikePostFunction(
         await cache_database.rpush("comment_queue", json.dumps(event))
 
         return {
-            "message": "Comment registered",
-            "success": True,
+            "message": SUCCESS_MESSAGE.COMMENT_REGISTERED,
+            "success": SUCCESS.TRUE,
             "data": {
                 "commented": True,
                 "user_id": user.id,
@@ -409,9 +411,9 @@ async def HandelLikeUnlikePostFunction(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Deleting a Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_COMMENTING,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -441,8 +443,8 @@ async def HandelCommentReplayToggler(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Unable To Find The Post",
-                    "success": False,
+                    "message": ERROR_MESSAGE.UNABLE_TO_FIND_POST,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -454,8 +456,8 @@ async def HandelCommentReplayToggler(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Unable To Find The Comment",
-                    "success": False,
+                    "message": ERROR_MESSAGE.UNABLE_TO_FIND_COMMENT,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -470,7 +472,7 @@ async def HandelCommentReplayToggler(
         db.add(comment_reply)
         db.commit()
 
-        return {"message": "Comment Added Successfully", "success": True}
+        return {"message": SUCCESS_MESSAGE.COMMENT_ADDED_SUCCESSFULLY, "success": SUCCESS.TRUE}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -478,9 +480,9 @@ async def HandelCommentReplayToggler(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Deleting a Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_COMMENTING,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -564,7 +566,7 @@ async def FetchLikesAndComment(
         if type not in ["likes", "comments"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-                detail={"message": "Only Like Or Comment Is Allowed", "success": False},
+                detail={"message": ERROR_MESSAGE.ONLY_LIKE_OR_COMMENT_ALLOWED, "success": SUCCESS.FALSE},
             )
 
         cache_data_key = f"feed_post_{post_id}_{type}"
@@ -579,7 +581,7 @@ async def FetchLikesAndComment(
             # )
             return {
                 "message": f"{type} Fetched Successfully. Cached!",
-                "success": True,
+                "success": SUCCESS.TRUE,
                 "data": cached_Data,
             }
 
@@ -621,8 +623,8 @@ async def FetchLikesAndComment(
                     ex=3600,
                 )
             return {
-                "message": "Likes Fetched Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.LIKES_FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": {
                     "likes": likes_info_array,
                     "total_likes": [like.id for like in query_data.likes],
@@ -670,8 +672,8 @@ async def FetchLikesAndComment(
             )
 
             return {
-                "message": "Comments Fetched Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.COMMENTS_FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": {
                     "comments": comment_info_array,
                     "total_comments": [comment.id for comment in all_comment],
@@ -684,9 +686,9 @@ async def FetchLikesAndComment(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Deleting a Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_POSTS,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -731,8 +733,8 @@ async def FetchLikesAndComment(
         parent_replies_array = get_replies(comment_id, comment_replies)
 
         return {
-            "message": "Comments Fetched Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.COMMENTS_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": parent_replies_array[start:end],
         }
 
@@ -742,8 +744,8 @@ async def FetchLikesAndComment(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Deleting a Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_POSTS,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )

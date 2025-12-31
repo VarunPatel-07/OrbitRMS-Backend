@@ -7,7 +7,8 @@ import httpx
 import requests
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, Request, status
-
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.CacheDatabase import cache_database
 from middleware.RateLimiting import limiter
@@ -37,8 +38,8 @@ async def fetch_data(url, retries=3, timeout=20):
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail={
-                        "message": "Error Fetching Data",
-                        "success": False,
+                        "message": ERROR_MESSAGE.ERROR_FETCHING_DATA,
+                        "success": SUCCESS.FALSE,
                         "error": str(e),
                     },
                 )
@@ -60,7 +61,11 @@ async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="
             cached_sorted_data = sorted(
                 cached_Data, key=lambda x: x["country_name"], reverse=(order.lower() == "desc")
             )
-            return {"message": "Fetched Successfully", "success": True, "data": cached_sorted_data}
+            return {
+                "message": SUCCESS_MESSAGE.COUNTRY_INFO_FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
+                "data": cached_sorted_data,
+            }
 
         response = requests.get(REST_API_URL)
 
@@ -93,24 +98,24 @@ async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="
 
             await cache_database.set(cache_data_key, json.dumps(sortedData), ex=30 * 24 * 3600)
             return {
-                "message": "Fetched Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.COUNTRY_INFO_FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": sortedData,
             }
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
-                    "message": "Error Accrued While Fetching The Country Contact Info",
-                    "success": False,
+                    "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_COUNTRY,
+                    "success": SUCCESS.FALSE,
                 },
             )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Fetching The Country",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_COUNTRY,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -134,8 +139,8 @@ async def GetCountryInfo(
             cached_reverse = order.lower() == "desc"
             cached_statesData.sort(key=lambda x: x["state_name"], reverse=cached_reverse)
             return {
-                "message": "Fetched Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.COUNTRY_INFO_FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": {
                     "country": country,
                     "states": cached_statesData,
@@ -157,7 +162,7 @@ async def GetCountryInfo(
             if "geonames" not in states_data or not states_data["geonames"]:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"message": "No states found for this country", "success": False},
+                    detail={"message": ERROR_MESSAGE.NO_STATE_FOUND, "success": SUCCESS.FALSE},
                 )
 
         states = states_data["geonames"]
@@ -186,8 +191,8 @@ async def GetCountryInfo(
         await cache_database.set(cache_data_key, json.dumps(state_array), ex=30 * 24 * 3600)
 
         return {
-            "message": "Fetched Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.COUNTRY_INFO_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {
                 "country": country,
                 "states": state_array,
@@ -197,8 +202,8 @@ async def GetCountryInfo(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while fetching the state date of the country",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_COUNTRY,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -220,8 +225,8 @@ async def GetStateInfo(
             cached_reverse = order.lower() == "desc"
             sorted_cached_data = sorted(formatted_cached_data, reverse=cached_reverse)
             return {
-                "message": "Fetched Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": {
                     "country": country,
                     "states": state_code,
@@ -237,7 +242,7 @@ async def GetStateInfo(
         if "geonames" not in cities_data or not cities_data["geonames"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "No city found for this state", "success": False},
+                detail={"message": ERROR_MESSAGE.NO_CITY_FOUND, "success": SUCCESS.FALSE},
             )
         cities = cities_data["geonames"]
 
@@ -260,8 +265,8 @@ async def GetStateInfo(
         sorted_data = sorted(cities_array, reverse=reverse)
         await cache_database.set(cached_data_key, json.dumps(cities_array), ex=30 * 24 * 3600)
         return {
-            "message": "Fetched Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {
                 "country": country,
                 "states": state_code,
@@ -273,8 +278,8 @@ async def GetStateInfo(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while fetching the state date of the country",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_STATE_DATA,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -289,8 +294,8 @@ async def getCountryFormats(request: Request, country_code: str = Query(..., ali
         if cached_data:
             formatted_cached_data = json.loads(cached_data)
             return {
-                "message": "Fetched Successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
                 "data": {
                     "postal_code_formate": formatted_cached_data.get("postal_code_formate"),
                     "timeZones": formatted_cached_data.get("timeZones"),
@@ -324,8 +329,8 @@ async def getCountryFormats(request: Request, country_code: str = Query(..., ali
         await cache_database.set(cached_data_key, json.dumps(data), ex=30 * 24 * 3600)
 
         return {
-            "message": "Fetched Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {
                 "postal_code_formate": postalCode,
                 "timeZones": timeZones,
@@ -341,8 +346,8 @@ async def getCountryFormats(request: Request, country_code: str = Query(..., ali
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while fetching the state date of the country",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_STATE_DATA,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -356,7 +361,7 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
         cache_data = await cache_database.get(cache_data_key)
         if cache_data:
             sorted_cached_data = json.loads(cache_data)
-            return {"message": "Fetched Successfully", "success": True, "data": sorted_cached_data}
+            return {"message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY, "success": SUCCESS.TRUE, "data": sorted_cached_data}
 
         response = await fetch_data(url=REST_API_URL)
 
@@ -393,13 +398,13 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
         data.sort(key=lambda x: x["country_name"], reverse=reverse)
 
         await cache_database.set(cache_data_key, json.dumps(data), ex=30 * 24 * 3600)
-        return {"message": "Fetched Successfully", "success": True, "data": data}
+        return {"message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY, "success": SUCCESS.TRUE, "data": data}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Fetching The Country",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_COUNTRY,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

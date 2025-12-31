@@ -1,3 +1,4 @@
+from curses import ERR
 import json
 import os
 from datetime import datetime
@@ -8,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
-
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
@@ -57,8 +59,8 @@ async def project_status_function(
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
-                    "message": "Invalid type. Must be 'add' or 'edit'",
-                    "success": False,
+                    "message": ERROR_MESSAGE.INVALID_TYPE,
+                    "success": SUCCESS.FALSE,
                 },
             )
         #
@@ -91,8 +93,8 @@ async def project_status_function(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Project Status With This Name Is Already Exist",
-                    "success": False,
+                    "message": ERROR_MESSAGE.PROJECT_STATUS_ALREADY_EXIST,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -108,8 +110,8 @@ async def project_status_function(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Config Module Not Found",
-                        "success": False,
+                        "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -125,14 +127,17 @@ async def project_status_function(
             db.add(project_status)
             db.commit()
 
-            return {"success": True, "message": "Project Status Added Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.PROJECT_STATUS_CREATED_SUCCESSFULLY,
+            }
         else:
             if type == "edit" and not id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "ID is required for edit operation",
-                        "success": False,
+                        "message": ERROR_MESSAGE.ID_REQUIRED_FOR_EDIT,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -144,8 +149,8 @@ async def project_status_function(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Project Status Not Found",
-                        "success": False,
+                        "message": ERROR_MESSAGE.PROJECT_STATUS_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -155,7 +160,10 @@ async def project_status_function(
 
             db.commit()
 
-            return {"success": True, "message": "Project Status Updated Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.PROJECT_STATUS_UPDATED_SUCCESSFULLY,
+            }
 
     except HTTPException as http_exception:
         raise http_exception
@@ -163,8 +171,8 @@ async def project_status_function(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Add Status Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_UPDATE_PROJECT_STATUS,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -198,8 +206,8 @@ async def fetch_project_status(
                 reverse=True if order.lower() == "desc" else False,
             )
             return {
-                "message": "Project Status Fetched Successfully. Cached!",
-                "success": True,
+                "message": SUCCESS_MESSAGE.PROJECT_STATUS_FETCHED_SUCCESSFULLY_CACHED,
+                "success": SUCCESS.TRUE,
                 "data": cached_sorted_data,
             }
 
@@ -213,8 +221,8 @@ async def fetch_project_status(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Config Module Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -236,7 +244,7 @@ async def fetch_project_status(
 
         return {
             "success": True,
-            "message": "Project Status Fetched Successfully",
+            "message": SUCCESS_MESSAGE.PROJECT_STATUS_FETCHED_SUCCESSFULLY,
             "data": data,
         }
 
@@ -246,8 +254,8 @@ async def fetch_project_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Add Status Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_UPDATE_PROJECT_STATUS,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -283,12 +291,18 @@ async def delete_project_status(
         if not project_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Project Status Not Found", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.PROJECT_STATUS_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
             )
         db.delete(project_status)
         db.commit()
 
-        return {"message": "Project Status Deleted Successfully", "success": True}
+        return {
+            "message": SUCCESS_MESSAGE.PROJECT_STATUS_DELETED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+        }
 
     except HTTPException as http_exception:
         raise http_exception
@@ -296,8 +310,8 @@ async def delete_project_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Delete Status Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_DELETE_PROJECT_STATUS,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -327,8 +341,8 @@ async def add_edit_department(
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
-                    "message": "Invalid type. Must be 'add' or 'edit'",
-                    "success": False,
+                    "message": ERROR_MESSAGE.INVALID_TYPE,
+                    "success": SUCCESS.FALSE,
                 },
             )
         cache_data_key = f"organization_department_{user.organization_id}"
@@ -354,8 +368,8 @@ async def add_edit_department(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "department With This Name Is Already Exist",
-                    "success": False,
+                    "message": ERROR_MESSAGE.DEPARTMENT_ALREADY_EXISTS,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -375,8 +389,8 @@ async def add_edit_department(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Config Module Not Found",
-                        "success": False,
+                        "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -391,15 +405,18 @@ async def add_edit_department(
             db.add(department)
             db.commit()
 
-            return {"success": True, "message": "Department Created Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.DEPARTMENT_CREATED_SUCCESSFULLY,
+            }
         else:
 
             if type == "edit" and not id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "ID is required for edit operation",
-                        "success": False,
+                        "message": ERROR_MESSAGE.ID_REQUIRED_FOR_EDIT,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -408,7 +425,10 @@ async def add_edit_department(
             if not department:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"message": "No Such department Found", "success": False},
+                    detail={
+                        "message": ERROR_MESSAGE.DEPARTMENT_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
+                    },
                 )
 
             department.department_name = data.department_name
@@ -416,7 +436,10 @@ async def add_edit_department(
 
             db.commit()
 
-            return {"success": True, "message": "department Updated Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.DEPARTMENT_UPDATED_SUCCESSFULLY,
+            }
 
     except HTTPException as http_exception:
         raise http_exception
@@ -424,8 +447,8 @@ async def add_edit_department(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Add department Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_UPDATE_DEPARTMENT,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -456,8 +479,8 @@ async def fetch_all_department_type(
                 reverse=True if order.lower() == "desc" else False,
             )
             return {
-                "message": "Department Fetched Successfully. Cached!",
-                "success": True,
+                "message": SUCCESS_MESSAGE.DEPARTMENT_FETCHED_SUCCESSFULLY_CACHED,
+                "success": SUCCESS.TRUE,
                 "data": cached_sorted_data,
             }
 
@@ -471,8 +494,8 @@ async def fetch_all_department_type(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Config Module Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -491,8 +514,8 @@ async def fetch_all_department_type(
         await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
-            "success": True,
-            "message": "Department Fetched Successfully",
+            "success": SUCCESS.TRUE,
+            "message": SUCCESS_MESSAGE.DEPARTMENT_FETCHED_SUCCESSFULLY_CACHED,
             "data": data,
         }
 
@@ -502,8 +525,8 @@ async def fetch_all_department_type(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Add Status Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_FETCH_DEPARTMENT,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -535,15 +558,15 @@ async def delete_department(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Department Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.DEPARTMENT_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
         db.delete(department)
         db.commit()
 
-        return {"success": True, "message": "Department Deleted Successfully"}
+        return {"success": SUCCESS.TRUE, "message": ERROR_MESSAGE.DEPARTMENT_DELETED_SUCCESSFULLY}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -551,8 +574,8 @@ async def delete_department(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Delete Department Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_DELETE_DEPARTMENT,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -583,8 +606,8 @@ async def add_edit_designations(
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
-                    "message": "Invalid type. Must be 'add' or 'edit'",
-                    "success": False,
+                    "message": ERROR_MESSAGE.INVALID_TYPE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -610,8 +633,8 @@ async def add_edit_designations(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Designations Is Already Exist",
-                    "success": False,
+                    "message": ERROR_MESSAGE.DESIGNATION_ALREADY_EXISTS,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -630,7 +653,10 @@ async def add_edit_designations(
             if not config_module:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"message": "Config Module Not Found", "success": False},
+                    detail={
+                        "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
+                    },
                 )
 
             designations = Models.Designations(
@@ -644,15 +670,18 @@ async def add_edit_designations(
             db.add(designations)
             db.commit()
 
-            return {"success": True, "message": "Designation Added Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.DESIGNATION_ADDED_SUCCESSFULLY,
+            }
 
         else:
             if type == "edit" and not id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "ID is required for edit operation",
-                        "success": False,
+                        "message": ERROR_MESSAGE.ID_REQUIRED_FOR_EDIT,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -663,7 +692,10 @@ async def add_edit_designations(
             if not designations:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"message": "Designation Not Found", "success": False},
+                    detail={
+                        "message": ERROR_MESSAGE.DESIGNATION_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
+                    },
                 )
 
             designations.designations_name = data.designations_name
@@ -671,7 +703,10 @@ async def add_edit_designations(
 
             db.commit()
 
-            return {"success": True, "message": "Designation Updated Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.DESIGNATION_UPDATED_SUCCESSFULLY,
+            }
 
     except HTTPException as http_exception:
         raise http_exception
@@ -679,8 +714,8 @@ async def add_edit_designations(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Add , Edit Designation Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_UPDATE_DESIGNATION,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -712,8 +747,8 @@ async def fetch_all_designations(
             )
 
             return {
-                "message": "Designation Fetched Successfully. Cached!",
-                "success": True,
+                "message": SUCCESS_MESSAGE.DESIGNATION_FETCHED_SUCCESSFULLY_CACHED,
+                "success": SUCCESS.TRUE,
                 "data": cached_sorted_data,
             }
 
@@ -727,8 +762,8 @@ async def fetch_all_designations(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Config Module Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -747,8 +782,8 @@ async def fetch_all_designations(
         await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
-            "message": "Designation Fetched Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.DESIGNATION_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": data,
         }
 
@@ -758,8 +793,8 @@ async def fetch_all_designations(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Fetch Designation Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_FETCH_DESIGNATION,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -790,13 +825,16 @@ async def delete_designation(
         if not designations:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Designation Not Found", "success": False},
+                detail={"message": ERROR_MESSAGE.DESIGNATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         db.delete(designations)
         db.commit()
 
-        return {"success": True, "message": "Designation Deleted Successfully"}
+        return {
+            "success": SUCCESS.TRUE,
+            "message": SUCCESS_MESSAGE.DESIGNATION_DELETED_SUCCESSFULLY,
+        }
 
     except HTTPException as http_exception:
         raise http_exception
@@ -804,8 +842,8 @@ async def delete_designation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Delete Status Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_DELETE_DESIGNATION,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -876,8 +914,8 @@ async def fetch_all_role_of_organization(
                 reverse=True if order.lower() == "desc" else False,
             )
             return {
-                "message": "Roles Fetched Successfully. Cached!",
-                "success": True,
+                "message": SUCCESS_MESSAGE.PERMISSION_FETCHED_SUCCESSFULLY_CACHED,
+                "success": SUCCESS.TRUE,
                 "data": cached_sorted_data,
             }
 
@@ -891,8 +929,8 @@ async def fetch_all_role_of_organization(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Config Module Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -919,8 +957,8 @@ async def fetch_all_role_of_organization(
         await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
-            "message": "Roles Fetched Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.PERMISSION_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": data,
         }
 
@@ -931,8 +969,8 @@ async def fetch_all_role_of_organization(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error While Fetching All The Role",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ROLES,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1006,8 +1044,8 @@ async def fetch_roles_permission(
             cached_Data = json.loads(cached_data)
 
             return {
-                "message": "Role fetched successfully. Cached!",
-                "success": True,
+                "message": SUCCESS_MESSAGE.ROLES_FETCHED_SUCCESSFULLY_CACHED,
+                "success": SUCCESS.TRUE,
                 "data": cached_Data,
             }
 
@@ -1026,8 +1064,8 @@ async def fetch_roles_permission(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Role not found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.NO_MODULES_FOUND_FOR_ROLE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1037,8 +1075,8 @@ async def fetch_roles_permission(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Role not found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.ROLE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1059,8 +1097,8 @@ async def fetch_roles_permission(
         await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
-            "message": "Role fetched successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.ROLES_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": data,
         }
 
@@ -1072,8 +1110,8 @@ async def fetch_roles_permission(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error While Adding The Role And Permission",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ROLES,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1098,8 +1136,8 @@ async def update(
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
-                    "message": "type should be module or permission",
-                    "success": False,
+                    "message": ERROR_MESSAGE.TYPE_MUST_BE_MODULE_OR_PERMISSION,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1130,8 +1168,8 @@ async def update(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Module Not Found",
-                        "success": False,
+                        "message": ERROR_MESSAGE.MODULE_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -1151,8 +1189,8 @@ async def update(
             db.commit()
 
             return {
-                "success": True,
-                "message": "Role Updated Successfully",
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.ROLE_UPDATED_SUCCESSFULLY,
                 "data": role_permission_module,
             }
         else:
@@ -1164,8 +1202,8 @@ async def update(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Permission Not Found",
-                        "success": False,
+                        "message": ERROR_MESSAGE.PERMISSION_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -1174,8 +1212,8 @@ async def update(
             db.commit()
 
             return {
-                "success": True,
-                "message": "Permission Successfully",
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.PERMISSION_UPDATED_SUCCESSFULLY,
                 "permission": model_to_filtered_dict(permission),
             }
 
@@ -1186,8 +1224,8 @@ async def update(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error While Updating The Role And Permission",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_UPDATING_ROLE_PERMISSIONS,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1212,8 +1250,8 @@ async def Add_Edit_Roles_Permissions(
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
-                    "message": "The Type Should Be Add Edit",
-                    "success": False,
+                    "message": ERROR_MESSAGE.TYPE_MUST_BE_ADD_OR_EDIT,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1238,11 +1276,11 @@ async def Add_Edit_Roles_Permissions(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "message": (
-                            "The Clone Role Id Is Required"
+                            ERROR_MESSAGE.CLONE_ROLE_ID_REQUIRED
                             if clone_role_id
-                            else "The Config Module Id Is Required"
+                            else ERROR_MESSAGE.CONFIG_MODULE_ID_REQUIRED
                         ),
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                     },
                 )
             existing_role = (
@@ -1255,8 +1293,8 @@ async def Add_Edit_Roles_Permissions(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Designations Is Already Exist",
-                        "success": False,
+                        "message": ERROR_MESSAGE.DESIGNATIONS_ALREADY_EXISTS,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -1273,8 +1311,8 @@ async def Add_Edit_Roles_Permissions(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Role not found",
-                        "success": False,
+                        "message": ERROR_MESSAGE.ROLE_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -1307,16 +1345,16 @@ async def Add_Edit_Roles_Permissions(
             db.commit()
 
             return {
-                "success": True,
-                "message": f"The Role Added SuccessFully",
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.ROLE_ADDED_SUCCESSFULLY,
             }
         else:
             if type == "edit" and not edit_role_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "The Edit Role Id Is Required",
-                        "success": False,
+                        "message": ERROR_MESSAGE.EDIT_ROLE_ID_REQUIRED,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -1333,8 +1371,8 @@ async def Add_Edit_Roles_Permissions(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Designations Is Already Exist",
-                        "success": False,
+                        "message": ERROR_MESSAGE.DESIGNATIONS_ALREADY_EXISTS,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -1355,7 +1393,10 @@ async def Add_Edit_Roles_Permissions(
 
             db.commit()
 
-            return {"success": True, "message": "Roles Permission Updated Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.ROLES_PERMISSIONS_UPDATED_SUCCESSFULLY,
+            }
 
     except HTTPException as http_exception:
         raise http_exception
@@ -1364,8 +1405,8 @@ async def Add_Edit_Roles_Permissions(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Something Went Wrong",
-                "success": False,
+                "message": ERROR_MESSAGE.SOMETHING_WENT_WRONG,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1396,8 +1437,8 @@ async def Delete_Roles_Permission(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "No Such Config Role Module Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.NO_SUCH_ROLE_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
         db.query(Models.RoleAssociatedPermissionModule).filter(
@@ -1411,7 +1452,7 @@ async def Delete_Roles_Permission(
         db.delete(config_role_module)
         db.commit()
 
-        return {"success": True, "message": "Roles Permission Deleted Successfully"}
+        return {"success": SUCCESS.TRUE, "message": SUCCESS_MESSAGE.ROLES_DELETED_SUCCESSFULLY}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -1452,8 +1493,8 @@ async def Fetch_Inquiry_Form_Schema(
                 reverse=True if order.lower() == "desc" else False,
             )
             return {
-                "message": "Inquiry Form Schema Fetched Successfully. Cached!",
-                "success": True,
+                "message": SUCCESS_MESSAGE.INQUIRY_FORM_FETCHED_SUCCESSFULLY_CACHED,
+                "success": SUCCESS.TRUE,
                 "data": cached_sorted_data,
             }
 
@@ -1467,8 +1508,8 @@ async def Fetch_Inquiry_Form_Schema(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Config Module Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
         sort_order = order.lower()
@@ -1486,8 +1527,8 @@ async def Fetch_Inquiry_Form_Schema(
         await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
-            "success": True,
-            "message": "Inquiry Form Schema Fetched Successfully",
+            "success": SUCCESS.TRUE,
+            "message": SUCCESS_MESSAGE.INQUIRY_FORM_CREATED_SUCCESSFULLY,
             "data": data,
         }
 
@@ -1498,8 +1539,8 @@ async def Fetch_Inquiry_Form_Schema(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error While Fetching The Client Form Schema",
-                "success": False,
+                "message": ERROR_MESSAGE.SOMETHING_WENT_WRONG,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1521,8 +1562,8 @@ async def Add_Edit_Inquiry_Form_Schema(
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
-                    "message": "Invalid type. Must be 'add' or 'edit'",
-                    "success": False,
+                    "message": ERROR_MESSAGE.TYPE_MUST_BE_ADD_OR_EDIT,
+                    "success": SUCCESS.FALSE,
                 },
             )
         cache_data_key = f"organization_inquiry_form_schema_{user.organization_id}"
@@ -1554,8 +1595,8 @@ async def Add_Edit_Inquiry_Form_Schema(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Form Schema Already Exist",
-                    "success": False,
+                    "message": ERROR_MESSAGE.FORM_ID_ALREADY_EXISTS,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1574,7 +1615,10 @@ async def Add_Edit_Inquiry_Form_Schema(
             if not config_module:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"message": "Config Module Not Found", "success": False},
+                    detail={
+                        "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
+                    },
                 )
 
             inquiry_form = Models.InquiryFormSchema(
@@ -1593,15 +1637,18 @@ async def Add_Edit_Inquiry_Form_Schema(
             db.add(inquiry_form)
             db.commit()
 
-            return {"success": True, "message": "Form Added Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.INQUIRY_FORM_CREATED_SUCCESSFULLY,
+            }
 
         else:
             if type == "edit" and not id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "ID is required for edit operation",
-                        "success": False,
+                        "message": ERROR_MESSAGE.ID_REQUIRED_FOR_EDIT,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -1612,7 +1659,7 @@ async def Add_Edit_Inquiry_Form_Schema(
             if not inquiry_form:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"message": "Form Not Found", "success": False},
+                    detail={"message": ERROR_MESSAGE.FORM_NOT_FOUND, "success": SUCCESS.FALSE},
                 )
 
             inquiry_form.form_id = data.form_id
@@ -1626,7 +1673,10 @@ async def Add_Edit_Inquiry_Form_Schema(
 
             db.commit()
 
-            return {"success": True, "message": "Form Updated Successfully"}
+            return {
+                "success": SUCCESS.TRUE,
+                "message": ERROR_MESSAGE.INQUIRY_FORM_UPDATED_SUCCESSFULLY,
+            }
 
     except HTTPException as http_exception:
         raise http_exception
@@ -1634,8 +1684,8 @@ async def Add_Edit_Inquiry_Form_Schema(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Add , Edit Field Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_UPDATE_INQUIRY_FORM,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1667,7 +1717,7 @@ async def delete_designation(
         if not inquiry_form:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Form Not Found", "success": False},
+                detail={"message": ERROR_MESSAGE.FORM_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         inquiry_form.email_notification = True if not inquiry_form.email_notification else False
@@ -1676,7 +1726,7 @@ async def delete_designation(
 
         status = "enabled" if inquiry_form.email_notification else "disabled"
 
-        return {"success": True, "message": f"Email notifications have been {status} successfully."}
+        return {"success": SUCCESS.TRUE, "message": f"Email notifications have been {status} successfully."}
 
     except HTTPException as http_exception:
         raise http_exception

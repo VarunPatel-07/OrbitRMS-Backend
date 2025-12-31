@@ -18,7 +18,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import and_
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql import func
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
@@ -98,7 +98,7 @@ async def handel_add_user_function(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": "Unable To Find The Organization With This ID",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -120,7 +120,7 @@ async def handel_add_user_function(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "message": "Employee With This Name Already Exist",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -137,7 +137,7 @@ async def handel_add_user_function(
         if user_with_same_email:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={"message": "The Employee With This Mail Already Exist", "success": False},
+                detail={"message": "The Employee With This Mail Already Exist", "success": SUCCESS.FALSE},
             )
 
         user_with_same_employee_code = (
@@ -153,7 +153,7 @@ async def handel_add_user_function(
         if user_with_same_employee_code:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={"message": "The Employee With This Employee Code Exist", "success": False},
+                detail={"message": "The Employee With This Employee Code Exist", "success": SUCCESS.FALSE},
             )
 
         hash_password = hash_passwords(SUPER_SECURE_HASH_PASSWORD)
@@ -186,7 +186,7 @@ async def handel_add_user_function(
         ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Reporting manager is required", "success": False},
+                detail={"message": "Reporting manager is required", "success": SUCCESS.FALSE},
             )
 
         reporting_to_user = (
@@ -199,7 +199,7 @@ async def handel_add_user_function(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": f"Reporting to user ID {data.employee_info.reporting_to.id} does not exist.",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -331,7 +331,7 @@ async def handel_add_user_function(
 
         return {
             "message": "successfully added the user",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -342,7 +342,7 @@ async def handel_add_user_function(
             detail={
                 "message": "error while Adding The User",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -411,7 +411,7 @@ async def handel_fetch_profile_info(
 
         return {
             "message": "user verified successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "use": user.id,
             "data": {
                 **filter_fields(
@@ -504,7 +504,7 @@ async def handel_fetch_profile_info(
             detail={
                 "message": "error while Fetching The User Info",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -549,7 +549,7 @@ async def handel_fetch_profile_info(
 
         return {
             "message": "user verified successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "use": user.id,
             "data": {
                 **filter_fields(
@@ -614,7 +614,7 @@ async def handel_fetch_profile_info(
             detail={
                 "message": "error while Fetching The User Info",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -650,7 +650,7 @@ async def edit_employee_profile(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": "Unable To Find Employee With This ID",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -667,7 +667,7 @@ async def edit_employee_profile(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "message": "Employee With This Name Already Exist",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -684,7 +684,7 @@ async def edit_employee_profile(
         if user_with_same_employee_code:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={"message": "The Employee With This Employee Code Exist", "success": False},
+                detail={"message": "The Employee With This Employee Code Exist", "success": SUCCESS.FALSE},
             )
         # Now We Are Updating The Personal Info
         if employee.personal_info:
@@ -711,7 +711,7 @@ async def edit_employee_profile(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": f"Reporting to user ID {data.employee_info.reporting_to.id} does not exist.",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
         db.query(Models.EmployeeInfo).filter(Models.EmployeeInfo.user_id == employee.id).update(
@@ -927,7 +927,7 @@ async def edit_employee_profile(
 
         return {
             "message": "User Info Updated Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -938,7 +938,7 @@ async def edit_employee_profile(
             detail={
                 "message": "error while Editing the User The User",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -1047,7 +1047,7 @@ async def fetch_all_employee(
 
         return {
             "message": "user verified successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": _data,
             "filter_data": filter_data,
             "metadata": {
@@ -1066,7 +1066,7 @@ async def fetch_all_employee(
             detail={
                 "message": "error while Fetching All The Employee",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -1120,7 +1120,7 @@ async def Fetch_Employee(
 
         return {
             "message": "Employee Fetched Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": _data,
         }
     except HTTPException as http_exception:
@@ -1131,6 +1131,6 @@ async def Fetch_Employee(
             detail={
                 "message": "error while Fetching All The Employee",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )

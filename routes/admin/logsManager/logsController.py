@@ -13,10 +13,10 @@ from sqlalchemy.orm import joinedload
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from middleware.verifyToken import verify_token
-from models.pydantic.Admin.AdminAuthenticationModel import DownloadFileApiPydanticModal
 from models.sql import Models
 from middleware.RateLimiting import limiter
-from utils.responseMessages import AuthErrorMessage
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+from constants.constant import SUCCESS
 
 logsController = APIRouter(prefix="/app/v1/admin/monitoring")
 
@@ -45,7 +45,7 @@ def listAllFilesFromFolder(folder_path: Path, folder_name: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": f"The Provided Path Is Not A Valid Directory: {folder_path}",
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
     files_details = []
@@ -81,7 +81,10 @@ async def FetchAllLogs(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.UNAUTHORIZED,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         admin_id = token["admin_id"]
@@ -98,7 +101,7 @@ async def FetchAllLogs(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": AuthErrorMessage.ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -107,7 +110,10 @@ async def FetchAllLogs(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.INVALID_SESSION,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         page = page or 1
@@ -123,8 +129,8 @@ async def FetchAllLogs(
         total_data = len(file_content)
 
         return {
-            "message": "Read Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.READ_FILES_SUCCESS_FULLY,
+            "success": SUCCESS.TRUE,
             "data": filtered_data,
             "metadata": {
                 "total_data": total_data,
@@ -139,8 +145,8 @@ async def FetchAllLogs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Reading The Files",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_READING_FILE,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -157,7 +163,7 @@ async def FetchAllTheBackUpFiles(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -174,7 +180,7 @@ async def FetchAllTheBackUpFiles(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": AuthErrorMessage.ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -183,7 +189,7 @@ async def FetchAllTheBackUpFiles(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         current_files = listAllFilesFromFolder(CURRENT_LOG_FOLDER_PATH, "runtime")
@@ -193,8 +199,8 @@ async def FetchAllTheBackUpFiles(
         backup_file_details = current_files + error_files
 
         return {
-            "message": "Logs Folder Read Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.LOGS_FOLDER_READ_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": backup_file_details,
         }
     except HTTPException as http_exception:
@@ -203,8 +209,8 @@ async def FetchAllTheBackUpFiles(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Reading The Backup Folder",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_READING_FOLDER,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -219,7 +225,7 @@ async def FetchArchivedLogsFile(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -236,7 +242,7 @@ async def FetchArchivedLogsFile(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": AuthErrorMessage.ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -245,7 +251,7 @@ async def FetchArchivedLogsFile(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         current_files = listAllFilesFromFolder(BACKUP_CURRENT_LOG_FOLDER_PATH, "archive/runtime")
@@ -255,8 +261,8 @@ async def FetchArchivedLogsFile(
         backup_file_details = current_files + error_files
 
         return {
-            "message": "Backup Folder Read Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.BACKUP_FOLDER_READ_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": backup_file_details,
         }
 
@@ -266,8 +272,8 @@ async def FetchArchivedLogsFile(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Reading The Backup Folder",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_READING_BACKUP_FOLDER,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -293,7 +299,7 @@ async def DownloadBackupFile(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -310,7 +316,7 @@ async def DownloadBackupFile(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": AuthErrorMessage.ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -319,16 +325,16 @@ async def DownloadBackupFile(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         full_path = (BASE_DOWNLOADABLE_FOLDER_PATH / file_path).resolve()
 
         if not str(full_path).startswith(str(BASE_DIR)):
-            raise HTTPException(status_code=403, detail="Access denied")
+            raise HTTPException(status_code=403, detail=ERROR_MESSAGE.ACCESS_DENIED)
 
         if not full_path.exists() or not full_path.is_file():
-            raise HTTPException(status_code=404, detail="File not found")
+            raise HTTPException(status_code=404, detail=ERROR_MESSAGE.FILE_NOT_FOUND)
 
         headers = {"Content-Disposition": f'attachment; filename="{full_path.name}"'}
 
@@ -342,8 +348,8 @@ async def DownloadBackupFile(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Reading The Backup Folder",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_DOWNLOADING_FROM_BACKUP_FOLDER,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -362,7 +368,7 @@ async def BulkDownloadArchiveFiles(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -379,7 +385,7 @@ async def BulkDownloadArchiveFiles(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": AuthErrorMessage.ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -388,7 +394,7 @@ async def BulkDownloadArchiveFiles(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
         current_files = listAllFilesFromFolder(BACKUP_CURRENT_LOG_FOLDER_PATH, "runtime")
 
@@ -405,13 +411,21 @@ async def BulkDownloadArchiveFiles(
                 if not str(full_path).startswith(str(BACKUP_LOGS_BASE_DIR)):
                     raise HTTPException(
                         status_code=400,
-                        detail={"message": "Access denied", "success": False, "data": None},
+                        detail={
+                            "message": ERROR_MESSAGE.ACCESS_DENIED,
+                            "success": SUCCESS.FALSE,
+                            "data": None,
+                        },
                     )
 
                 if not full_path.exists() or not full_path.is_file():
                     raise HTTPException(
                         status_code=400,
-                        detail={"message": "File not found", "success": False, "data": None},
+                        detail={
+                            "message": ERROR_MESSAGE.FILE_NOT_FOUND,
+                            "success": SUCCESS.FALSE,
+                            "data": None,
+                        },
                     )
 
                 zip_file.write(full_path, arcname="archive-logs-files")
@@ -432,8 +446,8 @@ async def BulkDownloadArchiveFiles(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Reading The Backup Folder",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_IN_BULK_DOWNLOAD,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

@@ -10,8 +10,8 @@ from fastapi import (
     Request,
     status,
 )
-from sqlalchemy.orm import joinedload
 
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
@@ -48,7 +48,7 @@ async def Enable_Api(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Client Inquiry Not Found", "success": False},
+                detail={"message": "Client Inquiry Not Found", "success": SUCCESS.FALSE},
             )
 
         else:
@@ -75,7 +75,7 @@ async def Enable_Api(
                 "Api Enabled Successfully" if client_inquires.status else "Api Disable Successfully"
             ),
             "enable": client_inquires.status,
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -85,7 +85,7 @@ async def Enable_Api(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Enable Api Right Now",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -122,7 +122,7 @@ async def Fetch_Status_OF_Api(
 
         return {
             "message": "Data Fetched Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": (
                 {
                     **model_to_filtered_dict(
@@ -154,7 +154,7 @@ async def Fetch_Status_OF_Api(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Some Thing Went Wrong",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -174,7 +174,7 @@ async def ReGenerateKeys(
         if field_name not in ["api_key", "api_secrete"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-                detail={"message": "Invalid Field_Name", "success": False},
+                detail={"message": "Invalid Field_Name", "success": SUCCESS.FALSE},
             )
 
         client_inquires = (
@@ -184,7 +184,7 @@ async def ReGenerateKeys(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Client Inquiry Not Found", "success": False},
+                detail={"message": "Client Inquiry Not Found", "success": SUCCESS.FALSE},
             )
         api_key, api_secret = generate_api_secrets_api_key()
         if field_name == "api_key":
@@ -194,7 +194,7 @@ async def ReGenerateKeys(
         db.commit()
         db.refresh(client_inquires)
 
-        return {"message": f"{field_name} Updated Successfully", "success": True}
+        return {"message": f"{field_name} Updated Successfully", "success": SUCCESS.TRUE}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -203,7 +203,7 @@ async def ReGenerateKeys(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Enable Api Right Now",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -226,7 +226,7 @@ async def EnableMailNotification(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Client Inquiry Not Found", "success": False},
+                detail={"message": "Client Inquiry Not Found", "success": SUCCESS.FALSE},
             )
 
         client_inquires.email_notification = not client_inquires.email_notification
@@ -236,7 +236,7 @@ async def EnableMailNotification(
 
         return {
             "message": f"Updated Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": {
                 "email_notification": client_inquires.email_notification,
             },
@@ -249,7 +249,7 @@ async def EnableMailNotification(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Enable Api Right Now",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -273,7 +273,7 @@ async def EnableMailNotification(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Client Inquiry Not Found", "success": False},
+                detail={"message": "Client Inquiry Not Found", "success": SUCCESS.FALSE},
             )
 
         client_inquires.authorized_recipient_emails = json.dumps(data.authorized_recipient)
@@ -283,7 +283,7 @@ async def EnableMailNotification(
 
         return {
             "message": f"Updated Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": {
                 "authorized_recipient_email": json.loads(
                     client_inquires.authorized_recipient_emails
@@ -298,7 +298,7 @@ async def EnableMailNotification(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Unable To Enable Api Right Now",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

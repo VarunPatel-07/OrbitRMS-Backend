@@ -15,7 +15,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import joinedload
 from user_agents import parse as parse_user_agent
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from constants.constant import (
     MAX_RESET_ATTEMPTS,
@@ -43,16 +43,7 @@ from utils.helper.helper import (
     urlsafe_data_encoding_function,
 )
 from utils.helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
-from utils.responseMessages.AuthErrorMessage import (
-    ADMIN_NOT_FOUND,
-    ADMIN_OTP_VERIFY_SUCCESS_MESSAGE,
-    ADMIN_RESET_LIMIT_EXCEEDED,
-    ADMIN_SIGN_IN_ERROR_MESSAGE,
-    ADMIN_SIGN_IN_INVALID_CREDENTIALS,
-    ADMIN_SIGN_IN_SUCCESS_MESSAGE,
-    INSUFFICIENT_DATA,
-    INVALID_OTP,
-)
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
@@ -89,7 +80,7 @@ adminAuthRoute = APIRouter(prefix="/app/v1/admin/auth", tags=["admin"])
 
 #         return {
 #             "message": ADMIN_SIGN_IN_SUCCESS_MESSAGE,
-#             "success": True,
+#             "success": SUCCESS.TRUE,
 #         }
 
 #     except HTTPException as http_exception:
@@ -130,8 +121,8 @@ async def Admin_Panel_Sign_In_Function(
                 expiry_time = datetime.now(ZoneInfo("UTC")) + timedelta(seconds=RESET_TTL_SECONDS)
                 await cache_database.set(expiry_key, expiry_time.isoformat(), ex=RESET_TTL_SECONDS)
                 return {
-                    "message": ADMIN_RESET_LIMIT_EXCEEDED,
-                    "success": False,
+                    "message": ERROR_MESSAGE.ADMIN_RESET_LIMIT_EXCEEDED,
+                    "success": SUCCESS.FALSE,
                     "data": {
                         "expiry_time": expiry_time,
                     },
@@ -139,8 +130,8 @@ async def Admin_Panel_Sign_In_Function(
             else:
                 expiry_time = datetime.fromisoformat(expiry_time_str)
                 return {
-                    "message": ADMIN_RESET_LIMIT_EXCEEDED,
-                    "success": False,
+                    "message": ERROR_MESSAGE.ADMIN_RESET_LIMIT_EXCEEDED,
+                    "success": SUCCESS.FALSE,
                     "data": {
                         "expiry_time": expiry_time,
                     },
@@ -152,8 +143,8 @@ async def Admin_Panel_Sign_In_Function(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": ADMIN_SIGN_IN_INVALID_CREDENTIALS,
-                    "success": False,
+                    "message": ERROR_MESSAGE.ADMIN_SIGN_IN_INVALID_CREDENTIALS,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -164,7 +155,10 @@ async def Admin_Panel_Sign_In_Function(
         if not check_password:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_SIGN_IN_INVALID_CREDENTIALS, "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.ADMIN_SIGN_IN_INVALID_CREDENTIALS,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         await cache_database.delete(cache_key)
@@ -206,8 +200,8 @@ async def Admin_Panel_Sign_In_Function(
             otp_expiry_time = datetime.fromisoformat(otp_resend_available_at)
 
         return {
-            "message": ADMIN_SIGN_IN_SUCCESS_MESSAGE,
-            "success": True,
+            "message": SUCCESS_MESSAGE.ADMIN_SIGN_IN_SUCCESS_MESSAGE,
+            "success": SUCCESS.TRUE,
             "data": {
                 "admin_signature": admin_signature,
                 "id": encrypted_admin_id,
@@ -221,8 +215,8 @@ async def Admin_Panel_Sign_In_Function(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ADMIN_SIGN_IN_ERROR_MESSAGE,
-                "success": False,
+                "message": ERROR_MESSAGE.ADMIN_SIGN_IN_ERROR_MESSAGE,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -241,7 +235,7 @@ async def Admin_Panel_Verify_OTP_Function(
         if not id or not signature:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": INSUFFICIENT_DATA, "success": False},
+                detail={"message": ERROR_MESSAGE.INSUFFICIENT_DATA, "success": SUCCESS.FALSE},
             )
         decrypted_admin_id = urlsafe_data_decoding_function(id)
 
@@ -250,7 +244,7 @@ async def Admin_Panel_Verify_OTP_Function(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         cache_database_key = f"admin_otp_{decrypted_admin_id}_{signature}"
@@ -258,12 +252,12 @@ async def Admin_Panel_Verify_OTP_Function(
         if not stored_hash:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": INVALID_OTP, "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_OTP, "success": SUCCESS.FALSE},
             )
         if not verify_password(data.otp, stored_hash):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": INVALID_OTP, "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_OTP, "success": SUCCESS.FALSE},
             )
 
         await cache_database.delete(cache_database_key)
@@ -342,8 +336,8 @@ async def Admin_Panel_Verify_OTP_Function(
             await cache_database.delete(otp_expiry_key)
 
         return {
-            "message": ADMIN_OTP_VERIFY_SUCCESS_MESSAGE,
-            "success": True,
+            "message": SUCCESS_MESSAGE.ADMIN_OTP_VERIFY_SUCCESS_MESSAGE,
+            "success": SUCCESS.TRUE,
             "data": {
                 "authenticationToken": token,
             },
@@ -355,8 +349,8 @@ async def Admin_Panel_Verify_OTP_Function(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ADMIN_SIGN_IN_ERROR_MESSAGE,
-                "success": False,
+                "message": ERROR_MESSAGE.ADMIN_SIGN_IN_ERROR_MESSAGE,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -371,7 +365,7 @@ async def Admin_Panel_Verify_User_Function(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -388,7 +382,7 @@ async def Admin_Panel_Verify_User_Function(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -397,12 +391,12 @@ async def Admin_Panel_Verify_User_Function(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         return {
-            "message": "Admin verified successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.ADMIN_VERIFIED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {
                 "admin_id": admin.id,
                 "email": admin.email,
@@ -416,7 +410,7 @@ async def Admin_Panel_Verify_User_Function(
             detail={
                 "message": "error while Verifying Admin",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -438,7 +432,7 @@ async def Re_Send_Admin_Panel_Access_Otp(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Invalid Credential", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_CREDENTIAL, "success": SUCCESS.FALSE},
             )
 
         otp_expiry_key = f"{signature}_otp_expiry"
@@ -458,7 +452,7 @@ async def Re_Send_Admin_Panel_Access_Otp(
             if time_left > 0:
                 return {
                     "message": f"Please Try After {time_left}{'s'if time_left>60 else 'm'}",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                     "data": {
                         "resend_available_at": otp_expiry_time_left,
                     },
@@ -497,8 +491,8 @@ async def Re_Send_Admin_Panel_Access_Otp(
                 )
 
             return {
-                "message": ADMIN_SIGN_IN_SUCCESS_MESSAGE,
-                "success": True,
+                "message": SUCCESS_MESSAGE.ADMIN_SIGN_IN_SUCCESS_MESSAGE,
+                "success": SUCCESS.TRUE,
                 "data": {
                     "resend_available_at": otp_expiry_time,
                 },
@@ -510,8 +504,8 @@ async def Re_Send_Admin_Panel_Access_Otp(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ADMIN_SIGN_IN_ERROR_MESSAGE,
-                "success": False,
+                "message": ERROR_MESSAGE.ADMIN_SIGN_IN_ERROR_MESSAGE,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

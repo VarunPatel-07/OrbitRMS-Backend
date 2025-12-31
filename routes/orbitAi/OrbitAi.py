@@ -14,7 +14,7 @@ from fastapi import (
     status,
 )
 from openai import OpenAI
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.RateLimiting import limiter
@@ -80,7 +80,7 @@ async def OrbitAi_conversation_handler(
 
         return {
             "message": "response generated successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": {"ai_response": filtered_responses, "uploaded_images": final_images},
         }
 

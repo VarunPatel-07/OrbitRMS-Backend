@@ -10,6 +10,8 @@ from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.RateLimiting import limiter
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+from constants.constant import SUCCESS
 
 load_dotenv(override=True)
 
@@ -44,8 +46,8 @@ async def ImageUploadation(
         result = cloudinary.uploader.upload(file_bytes, resource_type="image")
 
         return {
-            "message": "Image Upload Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.IMAGE_UPLOAD_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {
                 "url": result["secure_url"],
             },
@@ -56,8 +58,8 @@ async def ImageUploadation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Uploading Image",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_UPLOADING_IMAGE,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -77,8 +79,8 @@ async def GetCloudUploadSignature(
         signature = cloudinary.utils.api_sign_request(params, CLOUDINARY_API_SECRET)
 
         return {
-            "message": "Signature Generated Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.SIGNATURE_GENERATED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {
                 "time_stamp": time_stamp,
                 "signature": signature,
@@ -93,8 +95,8 @@ async def GetCloudUploadSignature(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Uploading Image",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_UPLOADING_IMAGE,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

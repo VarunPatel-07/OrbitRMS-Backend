@@ -9,7 +9,8 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 
 from config.EnvConfig import EnvConfig
-from constants.constant import SERVER_ERROR_STATUS_CODE
+from constants.constant import SERVER_ERROR_STATUS_CODE, SUCCESS
+from utils.responseMessages import ERROR_MESSAGE
 from database.CacheDatabase import cache_database
 from database.Database import DATABASE_ENGINE, SessionLocal, database
 from jobs.backgroundHandler.DataSeederHelper import initializing_OrbitAdmin_On_App_start
@@ -191,9 +192,9 @@ async def root_health_check(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Verifying Admin",
+                "message": ERROR_MESSAGE.ADMIN_VERIFICATION_ERROR,
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -235,8 +236,8 @@ async def health_status(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "An Error Accrued While Health Check",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_HEALTH_CHECK,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

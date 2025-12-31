@@ -32,6 +32,8 @@ from utils.helper.helper import (
     model_to_filtered_dict,
     validate_field,
 )
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+from constants.constant import SUCCESS
 
 from .ClientInquiresQueryFilter import apply_client_inquiry_query_filter
 
@@ -73,7 +75,7 @@ async def Fetch_Client_Inquires(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Client Inquiry Not Found", "success": False},
+                detail={"message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         query_data = db.query(Models.ClientInquiresData).filter(
@@ -101,8 +103,8 @@ async def Fetch_Client_Inquires(
             query_data = query_data.offset(start).limit(end)
 
         return {
-            "message": "Client Inquiry Fetched Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.CLIENT_INQUIRY_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": [
                 {
                     **filter_fields(_data.data, ["-client_inquire_id", "-id"]),
@@ -127,8 +129,8 @@ async def Fetch_Client_Inquires(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Enable Api Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_ENABLE_API,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -150,12 +152,12 @@ async def DeleteClientInquire(
         if not client_inquiry:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Client Inquiry Not Found", "success": False},
+                detail={"message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND, "success": SUCCESS.FALSE},
             )
         db.delete(client_inquiry)
         db.commit()
 
-        return {"message": "Inquiry Deleted Successfully", "success": True}
+        return {"message": SUCCESS_MESSAGE.INQUIRY_DELETED_SUCCESSFULLY, "success": SUCCESS.TRUE}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -163,8 +165,8 @@ async def DeleteClientInquire(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable Delete Inquiry Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_DELETE_INQUIRY,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

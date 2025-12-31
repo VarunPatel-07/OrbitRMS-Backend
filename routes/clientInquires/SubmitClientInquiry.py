@@ -22,6 +22,8 @@ from utils.helper.helper import (
     is_valid_type,
     validate_field,
 )
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+from constants.constant import SUCCESS
 
 load_dotenv(override=True)
 API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
@@ -51,8 +53,8 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Client Inquire Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.CLIENT_INQUIRE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -60,8 +62,8 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Invalid Api Secrete",
-                    "success": False,
+                    "message": ERROR_MESSAGE.INVALID_API_SECRET,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -69,8 +71,8 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Api Is Disabled",
-                    "success": False,
+                    "message": ERROR_MESSAGE.API_IS_DISABLED,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -84,14 +86,14 @@ async def submit_inquiry(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "organization not found", "success": False},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
         if not organization.status:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -105,8 +107,8 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Config Module Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
         form_schema = (
@@ -124,8 +126,8 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "FormId Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.FORM_ID_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -144,9 +146,9 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={
-                    "message": "Missing fields in payload",
+                    "message": ERROR_MESSAGE.MISSING_FIELDS_IN_PAYLOAD,
                     "fields_missing": missing_fields,
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -156,9 +158,9 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={
-                    "message": "Unexpected fields in payload",
+                    "message": ERROR_MESSAGE.UNEXPECTED_FIELDS_IN_PAYLOAD,
                     "extra_form_field": extra_form_field,
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -178,8 +180,8 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={
-                    "message": "Missing required fields",
-                    "success": False,
+                    "message": ERROR_MESSAGE.MISSING_REQUIRED_FIELDS,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -193,8 +195,8 @@ async def submit_inquiry(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={
-                    "message": "Required Field Can't Be Null",
-                    "success": False,
+                    "message": ERROR_MESSAGE.REQUIRED_FIELD_CANT_BE_NULL,
+                    "success": SUCCESS.FALSE,
                     "fields": [field["field_name"] for field in null_required_field],
                 },
             )
@@ -252,8 +254,8 @@ async def submit_inquiry(
             email_sender_function(email_instance, background_task)
 
         return {
-            "message": "Contact Form Submitted Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.CONTACT_FORM_SUBMITTED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -261,8 +263,8 @@ async def submit_inquiry(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Add Submit Inquiry Right Now",
-                "success": False,
+                "message": ERROR_MESSAGE.UNABLE_TO_SUBMIT_INQUIRY,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

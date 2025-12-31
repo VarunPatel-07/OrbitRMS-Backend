@@ -15,7 +15,7 @@ from fastapi import (
     status,
 )
 from sqlalchemy.orm import aliased, joinedload
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import CreatePasswordHtmlBody, VerifyEmailHtmlBody
@@ -34,7 +34,7 @@ from utils.helper.helper import (
     model_to_filtered_dict,
     urlsafe_data_encoding_function,
 )
-from utils.responseMessages.AuthErrorMessage import ADMIN_NOT_FOUND
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 from .OrganizationQueryFilters import Apply_Organization_Query_Filter
 
@@ -76,7 +76,7 @@ async def Fetch_All__Organization(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -127,7 +127,7 @@ async def Fetch_All__Organization(
 
         return {
             "message": "Organizations fetched successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": [
                 {
                     **model_to_filtered_dict(org),
@@ -196,7 +196,7 @@ async def Fetch_All__Organization(
             detail={
                 "message": "error while Verifying Admin",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -230,7 +230,7 @@ async def Organization_Setting(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -257,7 +257,7 @@ async def Organization_Setting(
 
         return {
             "message": "Organizations fetched successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -267,7 +267,7 @@ async def Organization_Setting(
             detail={
                 "message": "error while Verifying Admin",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -301,7 +301,7 @@ async def Fetch_Client_Organization_Details(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -334,7 +334,7 @@ async def Fetch_Client_Organization_Details(
 
         return {
             "message": "Info Fetched Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": {
                 **model_to_filtered_dict(organization),
                 "general_info": (
@@ -382,7 +382,7 @@ async def Fetch_Client_Organization_Details(
             detail={
                 "message": "error while Verifying Admin",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -418,7 +418,7 @@ async def Resend_Email_Verification_Link(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -453,7 +453,7 @@ async def Resend_Email_Verification_Link(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "message": "The Provided Email Domain Is Already In Use",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -462,7 +462,7 @@ async def Resend_Email_Verification_Link(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "message": "The Provided Email Is Already In Use",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                     "owner_email": find_organization.primary_email,
                 },
             )
@@ -512,7 +512,7 @@ async def Resend_Email_Verification_Link(
         email_sender_function(email_instance, background_task)
 
         return {
-            "success": True,
+            "success": SUCCESS.TRUE,
             "title": "Organization Created",
             "message": "Verification Email Send Successfully",
         }
@@ -525,7 +525,7 @@ async def Resend_Email_Verification_Link(
             detail={
                 "message": "error while Resending The Email Verification Link",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -561,7 +561,7 @@ async def Resend_Onboarding_Instruction(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -584,7 +584,7 @@ async def Resend_Onboarding_Instruction(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "message": "No Organization Found",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                     "owner_email": find_organization.primary_email,
                 },
             )
@@ -611,7 +611,7 @@ async def Resend_Onboarding_Instruction(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
                     "message": "Employee Not Found",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -643,7 +643,7 @@ async def Resend_Onboarding_Instruction(
 
         return {
             "message": "Onboarding Instruction Mail Send Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -654,7 +654,7 @@ async def Resend_Onboarding_Instruction(
             detail={
                 "message": "error while Resending The Email Verification Link",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -688,7 +688,7 @@ async def Delete_Organization(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -707,7 +707,7 @@ async def Delete_Organization(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": "No Organization Found",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -716,7 +716,7 @@ async def Delete_Organization(
 
         return {
             "message": "Organization Deleted Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -727,6 +727,6 @@ async def Delete_Organization(
             detail={
                 "message": "Error While Deleting an Organization",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )

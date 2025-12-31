@@ -6,13 +6,13 @@ import cloudinary.uploader
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import joinedload
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from middleware.verifyToken import verify_token
 from models.sql import Models
 from middleware.RateLimiting import limiter
-from utils.responseMessages.AuthErrorMessage import ADMIN_NOT_FOUND
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
@@ -45,7 +45,7 @@ async def ImageUploadation(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -62,7 +62,7 @@ async def ImageUploadation(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -71,7 +71,7 @@ async def ImageUploadation(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         file_bytes = await file.read()
@@ -79,8 +79,8 @@ async def ImageUploadation(
         result = cloudinary.uploader.upload(file_bytes, resource_type="image")
 
         return {
-            "message": "Image Upload Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.IMAGE_UPLOADED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {
                 "url": result["secure_url"],
             },
@@ -91,8 +91,8 @@ async def ImageUploadation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Uploading Image",
-                "success": False,
+                "message": ERROR_MESSAGE.ERROR_WHILE_PROCESSING,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -126,7 +126,7 @@ async def GetCloudUploadSignature(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -146,7 +146,7 @@ async def GetCloudUploadSignature(
 
         return {
             "message": "Signature Generated Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": {
                 "time_stamp": time_stamp,
                 "signature": signature,
@@ -162,7 +162,7 @@ async def GetCloudUploadSignature(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": "Error Accrued While Uploading Image",
-                "success": False,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

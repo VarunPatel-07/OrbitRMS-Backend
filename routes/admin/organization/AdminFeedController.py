@@ -15,7 +15,7 @@ from fastapi import (
 )
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import joinedload
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
@@ -23,7 +23,7 @@ from middleware.verifyToken import verify_token
 from models.sql import Models
 from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields, model_to_filtered_dict
-from utils.responseMessages.AuthErrorMessage import ADMIN_NOT_FOUND
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
@@ -77,7 +77,7 @@ async def AddEditFeedPostController(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -112,7 +112,7 @@ async def AddEditFeedPostController(
 
             return {
                 "message": "Post Uploaded Successfully",
-                "success": True,
+                "success": SUCCESS.TRUE,
                 "data": model_to_filtered_dict(post_data),
             }
 
@@ -122,7 +122,7 @@ async def AddEditFeedPostController(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
                         "message": "ID is required for edit operation",
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -137,7 +137,7 @@ async def AddEditFeedPostController(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
                         "message": "Post With This Id Not Found",
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -146,7 +146,7 @@ async def AddEditFeedPostController(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={
                         "message": "You Are Not Authorised",
-                        "success": False,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -158,7 +158,7 @@ async def AddEditFeedPostController(
 
             return {
                 "message": "Post Updated Successfully",
-                "success": True,
+                "success": SUCCESS.TRUE,
                 "data": model_to_filtered_dict(existing_post),
             }
 
@@ -173,7 +173,7 @@ async def AddEditFeedPostController(
             detail={
                 "message": "error while Posting A Post",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -210,7 +210,7 @@ async def FetchTheOrganizationPost(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -245,7 +245,7 @@ async def FetchTheOrganizationPost(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
                     "message": "Invalid Input",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -274,7 +274,7 @@ async def FetchTheOrganizationPost(
 
         return {
             "message": "Post Fetched Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": _data,
         }
 
@@ -286,7 +286,7 @@ async def FetchTheOrganizationPost(
             detail={
                 "message": "Error while Fetching Posts",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -321,7 +321,7 @@ async def HandelDeletePostFunction(
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": ADMIN_NOT_FOUND, "success": False},
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not any(
@@ -344,7 +344,7 @@ async def HandelDeletePostFunction(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": "Post With This Id Not Found",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -361,6 +361,6 @@ async def HandelDeletePostFunction(
             detail={
                 "message": "Error while Deleting a Post",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )

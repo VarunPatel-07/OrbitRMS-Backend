@@ -16,7 +16,7 @@ from fastapi import (
 )
 from sqlalchemy import and_, asc, desc
 from sqlalchemy.inspection import inspect
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from jobs.backgroundTasks.socialMedia.SocialMediaModuleBackground import (
@@ -54,7 +54,7 @@ async def Fetch_All_The_Linked_Account(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Unable To Find Organization", "success": False},
+                detail={"message": "Unable To Find Organization", "success": SUCCESS.FAlSE},
             )
 
         social_media_accounts = (
@@ -65,7 +65,7 @@ async def Fetch_All_The_Linked_Account(
 
         return {
             "message": "Social Media Account Fetched SuccessFully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": social_media_accounts if social_media_accounts else [],
         }
 
@@ -127,7 +127,7 @@ async def Post_Content_To_Social_Media(
 
         return {
             "message": "Post Uploaded Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -160,7 +160,7 @@ async def Fetch_All_Created_Scheduled_Posts(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": f"Invalid sort_by field '{sort_by}'. Valid fields: {list(valid_columns)}",
-                    "success": False,
+                    "success": SUCCESS.FAlSE,
                 },
             )
 
@@ -175,7 +175,7 @@ async def Fetch_All_Created_Scheduled_Posts(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": "No Such Organization Found",
-                    "success": False,
+                    "success": SUCCESS.FAlSE,
                 },
             )
 
@@ -190,7 +190,7 @@ async def Fetch_All_Created_Scheduled_Posts(
 
         return {
             "message": "Social Media Post Fetch Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": [
                 model_to_filtered_dict(
                     data,
@@ -232,7 +232,7 @@ async def Post_Content_To_Social_Media(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": "No Such Organization Found",
-                    "success": False,
+                    "success": SUCCESS.FAlSE,
                 },
             )
 
@@ -252,7 +252,7 @@ async def Post_Content_To_Social_Media(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": "No Such Post Found",
-                    "success": False,
+                    "success": SUCCESS.FAlSE,
                 },
             )
 
@@ -266,7 +266,7 @@ async def Post_Content_To_Social_Media(
         db.commit()
         return {
             "message": "Post Deleted Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -297,7 +297,7 @@ async def handel_disconnecting_social_media_account(
     if not organization:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"message": "Unable To Find Organization", "success": False},
+            detail={"message": "Unable To Find Organization", "success": SUCCESS.FAlSE},
         )
 
     social_media_account = (
@@ -312,7 +312,7 @@ async def handel_disconnecting_social_media_account(
     if not social_media_account:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": "Unable To Find SocialMedia Account", "success": False},
+            detail={"message": "Unable To Find SocialMedia Account", "success": SUCCESS.FAlSE},
         )
 
     message = ""
@@ -328,7 +328,7 @@ async def handel_disconnecting_social_media_account(
 
     return {
         "message": message,
-        "success": True,
+        "success": SUCCESS.TRUE,
     }
 
 
@@ -347,7 +347,7 @@ async def handel_disconnecting_social_media_account(
     if not organization:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"message": "Unable To Find Organization", "success": False},
+            detail={"message": "Unable To Find Organization", "success": SUCCESS.FAlSE},
         )
 
     social_media_account = (
@@ -362,7 +362,7 @@ async def handel_disconnecting_social_media_account(
     if not social_media_account:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": "Unable To Find SocialMedia Account", "success": False},
+            detail={"message": "Unable To Find SocialMedia Account", "success": SUCCESS.FAlSE},
         )
 
     db.delete(social_media_account)
@@ -370,5 +370,5 @@ async def handel_disconnecting_social_media_account(
 
     return {
         "message": "Social Media Account Disconnected SuccessFully",
-        "success": True,
+        "success": SUCCESS.TRUE,
     }

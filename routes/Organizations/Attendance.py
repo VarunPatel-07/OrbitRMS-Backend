@@ -18,7 +18,7 @@ from fastapi import (
     status,
 )
 from sqlalchemy import and_
-
+from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
@@ -70,7 +70,7 @@ async def handel_apply_ratelimiting(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": "User Not Found",
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -139,7 +139,7 @@ async def handel_apply_ratelimiting(
 
         return {
             "message": "Leave Added Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -150,7 +150,7 @@ async def handel_apply_ratelimiting(
             detail={
                 "message": "error while Fetching The User Info",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -177,7 +177,7 @@ async def fetch_users_leave(
 
         return {
             "message": "user verified successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": _data,
             "metadata": {
                 "total_data": total_data,
@@ -195,7 +195,7 @@ async def fetch_users_leave(
             detail={
                 "message": "error while Fetching Leaves",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -222,7 +222,7 @@ async def fetch_leaves(
 
         return {
             "message": "All Leaves Fetched Successfully",
-            "success": True,
+            "success": SUCCESS.TRUE,
             "data": users_data,
         }
 
@@ -234,6 +234,6 @@ async def fetch_leaves(
             detail={
                 "message": "error while Fetching The User Info",
                 "error": str(e),
-                "success": False,
+                "success": SUCCESS.FALSE,
             },
         )
