@@ -18,23 +18,38 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, func, or_
 from user_agents import parse as parse_user_agent
-
-from BackgroundTasks.Authentication.AuthBackgroundTask import (
+from constants.constant import SUCCESS
+from config.EnvConfig import EnvConfig
+from constants.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
+from database.CacheDatabase import cache_database
+from database.Database import db_dependencies
+from jobs.backgroundTasks.authentication.AuthBackgroundTask import (
     HandelUserSignUpInBackGround,
 )
-from Config.EnvConfig import EnvConfig
-from Constant.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
-from Database.CacheDatabase import cache_database
-from Database.Database import db_dependencies
-from Database.CacheDatabase import cache_database
-from Email.HtmlEmailBody import (
+from mailer.HtmlEmailBody import (
     ResetPasswordHtmlBody,
     ResetPasswordInstructionHtmlBody,
     VerifyEmailHtmlBody,
 )
-from Helper.createModelInstance import cerate_model_instance
-from Helper.emailSender import EmailSchema, email_sender_function
-from Helper.helper import (
+from middleware.UserAuthenticator import UserAuthenticatorMiddleware
+from middleware.verifyToken import verify_token
+from models.pydantic.authentication.AuthenticationModels import (
+    CreatePassword,
+    PasswordResetPydanticModel,
+    RegisterOrganizationInfo,
+    ResendVerificationMail,
+    SignIn,
+    VerifyMetaTag,
+)
+from models.pydantic.HelperPydanticModel import (
+    ResetPasswordInstructionPydanticBody,
+    VerifyEmailPydanticBody,
+)
+from models.sql import Models
+from middleware.RateLimiting import limiter
+from utils.helper.createModelInstance import cerate_model_instance
+from utils.helper.emailSender import EmailSchema, email_sender_function
+from utils.helper.helper import (
     filter_fields,
     generatePasswordResetToken,
     get_client_ip,
@@ -43,23 +58,8 @@ from Helper.helper import (
     urlsafe_data_decoding_function,
     urlsafe_data_encoding_function,
 )
-from Helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
-from Middleware.UserAuthenticator import UserAuthenticatorMiddleware
-from Middleware.verifyToken import verify_token
-from PydanticModels.authentication.AuthenticationModels import (
-    CreatePassword,
-    PasswordResetPydanticModel,
-    RegisterOrganizationInfo,
-    ResendVerificationMail,
-    SignIn,
-    VerifyMetaTag,
-)
-from PydanticModels.HelperPydanticModel import (
-    ResetPasswordInstructionPydanticBody,
-    VerifyEmailPydanticBody,
-)
-from RateLimiting import limiter
-from SqlModels import Models
+from utils.helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
@@ -104,8 +104,8 @@ async def create_organization(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "The Provided Email Domain Is Already In Use",
-                    "success": False,
+                    "message": ERROR_MESSAGE.EMAIL_DOMAIN_ALREADY_IN_USE,
+                    "success": SUCCESS.FALSE,
                     "owner_email": find_organization.primary_email if find_organization else None,
                 },
             )
@@ -114,8 +114,8 @@ async def create_organization(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "The Provided Email Is Already In Use",
-                    "success": False,
+                    "message": ERROR_MESSAGE.EMAIL_ALREADY_IN_USE,
+                    "success": SUCCESS.FALSE,
                     "owner_email": find_organization.primary_email,
                 },
             )
@@ -129,9 +129,11 @@ async def create_organization(
         )
 
         return {
-            "success": True,
-            "title": "Organization Created",
-            "message": f"Your organization has been successfully created. A confirmation email with further details has been sent to {organization_info.primary_email}. Please check your inbox and follow the instructions to complete the setup.",
+            "success": SUCCESS.TRUE,
+            "title": SUCCESS_MESSAGE.ORGANIZATION_CREATED,
+            "message": SUCCESS_MESSAGE.ORGANIZATION_CREATED_DETAIL.format(
+                email=organization_info.primary_email
+            ),
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -139,8 +141,8 @@ async def create_organization(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Adding Employee",
-                "success": False,
+                "message": ERROR_MESSAGE.ORGANIZATION_CREATION_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -173,19 +175,19 @@ async def create_password(
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "user not found", "success": False},
+                detail={"message": ERROR_MESSAGE.USER_NOT_FOUND, "success": SUCCESS.FALSE},
             )
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "organization not found", "success": False},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
         if not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Account is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -193,8 +195,8 @@ async def create_password(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -207,8 +209,8 @@ async def create_password(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "This link is no longer valid. Please try again.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.PASSWORD_RESET_LINK_INVALID,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -226,8 +228,8 @@ async def create_password(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "New password must be different from the old one.",
-                        "success": False,
+                        "message": ERROR_MESSAGE.PASSWORD_SAME_AS_OLD,
+                        "success": SUCCESS.FALSE,
                     },
                 )
 
@@ -242,13 +244,13 @@ async def create_password(
             await cache_database.delete(password_cache_key)
 
             return {
-                "message": f"the password is {type} successfully",
-                "success": True,
+                "message": SUCCESS_MESSAGE.PASSWORD_SET_SUCCESSFULLY.format(type=type),
+                "success": SUCCESS.TRUE,
             }
         else:
             return {
-                "message": "This link is no longer valid. Please try again.",
-                "success": False,
+                "message": ERROR_MESSAGE.PASSWORD_RESET_LINK_INVALID,
+                "success": SUCCESS.FALSE,
             }
 
     except HTTPException as http_exception:
@@ -257,8 +259,8 @@ async def create_password(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "there was an error while creating a password",
-                "success": False,
+                "message": ERROR_MESSAGE.PASSWORD_CREATION_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -281,8 +283,8 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
         if count > MAX_RESET_ATTEMPTS:
             return {
-                "message": "Reset limit exceeded. Please wait.",
-                "success": False,
+                "message": ERROR_MESSAGE.PASSWORD_RESET_LIMIT_EXCEEDED,
+                "success": SUCCESS.FALSE,
                 "data": {
                     "expiry_time": datetime.now(ZoneInfo("UTC"))
                     + timedelta(seconds=RESET_TTL_SECONDS),
@@ -296,11 +298,13 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
             .first()
         )
 
+        print(user)
+
         if not user:
 
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid Email Or Password", "success": False},
+                detail={"message": ERROR_MESSAGE.USER_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         check_password = verify_password(
@@ -310,7 +314,10 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
         if not check_password:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid Email Or Password", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.SIGN_IN_INVALID_CREDENTIALS,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         await cache_database.delete(cache_key)
@@ -324,14 +331,14 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "organization not found", "success": False},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
         if not user.account_status:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "message": "Account is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -339,16 +346,16 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
         if user.reset_password_token:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "message": "You’re currently resetting your password. Complete it before logging in.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.PASSWORD_RESET_IN_PROGRESS,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -417,8 +424,8 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
         encrypted_org_id = urlsafe_data_encoding_function(organization.id)
 
         return {
-            "message": "User Sign In Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.SIGN_IN_SUCCESS_MESSAGE,
+            "success": SUCCESS.TRUE,
             "data": {
                 "authenticationToken": token,
                 "organization_created": organization.organization_created,
@@ -442,8 +449,8 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "error": str(e),
-                "message": "error accrued while signing in",
-                "success": False,
+                "message": ERROR_MESSAGE.SIGN_IN_ERROR_MESSAGE,
+                "success": SUCCESS.FALSE,
             },
         )
 
@@ -462,8 +469,8 @@ async def fetch_sessions(request: Request, db: db_dependencies, token: str = Dep
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_MISSING_TOKEN,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -483,19 +490,19 @@ async def fetch_sessions(request: Request, db: db_dependencies, token: str = Dep
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": (
-                        "Account is deactivated. Access denied."
+                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE
                         if user.account_status
-                        else "User Not Found"
+                        else ERROR_MESSAGE.USER_NOT_FOUND
                     ),
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
         if not user.organization.status:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -504,7 +511,10 @@ async def fetch_sessions(request: Request, db: db_dependencies, token: str = Dep
         if not any(session.id == session_id for session in user.sessions):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_INVALID_TOKEN,
+                    "success": SUCCESS.FALSE,
+                },
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -521,8 +531,8 @@ async def fetch_sessions(request: Request, db: db_dependencies, token: str = Dep
         ]
 
         return {
-            "message": "user verified successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": _data,
             "current_session_id": session_id,
         }
@@ -532,8 +542,8 @@ async def fetch_sessions(request: Request, db: db_dependencies, token: str = Dep
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while verifying user",
-                "success": False,
+                "message": ERROR_MESSAGE.SESSION_VERIFICATION_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -558,8 +568,8 @@ async def fetch_sessions(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_MISSING_TOKEN,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -579,11 +589,11 @@ async def fetch_sessions(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": (
-                        "Account is deactivated. Access denied."
+                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE
                         if user.account_status
-                        else "User Not Found"
+                        else ERROR_MESSAGE.USER_NOT_FOUND
                     ),
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -591,8 +601,8 @@ async def fetch_sessions(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -601,7 +611,10 @@ async def fetch_sessions(
         if not any(session.id == current_session_id for session in user.sessions):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_INVALID_TOKEN,
+                    "success": SUCCESS.FALSE,
+                },
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -615,8 +628,8 @@ async def fetch_sessions(
         db.commit()
 
         return {
-            "message": "Session Deleted successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.SESSION_DELETED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -624,8 +637,8 @@ async def fetch_sessions(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while verifying user",
-                "success": False,
+                "message": ERROR_MESSAGE.SESSION_VERIFICATION_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -692,8 +705,8 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_MISSING_TOKEN,
+                    "success": SUCCESS.FALSE,
                 },
             )
         maintenance_mode = db.query(Models.MaintenanceMode).first()
@@ -702,8 +715,8 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_MISSING_TOKEN,
+                    "success": SUCCESS.FALSE,
                     "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
@@ -737,8 +750,8 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": ("Unable To Find User With This ID"),
-                    "success": False,
+                    "message": ERROR_MESSAGE.USER_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -746,23 +759,26 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": ("Account is deactivated. Access denied."),
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
         if not user.organization.status:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
         if not any(session.id == session_id for session in user.sessions):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_INVALID_TOKEN,
+                    "success": SUCCESS.FALSE,
+                },
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -772,11 +788,11 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": (
-                        "Organization is deactivated. Access denied."
-                        if user.account_status
-                        else "Organization not found"
+                        ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE
+                        if organization.status
+                        else ERROR_MESSAGE.SIGN_IN_ORG_NOT_FOUND
                     ),
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -791,8 +807,8 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
             )
 
         return {
-            "message": "user verified successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {
                 "user": {
                     "employee_info": model_to_filtered_dict(user.employee_info),
@@ -832,8 +848,8 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while verifying user",
-                "success": False,
+                "message": ERROR_MESSAGE.SESSION_VERIFICATION_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -858,8 +874,8 @@ async def verify_meta_tag(request: Request, data: VerifyMetaTag):
                     "actual_value": "",
                     "match": False,
                 },
-                "success": False,
-                "message": "Meta Tag Not Found",
+                "success": SUCCESS.FALSE,
+                "message": ERROR_MESSAGE.META_TAG_NOT_FOUND,
             }
 
         if meta_tag and "content" in meta_tag.attrs:
@@ -874,8 +890,8 @@ async def verify_meta_tag(request: Request, data: VerifyMetaTag):
                     "actual_value": actual_value,
                     "match": verified,
                 },
-                "success": True,
-                "message": "Meta Tag Verified Successfully",
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.META_TAG_VERIFIED_SUCCESSFULLY,
             }
         return {"error": "Meta tag not found"}
 
@@ -885,8 +901,8 @@ async def verify_meta_tag(request: Request, data: VerifyMetaTag):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Verifying The Meta Tag",
-                "success": False,
+                "message": ERROR_MESSAGE.ORGANIZATION_VERIFICATION_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -907,8 +923,8 @@ async def HandelLogoutApi(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_MISSING_TOKEN,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -928,11 +944,11 @@ async def HandelLogoutApi(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": (
-                        "Account is deactivated. Access denied."
+                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE
                         if user.account_status
-                        else "User Not Found"
+                        else ERROR_MESSAGE.USER_NOT_FOUND
                     ),
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -940,8 +956,8 @@ async def HandelLogoutApi(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -950,7 +966,10 @@ async def HandelLogoutApi(
         if not any(session.id == session_id for session in user.sessions):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_INVALID_TOKEN,
+                    "success": SUCCESS.FALSE,
+                },
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -964,8 +983,8 @@ async def HandelLogoutApi(
         db.commit()
 
         return {
-            "message": "Logout successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.LOGOUT_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -973,8 +992,8 @@ async def HandelLogoutApi(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable to log out the user at this moment.",
-                "success": False,
+                "message": ERROR_MESSAGE.LOGOUT_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -996,8 +1015,8 @@ async def HandelPasswordReset(
 
         if count > MAX_RESET_ATTEMPTS:
             return {
-                "message": "Reset limit exceeded. Please wait.",
-                "success": False,
+                "message": ERROR_MESSAGE.PASSWORD_RESET_LIMIT_EXCEEDED,
+                "success": SUCCESS.FALSE,
                 "data": {
                     "expiry_time": datetime.now(ZoneInfo("UTC"))
                     + timedelta(seconds=RESET_TTL_SECONDS),
@@ -1016,8 +1035,8 @@ async def HandelPasswordReset(
 
             count = count + 1
             return {
-                "message": "User Found",
-                "success": False,
+                "message": ERROR_MESSAGE.USER_NOT_FOUND,
+                "success": SUCCESS.FALSE,
             }
 
         user = db.query(Models.User).filter(Models.User.id == employee_info.user_id).first()
@@ -1025,7 +1044,7 @@ async def HandelPasswordReset(
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "user not found", "success": False},
+                detail={"message": ERROR_MESSAGE.USER_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         await cache_database.delete(cache_key)
@@ -1058,8 +1077,8 @@ async def HandelPasswordReset(
         email_sender_function(email_instance, background_task)
 
         return {
-            "message": "Mail Sent Successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.MAIL_SENT_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -1068,8 +1087,8 @@ async def HandelPasswordReset(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable to log out the user at this moment.",
-                "success": False,
+                "message": ERROR_MESSAGE.LOGOUT_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1085,8 +1104,8 @@ async def Check_For_The_Maintenance_Mode(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Unauthorized: Missing or invalid auth token",
-                    "success": False,
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_MISSING_TOKEN,
+                    "success": SUCCESS.FALSE,
                 },
             )
         maintenance_mode = db.query(Models.MaintenanceMode).first()
@@ -1095,8 +1114,8 @@ async def Check_For_The_Maintenance_Mode(
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail={
-                    "message": "Maintenance Mode Is Active Now",
-                    "success": False,
+                    "message": ERROR_MESSAGE.MAINTENANCE_MODE_ACTIVE,
+                    "success": SUCCESS.FALSE,
                     "data": jsonable_encoder(model_to_filtered_dict(maintenance_mode)),
                 },
             )
@@ -1116,8 +1135,8 @@ async def Check_For_The_Maintenance_Mode(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": ("Unable To Find User With This ID"),
-                    "success": False,
+                    "message": ERROR_MESSAGE.USER_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1125,23 +1144,26 @@ async def Check_For_The_Maintenance_Mode(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": ("Account is deactivated. Access denied."),
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
         if not user.organization.status:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Organization is deactivated. Access denied.",
-                    "success": False,
+                    "message": ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
         if not any(session.id == session_id for session in user.sessions):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized: Invalid or expired token", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.UNAUTHORIZED_INVALID_TOKEN,
+                    "success": SUCCESS.FALSE,
+                },
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -1155,18 +1177,18 @@ async def Check_For_The_Maintenance_Mode(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": (
-                        "Organization is deactivated. Access denied."
-                        if user.account_status
-                        else "Organization not found"
+                        ERROR_MESSAGE.SIGN_IN_ORG_INACTIVE
+                        if organization.status
+                        else ERROR_MESSAGE.ORGANIZATION_NOT_FOUND
                     ),
-                    "success": False,
+                    "success": SUCCESS.FALSE,
                 },
             )
         organization = user.organization
 
         return {
-            "message": "user verified successfully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
             "data": {"portal_slug": organization.general_info.portal_slug},
         }
 
@@ -1176,8 +1198,8 @@ async def Check_For_The_Maintenance_Mode(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while verifying user",
-                "success": False,
+                "message": ERROR_MESSAGE.SESSION_VERIFICATION_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1203,8 +1225,8 @@ async def create_organization(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "No Such Organization Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.NO_SUCH_ORGANIZATION_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1225,15 +1247,15 @@ async def create_organization(
 
         email_sender_function(email_instance, background_task)
 
-        return {"success": True, "message": "Email Send Successfully"}
+        return {"success": SUCCESS.TRUE, "message": SUCCESS_MESSAGE.EMAIL_SENT_SUCCESSFULLY}
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Adding Employee",
-                "success": False,
+                "message": ERROR_MESSAGE.EMAIL_SEND_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )
@@ -1261,8 +1283,8 @@ async def reset_password_instructions(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "Employee Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.EMPLOYEE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1277,8 +1299,8 @@ async def reset_password_instructions(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "Organization Not Found",
-                    "success": False,
+                    "message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND_CAPITALIZED,
+                    "success": SUCCESS.FALSE,
                 },
             )
 
@@ -1312,8 +1334,8 @@ async def reset_password_instructions(
         email_sender_function(email_instance, background_task)
 
         return {
-            "message": "Reset Password Link Sent SuccessFully",
-            "success": True,
+            "message": SUCCESS_MESSAGE.RESET_PASSWORD_LINK_SENT_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
         }
 
     except HTTPException as http_exception:
@@ -1322,8 +1344,8 @@ async def reset_password_instructions(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Password Reset Instruction",
-                "success": False,
+                "message": ERROR_MESSAGE.PASSWORD_RESET_INSTRUCTION_ERROR,
+                "success": SUCCESS.FALSE,
                 "error": str(e),
             },
         )

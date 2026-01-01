@@ -13,7 +13,7 @@ project_root = Path(__file__).resolve().parents[3]  # Adjust based on your struc
 sys.path.insert(0, str(project_root))
 
 # Import your models (adjust import path as needed)
-from SqlModels.Models import BaseModel
+from models.sql.Models import BaseModel
 
 # Get current environment from folder structure
 current_env = Path(__file__).resolve().parent.parent.name
