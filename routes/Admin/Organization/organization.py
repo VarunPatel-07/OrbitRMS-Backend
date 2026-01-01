@@ -59,7 +59,7 @@ async def Fetch_All__Organization(
         if token is None or not isinstance(token, dict):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -85,7 +85,7 @@ async def Fetch_All__Organization(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         filter_data: str = ""
@@ -99,7 +99,7 @@ async def Fetch_All__Organization(
         if org_query_data is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "No organizations found", "success": False},
+                detail={"message": ERROR_MESSAGE.NO_ORGANIZATIONS_FOUND, "success": SUCCESS.FALSE},
             )
 
         org_query_data = org_query_data.outerjoin(Models.Organization.general_info)
@@ -126,7 +126,7 @@ async def Fetch_All__Organization(
         organizations = org_query_data.all()
 
         return {
-            "message": "Organizations fetched successfully",
+            "message": SUCCESS_MESSAGE.ORGANIZATIONS_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": [
                 {
@@ -194,7 +194,7 @@ async def Fetch_All__Organization(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Verifying Admin",
+                "message": ERROR_MESSAGE.ADMIN_VERIFICATION_ERROR,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -213,7 +213,7 @@ async def Organization_Setting(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -239,7 +239,7 @@ async def Organization_Setting(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         organization = db.query(Models.Organization).filter(Models.Organization.id == id).first()
@@ -247,7 +247,7 @@ async def Organization_Setting(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Organization Not Found", "success": False},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         organization.status = True if not organization.status else False
@@ -265,7 +265,7 @@ async def Organization_Setting(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Verifying Admin",
+                "message": ERROR_MESSAGE.ADMIN_VERIFICATION_ERROR,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -284,7 +284,7 @@ async def Fetch_Client_Organization_Details(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -310,7 +310,7 @@ async def Fetch_Client_Organization_Details(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         organization = (
@@ -329,11 +329,11 @@ async def Fetch_Client_Organization_Details(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Organization Not Found", "success": False},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         return {
-            "message": "Info Fetched Successfully",
+            "message": SUCCESS_MESSAGE.INFO_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": {
                 **model_to_filtered_dict(organization),
@@ -380,7 +380,7 @@ async def Fetch_Client_Organization_Details(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Verifying Admin",
+                "message": ERROR_MESSAGE.ADMIN_VERIFICATION_ERROR,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -401,7 +401,7 @@ async def Resend_Email_Verification_Link(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -427,7 +427,7 @@ async def Resend_Email_Verification_Link(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         find_organization = (
@@ -452,7 +452,7 @@ async def Resend_Email_Verification_Link(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "The Provided Email Domain Is Already In Use",
+                    "message": ERROR_MESSAGE.EMAIL_DOMAIN_ALREADY_IN_USE,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -461,7 +461,7 @@ async def Resend_Email_Verification_Link(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "The Provided Email Is Already In Use",
+                    "message": ERROR_MESSAGE.ORGANIZATION_ALREADY_EXISTS,
                     "success": SUCCESS.FALSE,
                     "owner_email": find_organization.primary_email,
                 },
@@ -472,7 +472,7 @@ async def Resend_Email_Verification_Link(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "No Such Organization Found", "success": False},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         organization_general_info = (
@@ -513,8 +513,7 @@ async def Resend_Email_Verification_Link(
 
         return {
             "success": SUCCESS.TRUE,
-            "title": "Organization Created",
-            "message": "Verification Email Send Successfully",
+            "message": SUCCESS_MESSAGE.VERIFICATION_EMAIL_SENT_SUCCESSFULLY,
         }
 
     except HTTPException as http_exception:
@@ -523,7 +522,7 @@ async def Resend_Email_Verification_Link(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Resending The Email Verification Link",
+                "message": ERROR_MESSAGE.ERROR_WHILE_RESENDING_EMAIL_VERIFICATION,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -544,7 +543,7 @@ async def Resend_Onboarding_Instruction(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -570,7 +569,7 @@ async def Resend_Onboarding_Instruction(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         find_organization = (
@@ -583,7 +582,7 @@ async def Resend_Onboarding_Instruction(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
-                    "message": "No Organization Found",
+                    "message": ERROR_MESSAGE.NO_ORGANIZATION_FOUND,
                     "success": SUCCESS.FALSE,
                     "owner_email": find_organization.primary_email,
                 },
@@ -610,7 +609,7 @@ async def Resend_Onboarding_Instruction(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Employee Not Found",
+                    "message": ERROR_MESSAGE.EMPLOYEE_NOT_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -642,7 +641,7 @@ async def Resend_Onboarding_Instruction(
         db.commit()
 
         return {
-            "message": "Onboarding Instruction Mail Send Successfully",
+            "message": SUCCESS_MESSAGE.VERIFICATION_EMAIL_SENT_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
         }
 
@@ -652,7 +651,7 @@ async def Resend_Onboarding_Instruction(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Resending The Email Verification Link",
+                "message": ERROR_MESSAGE.ERROR_WHILE_RESENDING_EMAIL_VERIFICATION,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -671,7 +670,7 @@ async def Delete_Organization(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -697,7 +696,7 @@ async def Delete_Organization(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         organization = db.query(Models.Organization).filter(Models.Organization.id == id).first()
@@ -706,7 +705,7 @@ async def Delete_Organization(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "No Organization Found",
+                    "message": ERROR_MESSAGE.NO_ORGANIZATION_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -715,7 +714,7 @@ async def Delete_Organization(
         db.commit()
 
         return {
-            "message": "Organization Deleted Successfully",
+            "message": SUCCESS_MESSAGE.ORGANIZATION_DELETED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
         }
 
@@ -725,7 +724,7 @@ async def Delete_Organization(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error While Deleting an Organization",
+                "message": ERROR_MESSAGE.ERROR_WHILE_DELETING_ORGANIZATION,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },

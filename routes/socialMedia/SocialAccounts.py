@@ -30,6 +30,7 @@ from models.pydantic.SocialMediaModule.SocialMediaModule import (
 from models.sql import Models
 from middleware.RateLimiting import limiter
 from utils.helper.helper import model_to_filtered_dict
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 from .Services.FacebookService import FacebookService
 
@@ -54,7 +55,7 @@ async def Fetch_All_The_Linked_Account(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Unable To Find Organization", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FAlSE},
             )
 
         social_media_accounts = (
@@ -64,7 +65,7 @@ async def Fetch_All_The_Linked_Account(
         )
 
         return {
-            "message": "Social Media Account Fetched SuccessFully",
+            "message": SUCCESS_MESSAGE.SOCIAL_MEDIA_ACCOUNT_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": social_media_accounts if social_media_accounts else [],
         }
@@ -75,7 +76,7 @@ async def Fetch_All_The_Linked_Account(
         raise HTTPException(
             status_code=500,
             detail={
-                "message": "An error occurred during Fetch Social Accounts",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_SOCIAL_ACCOUNTS,
                 "error": str(e),
             },
         )
@@ -126,7 +127,7 @@ async def Post_Content_To_Social_Media(
         )
 
         return {
-            "message": "Post Uploaded Successfully",
+            "message": SUCCESS_MESSAGE.POST_UPDATED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
         }
 
@@ -136,7 +137,7 @@ async def Post_Content_To_Social_Media(
         raise HTTPException(
             status_code=500,
             detail={
-                "message": "An error occurred during Fetch Social Accounts",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_SOCIAL_ACCOUNTS,
                 "error": str(e),
             },
         )
@@ -174,7 +175,7 @@ async def Fetch_All_Created_Scheduled_Posts(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "No Such Organization Found",
+                    "message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND,
                     "success": SUCCESS.FAlSE,
                 },
             )
@@ -189,7 +190,7 @@ async def Fetch_All_Created_Scheduled_Posts(
         )
 
         return {
-            "message": "Social Media Post Fetch Successfully",
+            "message": SUCCESS_MESSAGE.SOCIAL_MEDIA_ACCOUNT_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": [
                 model_to_filtered_dict(
@@ -205,7 +206,7 @@ async def Fetch_All_Created_Scheduled_Posts(
         raise HTTPException(
             status_code=500,
             detail={
-                "message": "An error occurred during Fetch Social Media Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_SOCIAL_ACCOUNTS,
                 "error": str(e),
             },
         )
@@ -231,7 +232,7 @@ async def Post_Content_To_Social_Media(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "No Such Organization Found",
+                    "message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND,
                     "success": SUCCESS.FAlSE,
                 },
             )
@@ -251,7 +252,7 @@ async def Post_Content_To_Social_Media(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "No Such Post Found",
+                    "message": ERROR_MESSAGE.NO_POST_FOUND,
                     "success": SUCCESS.FAlSE,
                 },
             )
@@ -265,7 +266,7 @@ async def Post_Content_To_Social_Media(
         db.delete(post_data)
         db.commit()
         return {
-            "message": "Post Deleted Successfully",
+            "message": ERROR_MESSAGE.POST_DELETED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
         }
 
@@ -275,7 +276,7 @@ async def Post_Content_To_Social_Media(
         raise HTTPException(
             status_code=500,
             detail={
-                "message": "An error occurred during Fetch Social Accounts",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_SOCIAL_ACCOUNTS,
                 "error": str(e),
             },
         )
@@ -297,7 +298,7 @@ async def handel_disconnecting_social_media_account(
     if not organization:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"message": "Unable To Find Organization", "success": SUCCESS.FAlSE},
+            detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FAlSE},
         )
 
     social_media_account = (
@@ -312,17 +313,20 @@ async def handel_disconnecting_social_media_account(
     if not social_media_account:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": "Unable To Find SocialMedia Account", "success": SUCCESS.FAlSE},
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_FIND_SOCIAL_MEDIA_ACCOUNT,
+                "success": SUCCESS.FAlSE,
+            },
         )
 
     message = ""
 
     if social_media_account.is_active:
         social_media_account.is_active = False
-        message = "Account Deactivated SuccessFully"
+        message = SUCCESS_MESSAGE.ACCOUNT_DEACTIVATED_SUCCESSFULLY
     else:
         social_media_account.is_active = True
-        message = "Account Activated SuccessFully"
+        message = SUCCESS_MESSAGE.ACCOUNT_ACTIVATED_SUCCESSFULLY
 
     db.commit()
 
@@ -347,7 +351,7 @@ async def handel_disconnecting_social_media_account(
     if not organization:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"message": "Unable To Find Organization", "success": SUCCESS.FAlSE},
+            detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FAlSE},
         )
 
     social_media_account = (
@@ -362,13 +366,16 @@ async def handel_disconnecting_social_media_account(
     if not social_media_account:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": "Unable To Find SocialMedia Account", "success": SUCCESS.FAlSE},
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_FIND_SOCIAL_MEDIA_ACCOUNT,
+                "success": SUCCESS.FAlSE,
+            },
         )
 
     db.delete(social_media_account)
     db.commit()
 
     return {
-        "message": "Social Media Account Disconnected SuccessFully",
+        "message": SUCCESS_MESSAGE.SOCIAL_MEDIA_ACCOUNT_DISCONNECTED_SUCCESSFULLY,
         "success": SUCCESS.TRUE,
     }

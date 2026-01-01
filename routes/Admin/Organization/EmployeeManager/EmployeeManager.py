@@ -1,6 +1,7 @@
 import json
 import math
 import os
+from re import S
 from typing import Optional
 from urllib.parse import unquote
 
@@ -39,7 +40,7 @@ async def Fetch_All_The_Employee_Of_The_Organization(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -65,7 +66,7 @@ async def Fetch_All_The_Employee_Of_The_Organization(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         organization = db.query(Models.Organization).filter(Models.Organization.id == id).first()
@@ -73,7 +74,7 @@ async def Fetch_All_The_Employee_Of_The_Organization(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Organization Not Found", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         filter_data = ""
@@ -165,7 +166,7 @@ async def Fetch_All_The_Employee_Of_The_Organization(
             )
 
         return {
-            "message": "user verified successfully",
+            "message": SUCCESS_MESSAGE.EMPLOYEE_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": _data,
             "filter_data": filter_data,
@@ -183,7 +184,7 @@ async def Fetch_All_The_Employee_Of_The_Organization(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Verifying Admin",
+                "message": ERROR_MESSAGE.FETCHING_EMPLOYEE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -203,7 +204,7 @@ async def Fetch_Employee_Details(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -229,7 +230,7 @@ async def Fetch_Employee_Details(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         organization = (
@@ -239,7 +240,7 @@ async def Fetch_Employee_Details(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Organization Not Found", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         employee_data = (
@@ -263,7 +264,7 @@ async def Fetch_Employee_Details(
         )
 
         return {
-            "message": "Employee Details Fetched SuccessFully",
+            "message": SUCCESS_MESSAGE.EMPLOYEE_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": (
                 {
@@ -336,7 +337,7 @@ async def Fetch_Employee_Details(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Verifying Admin",
+                "message": ERROR_MESSAGE.FETCHING_EMPLOYEE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -345,7 +346,7 @@ async def Fetch_Employee_Details(
 
 @adminOrgEmpControl.put(path="/disable-employee", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def name(
+async def disableEmployee(
     request: Request,
     db: db_dependencies,
     token: str = Depends(verify_token),
@@ -356,7 +357,7 @@ async def name(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -382,7 +383,7 @@ async def name(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         employee = db.query(Models.User).filter(Models.User.id == employee_id).first()
@@ -390,13 +391,13 @@ async def name(
         if not employee:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "User Not Found", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.USER_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
         if not employee.organization_id == organization_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "User's org ID does not match.", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.USERS_ORG_ID_MISMATCH, "success": SUCCESS.FALSE},
             )
 
         employee.account_status = True if not employee.account_status else False
@@ -404,7 +405,10 @@ async def name(
         db.commit()
         db.refresh(employee)
 
-        return {"message": "User's Account Status Updated SuccessFully", "success": SUCCESS.FAlSE}
+        return {
+            "message": SUCCESS_MESSAGE.USER_ACCOUNT_STATUS_UPDATED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+        }
 
     except HTTPException as http_exception:
         raise http_exception
@@ -412,7 +416,7 @@ async def name(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Verifying Admin",
+                "message": ERROR_MESSAGE.ERROR_WHILE_DISABLING_EMPLOYEE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
