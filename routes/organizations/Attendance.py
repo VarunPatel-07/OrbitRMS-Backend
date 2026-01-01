@@ -26,6 +26,7 @@ from models.sql import Models
 from middleware.RateLimiting import limiter
 from utils.helper.createModelInstance import cerate_model_instance
 from utils.helper.helper import model_to_filtered_dict
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 attendanceRoute = APIRouter(prefix="/app/v1/attendance", tags=["Attendance"])
 
@@ -69,7 +70,7 @@ async def handel_apply_ratelimiting(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "User Not Found",
+                    "message": ERROR_MESSAGE.EMPLOYEE_NOT_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -138,7 +139,7 @@ async def handel_apply_ratelimiting(
         db.commit()
 
         return {
-            "message": "Leave Added Successfully",
+            "message": SUCCESS_MESSAGE.LEAVE_APPLIED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
         }
 
@@ -148,7 +149,7 @@ async def handel_apply_ratelimiting(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Fetching The User Info",
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -176,7 +177,7 @@ async def fetch_users_leave(
         query_data = _data[start:end]
 
         return {
-            "message": "user verified successfully",
+            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": _data,
             "metadata": {
@@ -193,7 +194,7 @@ async def fetch_users_leave(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Fetching Leaves",
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -221,7 +222,7 @@ async def fetch_leaves(
                         users_data.append(leave)
 
         return {
-            "message": "All Leaves Fetched Successfully",
+            "message": SUCCESS_MESSAGE.LEAVES_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": users_data,
         }
@@ -232,7 +233,7 @@ async def fetch_leaves(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Fetching The User Info",
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },

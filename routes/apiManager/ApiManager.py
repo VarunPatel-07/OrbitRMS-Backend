@@ -19,6 +19,7 @@ from models.pydantic.Organizations.organizations import AuthorizedRecipientEmail
 from models.sql import Models
 from middleware.RateLimiting import limiter
 from utils.helper.helper import generate_api_secrets_api_key, model_to_filtered_dict
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
@@ -48,7 +49,10 @@ async def Enable_Api(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Client Inquiry Not Found", "success": SUCCESS.FALSE},
+                detail={
+                    "message": ERROR_MESSAGE.CLIENT_INQUIRE_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         else:
@@ -72,7 +76,9 @@ async def Enable_Api(
 
         return {
             "message": (
-                "Api Enabled Successfully" if client_inquires.status else "Api Disable Successfully"
+                SUCCESS_MESSAGE.API_ENABLED_SUCCESSFULLY
+                if client_inquires.status
+                else SUCCESS_MESSAGE.API_DISABLED_SUCCESSFULLY
             ),
             "enable": client_inquires.status,
             "success": SUCCESS.TRUE,
@@ -84,7 +90,7 @@ async def Enable_Api(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Enable Api Right Now",
+                "message": ERROR_MESSAGE.UNABLE_TO_ENABLE_API_RIGHT_NOW,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },
@@ -121,7 +127,7 @@ async def Fetch_Status_OF_Api(
         )
 
         return {
-            "message": "Data Fetched Successfully",
+            "message": SUCCESS_MESSAGE.INQUIRY_SCHEMA_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": (
                 {
@@ -153,7 +159,7 @@ async def Fetch_Status_OF_Api(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Some Thing Went Wrong",
+                "message": ERROR_MESSAGE.SOME_THING_WENT_WRONG,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },
@@ -174,7 +180,7 @@ async def ReGenerateKeys(
         if field_name not in ["api_key", "api_secrete"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-                detail={"message": "Invalid Field_Name", "success": SUCCESS.FALSE},
+                detail={"message": ERROR_MESSAGE.INVALID_QUERY_ARGUMENT, "success": SUCCESS.FALSE},
             )
 
         client_inquires = (
@@ -184,7 +190,10 @@ async def ReGenerateKeys(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Client Inquiry Not Found", "success": SUCCESS.FALSE},
+                detail={
+                    "message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
             )
         api_key, api_secret = generate_api_secrets_api_key()
         if field_name == "api_key":
@@ -202,7 +211,7 @@ async def ReGenerateKeys(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Enable Api Right Now",
+                "message": ERROR_MESSAGE.UNABLE_TO_ENABLE_API_RIGHT_NOW,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },
@@ -226,7 +235,10 @@ async def EnableMailNotification(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Client Inquiry Not Found", "success": SUCCESS.FALSE},
+                detail={
+                    "message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         client_inquires.email_notification = not client_inquires.email_notification
@@ -235,7 +247,11 @@ async def EnableMailNotification(
         db.refresh(client_inquires)
 
         return {
-            "message": f"Updated Successfully",
+            "message": (
+                SUCCESS_MESSAGE.EMAIL_NOTIFICATION_STATUS_UPDATED_SUCCESSFULLY
+                if client_inquires.email_notification
+                else SUCCESS_MESSAGE.EMAIL_NOTIFICATION_DISABLED_SUCCESSFULLY
+            ),
             "success": SUCCESS.TRUE,
             "data": {
                 "email_notification": client_inquires.email_notification,
@@ -248,7 +264,7 @@ async def EnableMailNotification(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Enable Api Right Now",
+                "message": ERROR_MESSAGE.UNABLE_TO_ENABLE_API_RIGHT_NOW,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },
@@ -273,7 +289,10 @@ async def EnableMailNotification(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Client Inquiry Not Found", "success": SUCCESS.FALSE},
+                detail={
+                    "message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         client_inquires.authorized_recipient_emails = json.dumps(data.authorized_recipient)
@@ -282,7 +301,7 @@ async def EnableMailNotification(
         db.refresh(client_inquires)
 
         return {
-            "message": f"Updated Successfully",
+            "message": SUCCESS_MESSAGE.AUTHORIZED_RECIPIENT_EMAIL_UPDATED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": {
                 "authorized_recipient_email": json.loads(
@@ -297,7 +316,7 @@ async def EnableMailNotification(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Enable Api Right Now",
+                "message": ERROR_MESSAGE.UNABLE_TO_UPDATE_RECIPIENT_EMAIL,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },

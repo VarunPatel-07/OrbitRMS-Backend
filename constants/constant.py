@@ -21,8 +21,8 @@ SERVER_ERROR_STATUS_CODE = [
 
 
 class SUCCESS:
-    FALSE: False
-    TRUE: True
+    FALSE = False
+    TRUE = True
 
 
 USER_FRIENDLY_ERRORS = {
