@@ -66,7 +66,10 @@ async def AddEditFeedPostController(
         if type not in ["add", "edit"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-                detail={"message": ERROR_MESSAGE.ONLY_ADD_OR_EDIT_ALLOWED, "success": SUCCESS.FALSE},
+                detail={
+                    "message": ERROR_MESSAGE.ONLY_ADD_OR_EDIT_ALLOWED,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         if type == "add":
@@ -507,7 +510,6 @@ def serialize_comment(comment):
     return {
         "id": comment.id,
         "user_id": comment.user_id,
-        "comment": comment.comment,
         **comment_personal_info,
         **comment_employee_info,
     }
@@ -533,7 +535,6 @@ def serialize_likes(likes):
     return {
         "id": likes.id,
         "user_id": likes.user_id,
-        "comment": likes.likes,
         **comment_personal_info,
         **comment_employee_info,
     }
@@ -566,7 +567,10 @@ async def FetchLikesAndComment(
         if type not in ["likes", "comments"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-                detail={"message": ERROR_MESSAGE.ONLY_LIKE_OR_COMMENT_ALLOWED, "success": SUCCESS.FALSE},
+                detail={
+                    "message": ERROR_MESSAGE.ONLY_LIKE_OR_COMMENT_ALLOWED,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         cache_data_key = f"feed_post_{post_id}_{type}"

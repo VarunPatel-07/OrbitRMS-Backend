@@ -18,6 +18,7 @@ from constants.constant import SUCCESS
 from config.EnvConfig import EnvConfig
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.RateLimiting import limiter
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 cloudinary.config(
     cloud_name=EnvConfig.CLOUDINARY_CLOUD_NAME,
@@ -79,7 +80,7 @@ async def OrbitAi_conversation_handler(
         ]
 
         return {
-            "message": "response generated successfully",
+            "message": SUCCESS_MESSAGE.RESPONSE_GENERATED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": {"ai_response": filtered_responses, "uploaded_images": final_images},
         }
@@ -90,7 +91,7 @@ async def OrbitAi_conversation_handler(
         raise HTTPException(
             status_code=500,
             detail={
-                "message": "An error occurred during The OrbitAi conversations",
+                "message": ERROR_MESSAGE.ERROR_DURING_ORBIT_AI_CONVERSION,
                 "error": str(e),
             },
         )

@@ -60,7 +60,7 @@ async def AddEditFeedPostController(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -86,13 +86,16 @@ async def AddEditFeedPostController(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         if type not in ["add", "edit"]:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-                detail={"message": "Only Add Or Edit Is Allowed", "success": False},
+                detail={
+                    "message": ERROR_MESSAGE.ONLY_ADD_OR_EDIT_ALLOWED,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         if type == "add":
@@ -111,7 +114,7 @@ async def AddEditFeedPostController(
             db.commit()
 
             return {
-                "message": "Post Uploaded Successfully",
+                "message": SUCCESS_MESSAGE.POST_UPLOADED_SUCCESSFULLY,
                 "success": SUCCESS.TRUE,
                 "data": model_to_filtered_dict(post_data),
             }
@@ -121,7 +124,7 @@ async def AddEditFeedPostController(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "ID is required for edit operation",
+                        "message": ERROR_MESSAGE.ID_REQUIRED_FOR_EDIT,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -136,7 +139,7 @@ async def AddEditFeedPostController(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Post With This Id Not Found",
+                        "message": ERROR_MESSAGE.POST_WITH_THIS_ID_NOT_FOUND,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -145,7 +148,7 @@ async def AddEditFeedPostController(
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={
-                        "message": "You Are Not Authorised",
+                        "message": ERROR_MESSAGE.NOT_AUTHORIZED,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -157,7 +160,7 @@ async def AddEditFeedPostController(
             db.refresh(existing_post)
 
             return {
-                "message": "Post Updated Successfully",
+                "message": SUCCESS_MESSAGE.POST_UPDATED_SUCCESSFULLY,
                 "success": SUCCESS.TRUE,
                 "data": model_to_filtered_dict(existing_post),
             }
@@ -171,7 +174,7 @@ async def AddEditFeedPostController(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while Posting A Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_POSTING_POST,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -193,7 +196,7 @@ async def FetchTheOrganizationPost(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -219,7 +222,7 @@ async def FetchTheOrganizationPost(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         if not order:
@@ -244,7 +247,7 @@ async def FetchTheOrganizationPost(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Invalid Input",
+                    "message": ERROR_MESSAGE.INVALID_INPUT,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -273,7 +276,7 @@ async def FetchTheOrganizationPost(
             )
 
         return {
-            "message": "Post Fetched Successfully",
+            "message": SUCCESS_MESSAGE.POST_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": _data,
         }
@@ -284,7 +287,7 @@ async def FetchTheOrganizationPost(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Fetching Posts",
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_POSTS,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -304,7 +307,7 @@ async def HandelDeletePostFunction(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": False},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -330,7 +333,7 @@ async def HandelDeletePostFunction(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": False},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         post = (
@@ -343,7 +346,7 @@ async def HandelDeletePostFunction(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Post With This Id Not Found",
+                    "message": ERROR_MESSAGE.POST_WITH_THIS_ID_NOT_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -351,7 +354,7 @@ async def HandelDeletePostFunction(
         db.delete(post)
         db.commit()
 
-        return {"success": True, "message": "Post Deleted Successfully"}
+        return {"success": SUCCESS.TRUE, "message": SUCCESS_MESSAGE.POST_DELETED_SUCCESSFULLY}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -359,7 +362,7 @@ async def HandelDeletePostFunction(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error while Deleting a Post",
+                "message": ERROR_MESSAGE.ERROR_WHILE_DELETING_POST,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },

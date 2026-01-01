@@ -161,7 +161,7 @@ async def GetCloudUploadSignature(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Error Accrued While Uploading Image",
+                "message": ERROR_MESSAGE.ERROR_WHILE_UPLOADING_IMAGES,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },

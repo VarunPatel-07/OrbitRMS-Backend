@@ -1,6 +1,7 @@
 # --- Error Messages ---
 
 # ==== Authentication Error Messages ====
+from tkinter import E
 from h11 import ERROR
 
 
@@ -33,6 +34,7 @@ USER_NOT_FOUND = "User Not Found"
 ORGANIZATION_NOT_FOUND = "Organization Not Found"
 NO_ORGANIZATIONS_FOUND = "No organizations found"
 NO_SUCH_ORGANIZATION_FOUND = "No Such Organization Found"
+NO_MAINTENANCE_LOGS_FOUND = "No Maintenance Logs Found"
 
 # ==== Password Reset Error Messages ====
 PASSWORD_RESET_LIMIT_EXCEEDED = "Reset limit exceeded. Please wait."
@@ -153,6 +155,7 @@ INVALID_MAINTENANCE_TYPE = "Invalid type. Only 'activate' or 'deactivate' are al
 MAINTENANCE_SESSION_IN_PROGRESS = (
     "A maintenance session is already in progress. Please complete it before starting another."
 )
+
 REASON_IS_REQUIRED_FIELD = "The Reason Is An Required Field"
 ENTER_VALID_DATE_DIFFERENCE = "Enter Valid Date Difference"
 START_END_TIME_MINIMUM_APART = "Start and end time must be at least 30 minutes apart."
@@ -215,3 +218,34 @@ FORM_ID_ALREADY_EXISTS = "Form ID Already Exist"
 FORM_NOT_FOUND = "Form Not Found"
 INQUIRY_FORM_UPDATED_SUCCESSFULLY = "Inquiry Form Updated Successfully"
 UNABLE_TO_UPDATE_INQUIRY_FORM = "Unable To Update Inquiry Form Right Now"
+EMPLOYEE_WITH_NAME_ALREADY_EXISTS = "Employee With This Name Already Exists"
+ERROR_WHILE_ADDING_EMPLOYEE = "Error while Adding The Employee"
+ERROR_WHILE_FETCHING_THE_USER_INFO = "Error while Fetching The User Info"
+ID_REQUIRED_TO_EDIT_EMPLOYEE = "ID is required to edit employee"
+EMPLOYEE_NAME_ALREADY_EXISTS = "Employee With This Name Already Exist"
+ERROR_WHILE_EDITING_THE_USER = "Error while Editing the User"
+ERROR_WHILE_FETCHING_ALL_THE_EMPLOYEE = "Error while Fetching All The Employee"
+HOLIDAY_ALREADY_EXISTS = "Holiday With This Name Is Already Exist"
+ID_REQUIRED_TO_OPERATION = "ID is required for edit operation"
+HOLIDAY_NOT_FOUND = "Holiday Not Found"
+INVALID_SORTING_ARGUMENT = "Invalid Sorting Argument"
+
+UNABLE_TO_DELETE_HOLIDAY = "Unable To Delete Holiday"
+LEAVE_TYPE_ALREADY_EXISTS = "Leave Type With This Name Or Code AllReady Exist"
+UNABLE_TO_ADD_LEAVE_TYPE = "Unable Add Leave Type"
+UNABLE_TO_ENABLE_API_RIGHT_NOW = "Unable To Enable Api Right Now"
+INVALID_QUERY_ARGUMENT = "Invalid Query Argument"
+UNABLE_TO_UPDATE_RECIPIENT_EMAIL = "Unable To Update Recipient Email Right Now"
+ORGANIZATION_ALREADY_EXISTS = "The Provided Organization Name Is Already In Use"
+FETCHING_EMPLOYEE = "error while fetching employee"
+ERROR_WHILE_DISABLING_EMPLOYEE = "error while disabling/enabling employee"
+INVALID_MAINTENANCE_MODE_TYPE = "Invalid type. Only 'activate' or 'deactivate' are allowed."
+ERROR_WHILE_TOGGLING_MAINTENANCE_MODE = "error while toggling Maintenance Mode"
+ERROR_WHILE_FETCHING_SOCIAL_ACCOUNTS = "An error occurred during Fetch Social Accounts"
+NO_POST_FOUND = "No Post Found"
+UNABLE_TO_FIND_SOCIAL_MEDIA_ACCOUNT = "Unable To Find SocialMedia Account"
+ERROR_DURING_ORBIT_AI_CONVERSION = "An error occurred during The OrbitAi conversations"
+ERROR_WHILE_APPLYING_LEAVE = "error while Fetching The User Info"
+POST_WITH_THIS_ID_NOT_FOUND = "Post With This Id Not Found"
+ERROR_WHILE_POSTING_POST = "error while Posting A Post"
+ERROR_WHILE_UPLOADING_IMAGES = "Error Accrued While Uploading Image"

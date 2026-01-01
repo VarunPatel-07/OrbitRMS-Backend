@@ -53,14 +53,14 @@ async def Toggle_Maintenance_Mode(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Invalid type. Only 'activate' or 'deactivate' are allowed.",
+                    "message": ERROR_MESSAGE.INVALID_MAINTENANCE_MODE_TYPE,
                     "success": SUCCESS.FALSE,
                 },
             )
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -86,7 +86,7 @@ async def Toggle_Maintenance_Mode(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
         maintenance_mode = db.query(Models.MaintenanceMode).first()
 
@@ -101,7 +101,7 @@ async def Toggle_Maintenance_Mode(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "A maintenance session is already in progress. Please complete it before starting another.",
+                        "message": ERROR_MESSAGE.MAINTENANCE_SESSION_IN_PROGRESS,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -133,7 +133,7 @@ async def Toggle_Maintenance_Mode(
                 db.commit()
                 db.refresh(maintenance_mode)
                 return {
-                    "message": "Maintenance Mode Is Now Active",
+                    "message": SUCCESS_MESSAGE.MAINTENANCE_MODE_ACTIVATED,
                     "success": SUCCESS.TRUE,
                     "data": maintenance_mode,
                 }
@@ -159,7 +159,7 @@ async def Toggle_Maintenance_Mode(
                 db.commit()
                 db.refresh(maintenance_log)
                 return {
-                    "message": "Maintenance Mode Is Deactivated",
+                    "message": SUCCESS_MESSAGE.MAINTENANCE_MODE_DEACTIVATED,
                     "success": SUCCESS.TRUE,
                     "data": maintenance_mode,
                 }
@@ -175,7 +175,7 @@ async def Toggle_Maintenance_Mode(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while toggling Maintenance Mode",
+                "message": ERROR_MESSAGE.ERROR_WHILE_TOGGLING_MAINTENANCE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -194,12 +194,15 @@ async def Maintenance_Mode_Schedule_Toggler(
         if len(maintenance_mode_data.reason) == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "The Reason Is An Required Field", "success": SUCCESS.FAlSE},
+                detail={
+                    "message": ERROR_MESSAGE.REASON_IS_REQUIRED_FIELD,
+                    "success": SUCCESS.FALSE,
+                },
             )
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -225,7 +228,7 @@ async def Maintenance_Mode_Schedule_Toggler(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
         maintenance_mode = db.query(Models.MaintenanceMode).first()
 
@@ -240,7 +243,7 @@ async def Maintenance_Mode_Schedule_Toggler(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Enter Valid Date Difference",
+                    "message": ERROR_MESSAGE.ENTER_VALID_DATE_DIFFERENCE,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -254,7 +257,7 @@ async def Maintenance_Mode_Schedule_Toggler(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Start and end time must be at least 30 minutes apart.",
+                    "message": ERROR_MESSAGE.START_END_TIME_MINIMUM_APART,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -267,7 +270,7 @@ async def Maintenance_Mode_Schedule_Toggler(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "A maintenance session is already in progress. Please complete it before starting another.",
+                    "message": ERROR_MESSAGE.MAINTENANCE_SESSION_IN_PROGRESS,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -291,14 +294,14 @@ async def Maintenance_Mode_Schedule_Toggler(
             db.commit()
             db.refresh(maintenance_mode)
             return {
-                "message": "Maintenance Mode Is Now Scheduled",
+                "message": SUCCESS_MESSAGE.MAINTENANCE_MODE_SCHEDULED,
                 "success": SUCCESS.TRUE,
                 "data": maintenance_mode,
             }
 
         return {
-            "message": "Maintenance Dose Not Exist",
-            "success": SUCCESS.FAlSE,
+            "message": ERROR_MESSAGE.MAINTENANCE_DOES_NOT_EXIST,
+            "success": SUCCESS.FALSE,
             "data": maintenance_mode,
         }
     except HTTPException as http_exception:
@@ -325,7 +328,7 @@ async def Toggle_Maintenance_Mode(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -351,7 +354,7 @@ async def Toggle_Maintenance_Mode(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
         maintenance_mode = db.query(Models.MaintenanceMode).first()
@@ -363,7 +366,7 @@ async def Toggle_Maintenance_Mode(
         )
 
         return {
-            "message": "Maintenance Mode info Fetched Successfully",
+            "message": SUCCESS_MESSAGE.MAINTENANCE_MODE_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": {
                 **model_to_filtered_dict(maintenance_mode),
@@ -387,7 +390,7 @@ async def Toggle_Maintenance_Mode(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while toggling Maintenance Mode",
+                "message": ERROR_MESSAGE.ERROR_WHILE_TOGGLING_MAINTENANCE_MODE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -409,7 +412,7 @@ async def Fetch_ALL_Maintenance_Mode_History(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FALSE},
             )
 
         admin_id = token["admin_id"]
@@ -435,7 +438,7 @@ async def Fetch_ALL_Maintenance_Mode_History(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FAlSE},
             )
 
         filter_data: str = ""
@@ -447,7 +450,7 @@ async def Fetch_ALL_Maintenance_Mode_History(
         query_data = db.query(Models.MaintenanceLog)
         if not query_data:
             return {
-                "message": "No Maintenance Logs Found",
+                "message": ERROR_MESSAGE.NO_MAINTENANCE_LOGS_FOUND,
                 "data": [],
                 "success": SUCCESS.TRUE,
             }
@@ -469,7 +472,7 @@ async def Fetch_ALL_Maintenance_Mode_History(
         )
 
         return {
-            "message": "Organizations fetched successfully",
+            "message": SUCCESS_MESSAGE.ORGANIZATIONS_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": maintenance_logs if maintenance_logs else [],
             "metadata": {
@@ -486,7 +489,7 @@ async def Fetch_ALL_Maintenance_Mode_History(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while toggling Maintenance Mode",
+                "message": ERROR_MESSAGE.ERROR_WHILE_TOGGLING_MAINTENANCE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -506,7 +509,7 @@ async def Edit_Scheduler_Info(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FAlSE},
             )
 
         admin_id = token["admin_id"]
@@ -532,7 +535,7 @@ async def Edit_Scheduler_Info(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FAlSE},
             )
 
         maintenance_log = (
@@ -542,7 +545,10 @@ async def Edit_Scheduler_Info(
         if not maintenance_log:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "No Such Maintenance Log Found", "success": SUCCESS.FAlSE},
+                detail={
+                    "message": ERROR_MESSAGE.NO_MAINTENANCE_LOG_FOUND,
+                    "success": SUCCESS.FAlSE,
+                },
             )
 
         if (
@@ -554,7 +560,7 @@ async def Edit_Scheduler_Info(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Start and end time must be at least 30 minutes apart.",
+                    "message": ERROR_MESSAGE.START_END_TIME_MINIMUM_APART,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -566,7 +572,7 @@ async def Edit_Scheduler_Info(
         db.commit()
 
         return {
-            "message": "scheduler Updated Successfully",
+            "message": SUCCESS_MESSAGE.SCHEDULER_UPDATED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
         }
 
@@ -576,7 +582,7 @@ async def Edit_Scheduler_Info(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while toggling Maintenance Mode",
+                "message": ERROR_MESSAGE.ERROR_WHILE_TOGGLING_MAINTENANCE_MODE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -596,7 +602,7 @@ async def Edit_Scheduler_Info(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FAlSE},
             )
 
         admin_id = token["admin_id"]
@@ -622,7 +628,7 @@ async def Edit_Scheduler_Info(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FAlSE},
             )
 
         maintenance_log = (
@@ -632,7 +638,10 @@ async def Edit_Scheduler_Info(
         if not maintenance_log:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "No Such Maintenance Log Found", "success": SUCCESS.FAlSE},
+                detail={
+                    "message": ERROR_MESSAGE.NO_MAINTENANCE_LOG_FOUND,
+                    "success": SUCCESS.FAlSE,
+                },
             )
 
         maintenance_log.cancellation_reason = maintenance_mode_data.reason
@@ -642,7 +651,7 @@ async def Edit_Scheduler_Info(
         db.commit()
 
         return {
-            "message": "scheduler Updated Successfully",
+            "message": SUCCESS_MESSAGE.SCHEDULER_UPDATED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
         }
 
@@ -652,7 +661,7 @@ async def Edit_Scheduler_Info(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while toggling Maintenance Mode",
+                "message": ERROR_MESSAGE.ERROR_WHILE_TOGGLING_MAINTENANCE_MODE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -672,7 +681,7 @@ async def Save_Message(
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Unauthorized", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.UNAUTHORIZED, "success": SUCCESS.FAlSE},
             )
 
         admin_id = token["admin_id"]
@@ -698,7 +707,7 @@ async def Save_Message(
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"message": "Invalid session", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FAlSE},
             )
 
         maintenance_mode = (
@@ -708,7 +717,7 @@ async def Save_Message(
         if not maintenance_mode:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "No Such Maintenance Mode Found", "success": SUCCESS.FAlSE},
+                detail={"message": ERROR_MESSAGE.NO_MAINTENANCE_LOG_FOUND, "success": SUCCESS.FAlSE},
             )
 
         maintenance_mode.message = maintenance_mode_data.message
@@ -716,7 +725,7 @@ async def Save_Message(
         db.commit()
 
         return {
-            "message": "Message Updated Successfully",
+            "message": SUCCESS_MESSAGE.MESSAGE_UPDATED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": {"message": maintenance_mode.message},
         }
@@ -727,7 +736,7 @@ async def Save_Message(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "error while toggling Maintenance Mode",
+                "message": ERROR_MESSAGE.ERROR_WHILE_TOGGLING_MAINTENANCE_MODE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },

@@ -29,6 +29,7 @@ from models.pydantic.OrganizationSettings.OrganizationSettings import (
 from models.sql import Models
 from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields, model_to_filtered_dict
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 orgSettings = APIRouter(prefix="/app/v1/org-setting", tags=["org-setting"])
 
@@ -91,12 +92,12 @@ async def FetchTheInfoOfTheOrganization(
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Organization Not Found", "success": SUCCESS.FALSE},
+                detail={"message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND, "success": SUCCESS.FALSE},
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
         return {
-            "message": "Info Fetched Successfully",
+            "message": SUCCESS_MESSAGE.ORGANIZATION_INFO_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": {
                 **model_to_filtered_dict(organization),
@@ -159,7 +160,7 @@ async def AddEditHoliday(
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
-                    "message": "Invalid type. Must be 'add' or 'edit'",
+                    "message": ERROR_MESSAGE.INVALID_TYPE,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -181,7 +182,7 @@ async def AddEditHoliday(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
                         "success": SUCCESS.FALSE,
-                        "message": "Unable To Find Config Module",
+                        "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
                     },
                 )
 
@@ -199,7 +200,7 @@ async def AddEditHoliday(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Holiday With This Name Is Already Exist",
+                        "message": ERROR_MESSAGE.HOLIDAY_ALREADY_EXISTS,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -223,14 +224,14 @@ async def AddEditHoliday(
             db.add(holiday)
             db.commit()
             db.refresh(holiday)
-            return {"success": SUCCESS.TRUE, "message": "Holiday Added Successfully"}
+            return {"success": SUCCESS.TRUE, "message": SUCCESS_MESSAGE.HOLIDAY_ADDED_SUCCESSFULLY}
 
         else:
             if type == "edit" and not id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "ID is required for edit operation",
+                        "message": ERROR_MESSAGE.ID_REQUIRED_TO_OPERATION,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -250,7 +251,7 @@ async def AddEditHoliday(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Holiday With This Name Is Already Exist",
+                        "message": ERROR_MESSAGE.HOLIDAY_ALREADY_EXISTS,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -265,7 +266,7 @@ async def AddEditHoliday(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": "Holiday Not Found",
+                        "message": ERROR_MESSAGE.HOLIDAY_NOT_FOUND,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -286,7 +287,7 @@ async def AddEditHoliday(
             db.commit()
             db.refresh(holiday)
 
-            return {"success": SUCCESS.TRUE, "message": "Holiday Updated Successfully"}
+            return {"success": SUCCESS.TRUE, "message": SUCCESS_MESSAGE.HOLIDAY_EDITED_SUCCESSFULLY}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -328,7 +329,7 @@ async def Fetch_Holiday(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": "Config Module Not Found",
+                    "message": ERROR_MESSAGE.CONFIG_MODULE_NOT_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -355,14 +356,14 @@ async def Fetch_Holiday(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
-                    "message": "Invalid Input",
+                    "message": ERROR_MESSAGE.INVALID_SORTING_ARGUMENT,
                     "success": SUCCESS.FALSE,
                 },
             )
 
         return {
             "success": SUCCESS.TRUE,
-            "message": "Holiday Fetched Successfully",
+            "message": SUCCESS_MESSAGE.HOLIDAYS_FETCHED_SUCCESSFULLY,
             "data": [model_to_filtered_dict(holiday) for holiday in holidays],
         }
 
@@ -401,12 +402,12 @@ async def delete_holiday(
         if not holidays:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": "Holiday Not Found", "success": SUCCESS.FALSE},
+                detail={"message": ERROR_MESSAGE.HOLIDAY_NOT_FOUND, "success": SUCCESS.FALSE},
             )
         db.delete(holidays)
         db.commit()
 
-        return {"message": "Holiday Deleted Successfully", "success": SUCCESS.TRUE}
+        return {"message": SUCCESS_MESSAGE.HOLIDAY_DELETED_SUCCESSFULLY, "success": SUCCESS.TRUE}
 
     except HTTPException as http_exception:
         raise http_exception
@@ -414,7 +415,7 @@ async def delete_holiday(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable To Delete Holiday",
+                "message": ERROR_MESSAGE.UNABLE_TO_DELETE_HOLIDAY,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },
@@ -446,7 +447,7 @@ async def create_leave_type(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Leave Type With This Name Or Code AllReady Exist",
+                    "message": ERROR_MESSAGE.LEAVE_TYPE_ALREADY_EXISTS,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -461,7 +462,7 @@ async def create_leave_type(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Organization Not Found",
+                    "message": ERROR_MESSAGE.ORGANIZATION_NOT_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -510,7 +511,7 @@ async def create_leave_type(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable Add Leave Type",
+                "message": ERROR_MESSAGE.UNABLE_TO_ADD_LEAVE_TYPE,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },
@@ -539,7 +540,7 @@ async def fetch_all_leave_types(
 
         return {
             "success": SUCCESS.TRUE,
-            "message": "Leaves Type Fetched Successfully",
+            "message": SUCCESS_MESSAGE.LEAVES_TYPE_FETCHED_SUCCESSFULLY,
             "data": data,
         }
 
@@ -549,7 +550,7 @@ async def fetch_all_leave_types(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Unable Add Leave Type",
+                "message": ERROR_MESSAGE.UNABLE_TO_ADD_LEAVE_TYPE,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },
