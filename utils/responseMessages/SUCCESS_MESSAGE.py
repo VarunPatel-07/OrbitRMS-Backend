@@ -1,12 +1,3 @@
-# --- Success Messages ---
-
-# ==== Success Constants ====
-from utils.responseMessages.ERROR_MESSAGE import DESIGNATION_ALREADY_EXISTS
-
-
-TRUE = True
-FALSE = False
-
 # ==== Authentication Success Messages ====
 SIGN_IN_SUCCESS_MESSAGE = "User Sign In Successfully"
 ADMIN_SIGN_IN_SUCCESS_MESSAGE = "Admin Sign In Successfully"
