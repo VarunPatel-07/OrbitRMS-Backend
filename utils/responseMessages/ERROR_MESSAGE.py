@@ -1,8 +1,4 @@
-# --- Error Messages ---
 
-# ==== Authentication Error Messages ====
-from tkinter import E
-from h11 import ERROR
 
 
 SIGN_IN_ERROR_MESSAGE = "Error accrued while signing in"
