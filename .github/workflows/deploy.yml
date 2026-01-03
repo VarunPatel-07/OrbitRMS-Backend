@@ -31,10 +31,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            cd /home/varun/OrbitRMS-Backend
-            git fetch origin
-            git reset --hard origin/main
-            source venv/bin/activate
+            cd /home/varun/OrbitRMS/OrbitRMS-Backend
+            git pull origin production
+            source .venv/bin/activate
             pip install -r requirements.txt
             # Optionally run migration or build scripts here
             sudo systemctl restart orbitrms
