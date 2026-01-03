@@ -3,7 +3,7 @@ import json
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import aliased
 
-from SqlModels import Models
+from models.sql import Models
 
 
 def apply_query_filter(query, filters):
