@@ -114,3 +114,9 @@ migrations/*/versions/*.py
 
 /test
 
+*.log
+*.gz
+logs/archive/failures/*.txt
+logs/archive/runtime/*.txt
+logs/failures/*.txt
+logs/runtime/*.txt
