@@ -246,6 +246,3 @@ async def health_status(request: Request):
         )
 
 
-@app.api_route("/sentry-debug")
-async def trigger_error():
-    division_by_zero = 1 / 0
