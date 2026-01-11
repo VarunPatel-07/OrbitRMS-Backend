@@ -18,7 +18,7 @@ def add_leaves_balance_in_employee(
         initial_leave = 0
 
         if refill_quarterly:
-            initial_leave = max_number_of_leave / 4
+            initial_leave = 0
         else:
             initial_leave = max_number_of_leave
 

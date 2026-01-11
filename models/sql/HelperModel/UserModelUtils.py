@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -211,7 +212,7 @@ class AttendanceLeavesModule(BaseModel):
         CHAR(36), ForeignKey("organization_leaves_settings.id"), nullable=False, index=True
     )
     leave_type = relationship("LeavesSettings", back_populates="leaves", uselist=False)
-    start_date = Column(Date, nullable=False)
+    start_date = Column(String(255), nullable=False)
     start_half = Column(Enum("first_half", "second_half", name="half_day_enum"), nullable=False)
 
     is_planned = Column(Boolean, nullable=False, default=True)
@@ -221,9 +222,9 @@ class AttendanceLeavesModule(BaseModel):
         nullable=False,
         default="pending",
     )
-    total_days = Column(Integer, nullable=False, default=0)
+    total_days = Column(Float, nullable=False, default=0)
 
-    end_date = Column(Date, nullable=False)
+    end_date = Column(String(255), nullable=False)
     end_half = Column(Enum("first_half", "second_half", name="half_day_enum"), nullable=False)
 
     description = Column(String(255), nullable=True, default=None)
