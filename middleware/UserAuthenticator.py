@@ -1,9 +1,11 @@
+from sre_constants import SUCCESS
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
-
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
 from models.sql import Models
 from utils.helper.helper import model_to_filtered_dict
+from utils.responseMessages import ERROR_MESSAGE
 
 from .verifyToken import verify_token
 
@@ -32,17 +34,18 @@ def UserAuthenticatorMiddleware(
 
     user = db.query(Models.User).filter(Models.User.id == user_id).first()
 
-    if not user or not user.account_status:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                "message": (
-                    "Account is deactivated. Access denied."
-                    if user.account_status
-                    else "User Not Found"
-                ),
-                "success": False,
+                "message": ERROR_MESSAGE.USER_NOT_FOUND,
+                "success": SUCCESS.FALSE,
             },
+        )
+    if not user.account_status:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"message": ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE, "success": SUCCESS.FALSE},
         )
 
     if not user.organization.status:
