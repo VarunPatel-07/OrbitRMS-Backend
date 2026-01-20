@@ -11,7 +11,7 @@ os.makedirs("./logs/failures", exist_ok=True)
 # Then We Will Use the TimedRotatingFileHandler this is an in build function from the logging and this allow us to rotate our file here at every midnight the file that are older then the seven days will rotate
 
 handler = TimedRotatingFileHandler(
-    "./logs/failures/failures.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
+    "./logs/failures/failures.log", when="midnight", interval=1, backupCount=10, encoding="utf-8"
 )
 
 
