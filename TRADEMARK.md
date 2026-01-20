@@ -11,9 +11,7 @@ You are permitted to:
 
 - Use the OrbitRMS source code for educational purposes
 - Modify the source code
-- Use the software for commercial purposes
-- Sell software derived from the source code
-- Distribute modified or unmodified versions of the code
+- Distribute modified or unmodified versions of the source code
 
 ## Not Allowed
 
@@ -21,8 +19,8 @@ You are NOT permitted to:
 
 - Use the name "OrbitRMS" for derivative or commercial products
 - Use the OrbitRMS logo or branding assets
-- Represent your product as the official OrbitRMS software
-- Imply endorsement or affiliation with OrbitRMS
+- Represent derivative works as the official OrbitRMS software
+- Imply endorsement, partnership, or affiliation with OrbitRMS
 
 ## Branding Assets
 
