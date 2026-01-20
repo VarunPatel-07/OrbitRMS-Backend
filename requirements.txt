@@ -36,6 +36,7 @@ filelock==3.17.0
 frozenlist==1.8.0
 git-filter-repo==2.47.0
 gitlint-core==0.19.1
+gunicorn==23.0.0
 h11==0.14.0
 httpcore==1.0.7
 httptools==0.6.4
@@ -83,6 +84,7 @@ requests==2.32.3
 requests-oauthlib==2.0.0
 rich==13.9.4
 rich-toolkit==0.12.0
+sentry-sdk==2.48.0
 sh==1.14.3
 shellingham==1.5.4
 sib-api-v3-sdk==7.6.0
