@@ -1,6 +1,3 @@
-
-
-
 SIGN_IN_ERROR_MESSAGE = "Error accrued while signing in"
 SIGN_IN_INVALID_CREDENTIALS = "Invalid Email Or Password"
 SIGN_IN_ACCOUNT_INACTIVE = "Account is deactivated. Access denied."
@@ -242,6 +239,8 @@ NO_POST_FOUND = "No Post Found"
 UNABLE_TO_FIND_SOCIAL_MEDIA_ACCOUNT = "Unable To Find SocialMedia Account"
 ERROR_DURING_ORBIT_AI_CONVERSION = "An error occurred during The OrbitAi conversations"
 ERROR_WHILE_APPLYING_LEAVE = "error while Fetching The User Info"
+ERROR_WHILE_FETCHING_LEAVE_BALANCE = "Error while Fetching Leave Balance The User Info"
 POST_WITH_THIS_ID_NOT_FOUND = "Post With This Id Not Found"
 ERROR_WHILE_POSTING_POST = "error while Posting A Post"
 ERROR_WHILE_UPLOADING_IMAGES = "Error Accrued While Uploading Image"
+NO_LEAVE_TYPE_FOUND = "No Leave Type Found"
