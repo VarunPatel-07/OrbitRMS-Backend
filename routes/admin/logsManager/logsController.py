@@ -25,7 +25,7 @@ API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 LOG_FILE_PATH = BASE_DIR / "logs" / "runtime" / "runtime.log"
-
+FAILURE_LOG_FILE_PATH = BASE_DIR / "logs" / "failures" / "failures.log"
 
 CURRENT_LOG_FOLDER_PATH = BASE_DIR / "logs" / "runtime"
 ERROR_LOG_FOLDER_PATH = BASE_DIR / "logs" / "failures"
@@ -122,6 +122,90 @@ async def FetchAllLogs(
         end = start + limit
 
         with open(LOG_FILE_PATH, "r") as log_file:
+            file_content = list(log_file)[::-1]
+
+        filtered_data = file_content[start:end]
+
+        total_data = len(file_content)
+
+        return {
+            "message": SUCCESS_MESSAGE.READ_FILES_SUCCESS_FULLY,
+            "success": SUCCESS.TRUE,
+            "data": filtered_data,
+            "metadata": {
+                "total_data": total_data,
+                "total_pages": math.ceil(total_data / limit),
+                "current_page": page,
+                "record_per_page": limit,
+            },
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_READING_FILE,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
+@logsController.get("/logs/failures", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def FetchAllLogs(
+    request: Request,
+    db: db_dependencies,
+    token: str = Depends(verify_token),
+    page: Optional[int] = Query(alias="page"),
+    limit: Optional[int] = Query(alias="limit"),
+):
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": ERROR_MESSAGE.UNAUTHORIZED,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        admin_id = token["admin_id"]
+        session_id = token["session_id"]
+        admin_signature = token["admin_signature"]
+
+        admin = (
+            db.query(Models.Admin)
+            .options(joinedload(Models.Admin.admin_sessions))
+            .filter(Models.Admin.id == admin_id)
+            .first()
+        )
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": ERROR_MESSAGE.ADMIN_NOT_FOUND, "success": SUCCESS.FALSE},
+            )
+
+        if not any(
+            session.id == session_id and session.admin_signature == admin_signature
+            for session in admin.admin_sessions
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": ERROR_MESSAGE.INVALID_SESSION,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        page = page or 1
+        limit = limit or 100
+        start = (page - 1) * limit
+        end = start + limit
+
+        with open(FAILURE_LOG_FILE_PATH, "r") as log_file:
             file_content = list(log_file)[::-1]
 
         filtered_data = file_content[start:end]
