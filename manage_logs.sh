@@ -1,9 +1,21 @@
 #!/bin/bash
 
-source .env
-# Lets first Define the Path  for the logs and then we will define two logs path like archive and then we will define the logs for the Archive logs
-LOGS_DIR=$PRODUCTION_LOGS_STORE_DIR
-ARCHIVE_LOGS_DIR="$LOGS_DIR/archive"
+
+set -e
+
+# Load environment variables
+if [ -f .env ]; then
+  source .env
+else
+  echo ".env file not found"
+  exit 1
+fi
+
+# Validate required variable
+if [ -z "$PRODUCTION_LOGS_STORE_DIR" ]; then
+  echo "PRODUCTION_LOGS_STORE_DIR not found"
+  exit 1
+fi
 RUNTIME_LOGS="$LOGS_DIR/runtime"
 FAILURES_LOGS="$LOGS_DIR/failures"
 ARCHIVE_RUNTIME_LOGS="$ARCHIVE_LOGS_DIR/runtime"
