@@ -228,7 +228,7 @@ class LeaveBalance(BaseModel):
     )
     leave_type = relationship("LeavesSettings", back_populates="leave_balance")
 
-    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, unique=True)
+    user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False)
     user = relationship(
         "User",
         back_populates="leave_balance",

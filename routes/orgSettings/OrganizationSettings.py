@@ -477,7 +477,7 @@ async def create_leave_type(
             is_paid=data.is_paid,
             max_number_of_leave=data.max_number_of_leave,
             refill_quarterly=data.refill_quarterly,
-            refill_from=data.refill_from,
+            refill_from=data.refill_from if not data.refill_from == "" else "January",
             description=data.description,
             gender=json.dumps(data.gender),
             employee_status=json.dumps(data.employee_status),
@@ -518,6 +518,93 @@ async def create_leave_type(
         )
 
 
+@orgSettings.post(path="/leaves/leave-type/edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def edit_leave_type(
+    request: Request,
+    db: db_dependencies,
+    data: CreateLeaveTypePydanticModel,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    leave_id: str = Query(..., alias="id"),
+):
+    try:
+        find_leave = (
+            db.query(Models.LeavesSettings)
+            .filter(
+                Models.LeavesSettings.id == leave_id,
+                Models.LeavesSettings.organization_id == user.organization_id,
+            )
+            .first()
+        )
+
+        if not find_leave:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.NO_LEAVE_TYPE_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        duplicate_code = (
+            db.query(Models.LeavesSettings)
+            .filter(
+                Models.LeavesSettings.leave_code == data.leave_code,
+                Models.LeavesSettings.organization_id == user.organization_id,
+                Models.LeavesSettings.id != leave_id,
+            )
+            .first()
+        )
+
+        if duplicate_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Leave code already exists",
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        updated_created_by_user = model_to_filtered_dict(
+            user.personal_info, ["user_id", "first_name", "last_name"]
+        )
+
+        find_leave.leave_name = data.leave_name
+        find_leave.leave_code = data.leave_code
+        find_leave.is_paid = data.is_paid
+        find_leave.max_number_of_leave = data.max_number_of_leave
+        find_leave.refill_quarterly = data.refill_quarterly
+        find_leave.refill_from = data.refill_from or "January"
+        find_leave.description = data.description
+        find_leave.gender = json.dumps(data.gender)
+        find_leave.employee_status = json.dumps(data.employee_status)
+        find_leave.marital_status = json.dumps(data.marital_status)
+        find_leave.status = data.status
+        find_leave.updated_by = json.dumps(updated_created_by_user)
+
+        db.commit()
+        db.refresh(find_leave)
+
+        return {
+            "success": SUCCESS.TRUE,
+            "message": f"Leave type '{find_leave.leave_name}' updated successfully.",
+            "data": {"leave_data": find_leave},
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_UPDATE_LEAVE_TYPE,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
 @orgSettings.get(path="/leaves/leave-type/fetch", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def fetch_all_leave_types(
@@ -537,6 +624,51 @@ async def fetch_all_leave_types(
         )
 
         data = [model_to_filtered_dict(_data) for _data in query_data]
+
+        return {
+            "success": SUCCESS.TRUE,
+            "message": SUCCESS_MESSAGE.LEAVES_TYPE_FETCHED_SUCCESSFULLY,
+            "data": data,
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_ADD_LEAVE_TYPE,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.get(path="/leaves/fetch/leave-type", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_all_leave_types(
+    request: Request, db: db_dependencies, user: dict = Depends(UserAuthenticatorMiddleware)
+):
+    try:
+        organization = (
+            db.query(Models.Organization)
+            .filter(Models.Organization.id == user.organization_id)
+            .first()
+        )
+
+        query_data = (
+            db.query(Models.LeavesSettings)
+            .filter(
+                Models.LeavesSettings.organization_id == organization.id,
+                Models.LeavesSettings.status == True,
+            )
+            .all()
+        )
+
+        data = [
+            {"leave_name": _data.leave_name, "leave_code": _data.leave_code, "id": _data.id}
+            for _data in query_data
+        ]
 
         return {
             "success": SUCCESS.TRUE,

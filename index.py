@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from config.EnvConfig import EnvConfig
 from constants.constant import SERVER_ERROR_STATUS_CODE, SUCCESS
+from monitoring import initSentryMonitoring
 from utils.responseMessages import ERROR_MESSAGE
 from database.CacheDatabase import cache_database
 from database.Database import DATABASE_ENGINE, SessionLocal, database
@@ -51,6 +52,8 @@ load_dotenv(override=True)
 
 BACKEND_APP_ENVIRONMENT = EnvConfig.BACKEND_APP_ENVIRONMENT
 API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
+
+initSentryMonitoring()
 
 app = FastAPI(
     title="OrbitRMS",
@@ -241,3 +244,5 @@ async def health_status(request: Request):
                 "error": str(e),
             },
         )
+
+
