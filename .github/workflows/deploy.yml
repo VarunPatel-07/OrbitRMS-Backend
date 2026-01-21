@@ -6,7 +6,7 @@ on:
       - production # or development branch
 
 jobs:
-  test-and-deploy:
+  orbitrms-production-ci:
     runs-on: ubuntu-latest
     environment: production
     steps:
