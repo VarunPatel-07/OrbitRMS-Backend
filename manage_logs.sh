@@ -1,7 +1,8 @@
 #!/bin/bash
 
+source .env
 # Lets first Define the Path  for the logs and then we will define two logs path like archive and then we will define the logs for the Archive logs
-LOGS_DIR="/home/varun/OrbitRMS/OrbitRMS-Backend/logs"
+LOGS_DIR=$PRODUCTION_LOGS_STORE_DIR
 ARCHIVE_LOGS_DIR="$LOGS_DIR/archive"
 
 # Lets first define the two folder that exist and if not then we will make this function
