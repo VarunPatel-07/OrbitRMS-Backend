@@ -688,6 +688,7 @@ async def edit_employee_profile(
             .filter(
                 Models.EmployeeInfo.employee_code == data.employee_info.employee_code,
                 Models.User.organization_id == employee.organization_id,
+                Models.User.id != employee_id,
             )
             .first()
         )
