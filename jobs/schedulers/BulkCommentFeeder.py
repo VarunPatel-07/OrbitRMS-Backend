@@ -54,4 +54,4 @@ async def BulkCommentFeeder(db: db_dependencies):
 
         except Exception as e:
             await asyncio.sleep(5)
-            print(e)
+            # print(e)

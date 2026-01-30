@@ -70,9 +70,9 @@ async def handel_apply_ratelimiting(
         end_date_utc = parse_to_utc_date(end_date)
         current_date_utc = parse_to_utc_date(current_date)
 
-        print("start_date_utc", start_date_utc)
-        print("end_date_utc", end_date_utc)
-        print("current_date_utc", current_date_utc)
+        # print("start_date_utc", start_date_utc)
+        # print("end_date_utc", end_date_utc)
+        # print("current_date_utc", current_date_utc)
 
         query_id = user.id
         employee_info = db.query(Models.User).filter(Models.User.id == query_id).first()

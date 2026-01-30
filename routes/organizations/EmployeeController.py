@@ -758,7 +758,7 @@ async def edit_employee_profile(
             )
 
             contact_info_id = employee.personal_contact_info.id
-            print("in the if")
+            # # print("in the if")
 
         else:
             new_personal_contact_info = Models.PersonalContactInfo(
