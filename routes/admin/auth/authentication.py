@@ -279,7 +279,7 @@ async def Admin_Panel_Verify_OTP_Function(
 
         device_fingerprint = f"{browser }|{user_agent.os.family}|{user_agent.device.family}|{ip}"
 
-        hash_device_fingerprint = hash_finger  # print(device_fingerprint)
+        hash_device_fingerprint = hash_fingerprint(device_fingerprint)
 
         existing_session = (
             db.query(Models.OrbitAdminSessions)
