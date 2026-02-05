@@ -1,18 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-BASE_DIR="/home/varun/OrbitRMS/OrbitRMS-Backend"
-ENV_FILE="$BASE_DIR/.env"
+PRODUCTION_LOGS_STORE_DIR="/home/varun/OrbitRMS/OrbitRMS-Backend/logs"
 
-# Load environment variables
-if [ -f "$ENV_FILE" ]; then
-  source "$ENV_FILE"
-else
-  echo "$(date): .env file not found at $ENV_FILE" >> /home/varun/OrbitRMS/OrbitRMS-Backend/logs/cron.log
-  exit 1
-fi
 
 # Validate required variable
 if [ -z "$PRODUCTION_LOGS_STORE_DIR" ]; then
