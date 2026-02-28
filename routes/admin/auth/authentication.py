@@ -170,7 +170,9 @@ async def Admin_Panel_Sign_In_Function(
 
         cache_database_key = f"admin_otp_{admin.id}_{admin_signature}"
 
-        await cache_database.set(cache_database_key, hashed_otp_code, ex=600)
+        await cache_database.set(
+            cache_database_key, hashed_otp_code, ex=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME
+        )
 
         encrypted_admin_id = urlsafe_data_encoding_function(admin.id)
 
