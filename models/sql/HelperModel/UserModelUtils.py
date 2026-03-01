@@ -218,7 +218,7 @@ class AttendanceLeavesModule(BaseModel):
     is_planned = Column(Boolean, nullable=False, default=True)
 
     status = Column(
-        Enum("pending", "approved", "cancelled", name="leave_status_enum"),
+        Enum("pending", "approved", "rejected", "cancelled", name="leave_status_enum"),
         nullable=False,
         default="pending",
     )

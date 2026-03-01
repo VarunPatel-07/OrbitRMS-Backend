@@ -1,8 +1,8 @@
 """automated-migration
 
-Revision ID: b7d7ecb4efe3
+Revision ID: 09249e5b01b4
 Revises: 
-Create Date: 2026-01-04 19:35:42.998283
+Create Date: 2026-01-22 16:58:28.419853
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision: str = 'b7d7ecb4efe3'
+revision: str = '09249e5b01b4'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -264,12 +264,12 @@ def upgrade() -> None:
     op.create_table('attendance_leave_module',
     sa.Column('id', mysql.CHAR(length=36), nullable=False),
     sa.Column('leave_type_id', mysql.CHAR(length=36), nullable=False),
-    sa.Column('start_date', sa.Date(), nullable=False),
+    sa.Column('start_date', sa.String(length=255), nullable=False),
     sa.Column('start_half', sa.Enum('first_half', 'second_half', name='half_day_enum'), nullable=False),
     sa.Column('is_planned', sa.Boolean(), nullable=False),
     sa.Column('status', sa.Enum('pending', 'approved', 'cancelled', name='leave_status_enum'), nullable=False),
     sa.Column('total_days', sa.Float(), nullable=False),
-    sa.Column('end_date', sa.Date(), nullable=False),
+    sa.Column('end_date', sa.String(length=255), nullable=False),
     sa.Column('end_half', sa.Enum('first_half', 'second_half', name='half_day_enum'), nullable=False),
     sa.Column('description', sa.String(length=255), nullable=True),
     sa.Column('documents', sa.Text(), nullable=True),

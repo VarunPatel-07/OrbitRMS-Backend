@@ -244,3 +244,10 @@ POST_WITH_THIS_ID_NOT_FOUND = "Post With This Id Not Found"
 ERROR_WHILE_POSTING_POST = "error while Posting A Post"
 ERROR_WHILE_UPLOADING_IMAGES = "Error Accrued While Uploading Image"
 NO_LEAVE_TYPE_FOUND = "No Leave Type Found"
+
+NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE = (
+    "You are not authorized to manage this employee's leave request."
+)
+PLEASE_PROVIDE_APPROPRIATE_LEAVE_STATUS = "please provide appropriate leave status"
+LEAVE_BALANCE_NOT_FOUND = "Leave Balance Not Found"
+LEAVE_REQUEST_NOT_ALLOWED = "You can't update a leave that is rejected or cancelled"
