@@ -1,5 +1,8 @@
 import json
 import math
+import uuid
+from tracemalloc import start
+from urllib.parse import unquote
 from datetime import date
 from typing import List, Optional
 from fastapi.concurrency import run_in_threadpool
@@ -16,6 +19,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from .AttendanceLeaveQueryFilter import attendance_leave_query_filter
 from utils.helper.helper import parse_to_utc_date
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
@@ -41,15 +45,33 @@ cloudinary.config(
 )
 
 
-def upload_pdf_function(upload_file: UploadFile):
+def upload_leave_documents_function(upload_file: UploadFile):
+    unique_public_id = str(uuid.uuid4())
+    folder = "leave_documents"
+    file_name = upload_file.filename
+
     result = cloudinary.uploader.upload(
         upload_file.file,
-        resource_type="image",
-        format="pdf",
-        public_id=upload_file.filename.split(".")[0],
-        folder="leave_documents",
+        resource_type="auto",  # ✅ supports pdf correctly
+        public_id=unique_public_id,
+        folder=folder,
     )
-    return result["secure_url"]
+
+    public_id = result["public_id"]
+
+    media_asset_url = (
+        f"{EnvConfig.ORBITRMS_MEDIA_SERVICE_BASE_URL}/{folder}/{unique_public_id}/{file_name}"
+    )
+
+    return {
+        "asset_id": result["asset_id"],
+        "public_id": public_id,
+        "file_name": file_name,
+        "file_type": upload_file.content_type,
+        "folder": folder,
+        "original_url": result["secure_url"],
+        "media_asset_url": media_asset_url,
+    }
 
 
 @attendanceRoute.post("/apply/leave", status_code=status.HTTP_200_OK)
@@ -168,7 +190,7 @@ async def handel_apply_ratelimiting(
 
         if documents:
             uploaded_documents = [
-                await run_in_threadpool(upload_pdf_function, doc) for doc in documents
+                await run_in_threadpool(upload_leave_documents_function, doc) for doc in documents
             ]
 
         notify_to_users_array = []
@@ -244,18 +266,6 @@ async def fetch_users_leave(
     limit: int = Query(..., alias="limit"),
 ):
     try:
-        query_data = (
-            db.query(Models.User)
-            .options(
-                joinedload(Models.User.applied_leaves).joinedload(
-                    Models.AttendanceLeavesModule.leave_type
-                ),
-            )
-            .filter(Models.User.id == user.id)
-            .first()
-        )
-        _data = []
-
         employee_data = (
             db.query(Models.User)
             .options(
@@ -263,12 +273,30 @@ async def fetch_users_leave(
                 joinedload(Models.User.employee_info)
                 .joinedload(Models.EmployeeInfo.reporting_manager)
                 .joinedload(Models.User.personal_info),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.reporting_manager)
+                .joinedload(Models.User.employee_info),
             )
             .filter(Models.User.id == user.id)
             .first()
         )
 
-        for data in query_data.applied_leaves:
+        leave_query = (
+            db.query(Models.AttendanceLeavesModule)
+            .options(joinedload(Models.AttendanceLeavesModule.leave_type))
+            .filter(Models.AttendanceLeavesModule.user_id == user.id)
+            .order_by(Models.AttendanceLeavesModule.created_at.desc())
+        )
+
+        total_data = leave_query.count()
+        page = page if page else 1
+        limit = limit if limit else 10
+
+        leaves = leave_query.offset((page - 1) * limit).limit(limit).all()
+
+        _data = []
+
+        for data in leaves:
             _data.append(
                 {
                     **filter_fields(data, fields=["-leave_type"]),
@@ -316,17 +344,10 @@ async def fetch_users_leave(
                 }
             )
 
-        total_data = len(_data)
-        page = page if page else 1
-        limit = limit if limit else 10
-        start = (page - 1) * limit
-        end = start + limit
-        query_data = _data[start:end]
-
         return {
             "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
-            "data": query_data,
+            "data": _data,
             "metadata": {
                 "total_data": total_data,
                 "total_pages": math.ceil(total_data / limit),
@@ -467,8 +488,16 @@ async def fetch_users_leave(
     user: dict = Depends(UserAuthenticatorMiddleware),
     page: int = Query(..., alias="page"),
     limit: int = Query(..., alias="limit"),
+    filter: Optional[str] = Query(None, alias="filter"),
 ):
     try:
+
+        filter_data = ""
+        print(filter)
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
+
         _data = []
 
         team_data = (
@@ -495,6 +524,11 @@ async def fetch_users_leave(
 
         for employee in team_data:
             for leave in employee.applied_leaves:
+
+                employee_id = employee.id
+                if filter_data:
+                    if not attendance_leave_query_filter(leave, employee_id, filter=filter_data):
+                        continue
 
                 start_date_utc = parse_to_utc_date(leave.start_date)
                 end_date_utc = parse_to_utc_date(leave.end_date)
@@ -594,11 +628,12 @@ async def fetch_users_leave(
                 )
 
         total_data = len(_data)
+        sorted_data = sorted(_data, key=lambda x: x["created_at"], reverse=True)
         page = page if page else 1
         limit = limit if limit else 10
         start = (page - 1) * limit
         end = start + limit
-        query_data = _data[start:end]
+        query_data = sorted_data[start:end]
 
         return {
             "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
@@ -770,11 +805,12 @@ async def fetch_users_leave(
                 )
 
         total_data = len(_data)
+        sorted_data = sorted(_data, key=lambda x: x["created_at"], reverse=True)
         page = page if page else 1
         limit = limit if limit else 10
         start = (page - 1) * limit
         end = start + limit
-        query_data = _data[start:end]
+        query_data = sorted_data[start:end]
 
         return {
             "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
@@ -890,6 +926,43 @@ async def update_leave_request(
             "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": {},
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.get("/fetch/leave-types", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_all_leave_type(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        query_data = (
+            db.query(Models.LeavesSettings)
+            .filter(Models.LeavesSettings.organization_id == user.organization_id)
+            .all()
+        )
+
+        _data = []
+
+        for data in query_data:
+            _data.append(data.leave_code)
+
+        return {
+            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": _data,
         }
     except HTTPException as http_exception:
         raise http_exception

@@ -1148,3 +1148,63 @@ async def Fetch_Employee(
                 "success": SUCCESS.FALSE,
             },
         )
+
+
+@employee_router.get("/fetch/employee/all", status_code=status.HTTP_200_OK)
+async def Fetch_Employee(
+    request: Request,
+    db: db_dependencies,
+    scope: str = Query(
+        ..., description="scope is used to determine for the team or the organization"
+    ),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        if scope not in ["team", "organization"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": ERROR_MESSAGE.INVALID_SCOPE_FIELD,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        query_data = list()
+
+        if scope == "team":
+            query_data = db.query(Models.User).filter(
+                Models.User.organization_id == user.organization_id, Models.User.id == user.id
+            )
+        else:
+            query_data = db.query(Models.User).filter(
+                Models.User.organization_id == user.organization_id,
+            )
+
+        _data = []
+
+        for employee in query_data:
+
+            _data.append(
+                {
+                    "id": employee.id,
+                    "full_name": employee.personal_info.full_name,
+                    "employee_code": employee.employee_info.employee_code,
+                }
+            )
+
+        return {
+            "message": SUCCESS_MESSAGE.EMPLOYEES_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": _data,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Fetching All The Employee",
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )

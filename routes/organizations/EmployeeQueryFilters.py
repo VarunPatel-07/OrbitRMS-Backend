@@ -37,9 +37,7 @@ def apply_query_filter(query, filters):
         #
         if field_name == "employee_name":
             if operator == "equals" or operator == "is":
-                normalized_db_name = func.replace(
-                    func.trim(Models.PersonalInfo.full_name), "  ", " "
-                )
+                normalized_db_name = Models.PersonalInfo.normalized_full_name
                 normalized_input = value.strip().replace("  ", " ")
                 conditions.append(normalized_db_name.ilike(f"%{normalized_input}%"))
             if operator == "contains":
