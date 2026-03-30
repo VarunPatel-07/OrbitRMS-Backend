@@ -1,8 +1,10 @@
+from gettext import find
 import json
 import os
 from datetime import datetime
 from typing import Optional
 
+from PIL.ImImagePlugin import MODE
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -15,19 +17,21 @@ from fastapi import (
 )
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
 from jobs.backgroundTasks.leavesModule.LeavesModule import (
     add_leaves_balance_in_employee,
 )
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.pydantic.OrganizationSettings.OrganizationSettings import (
     AddEditHolidayPydanticModel,
     CreateLeaveTypePydanticModel,
+    AddEditLocationConfigPydanticModel,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields, model_to_filtered_dict
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
@@ -683,6 +687,229 @@ async def fetch_all_leave_types(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": ERROR_MESSAGE.UNABLE_TO_ADD_LEAVE_TYPE,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.get(path="/location-config/fetch", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_location_config(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
+):
+    try:
+        query_data = (
+            db.query(Models.OrganizationLocationsConfig)
+            .filter(Models.OrganizationLocationsConfig.organization_id == user.organization_id)
+            .all()
+        )
+
+        query_data.sort(key=lambda x: x.created_at, reverse=(order == "desc"))
+
+        data = [model_to_filtered_dict(_data) for _data in query_data]
+
+        return {
+            "success": SUCCESS.TRUE,
+            "message": SUCCESS_MESSAGE.LOCATION_CONFIG_FETCHED_SUCCESSFULLY,
+            "data": data,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_FETCH_LOCATION_CONFIG,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.post(path="/location-config/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def add_location_config(
+    request: Request,
+    db: db_dependencies,
+    data: AddEditLocationConfigPydanticModel,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    type: str = Query(..., description="Operation Type: add or edit", alias="type"),
+    id: Optional[str] = Query(None, description="Id Is Required For The Edit Function", alias="id"),
+):
+    try:
+        if type not in ["add", "edit"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={
+                    "message": ERROR_MESSAGE.INVALID_TYPE,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        personal_info = (
+            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+        )
+
+        if type == "add":
+            find_location_config = (
+                db.query(Models.OrganizationLocationsConfig)
+                .filter(
+                    Models.OrganizationLocationsConfig.organization_id == user.organization_id,
+                    Models.OrganizationLocationsConfig.location_name == data.location_name,
+                )
+                .first()
+            )
+
+            if find_location_config:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": ERROR_MESSAGE.LOCATION_CONFIG_ALREADY_EXISTS,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            location_config = Models.OrganizationLocationsConfig(
+                location_name=data.location_name,
+                location_coordinates=json.dumps(data.location_coordinates.model_dump()),
+                allowed_radius_meters=data.allowed_radius_meters,
+                status=data.status,
+                organization_id=user.organization_id,
+                created_by=json.dumps(
+                    model_to_filtered_dict(personal_info, ["id", "first_name", "last_name"])
+                ),
+            )
+
+            db.add(location_config)
+            db.commit()
+            db.refresh(location_config)
+
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.LOCATION_CONFIG_ADDED_SUCCESSFULLY,
+            }
+        else:
+            if type == "edit" and not id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": ERROR_MESSAGE.ID_REQUIRED_TO_OPERATION,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            location_config = (
+                db.query(Models.OrganizationLocationsConfig)
+                .filter(
+                    Models.OrganizationLocationsConfig.id == id,
+                    Models.OrganizationLocationsConfig.organization_id == user.organization_id,
+                )
+                .first()
+            )
+
+            if not location_config:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={
+                        "message": ERROR_MESSAGE.LOCATION_CONFIG_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            duplicate_location_name = (
+                db.query(Models.OrganizationLocationsConfig)
+                .filter(
+                    Models.OrganizationLocationsConfig.location_name == data.location_name,
+                    Models.OrganizationLocationsConfig.organization_id == user.organization_id,
+                    Models.OrganizationLocationsConfig.id != id,
+                )
+                .first()
+            )
+
+            if duplicate_location_name:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": ERROR_MESSAGE.LOCATION_CONFIG_ALREADY_EXISTS,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            location_config.location_name = data.location_name
+            location_config.location_coordinates = json.dumps(
+                data.location_coordinates.model_dump()
+            )
+            location_config.allowed_radius_meters = data.allowed_radius_meters
+            location_config.status = data.status
+            location_config.updated_by = json.dumps(
+                model_to_filtered_dict(personal_info, ["id", "first_name", "last_name"])
+            )
+
+            db.commit()
+            db.refresh(location_config)
+
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.LOCATION_CONFIG_UPDATED_SUCCESSFULLY,
+            }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_ADD_LOCATION_CONFIG,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.delete(path="/location-config/delete", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def delete_location_config(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    id: Optional[str] = Query(None, description="Id Is Required For The Edit Function", alias="id"),
+):
+    try:
+        location_config = (
+            db.query(Models.OrganizationLocationsConfig)
+            .filter(
+                Models.OrganizationLocationsConfig.id == id,
+                Models.OrganizationLocationsConfig.organization_id == user.organization_id,
+            )
+            .first()
+        )
+
+        if not location_config:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": ERROR_MESSAGE.LOCATION_CONFIG_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        db.delete(location_config)
+        db.commit()
+
+        return {
+            "success": SUCCESS.TRUE,
+            "message": SUCCESS_MESSAGE.LOCATION_CONFIG_DELETED_SUCCESSFULLY,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_ADD_LOCATION_CONFIG,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },

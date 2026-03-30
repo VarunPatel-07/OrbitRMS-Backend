@@ -1,6 +1,7 @@
 import sentry_sdk
-from config.EnvConfig import EnvConfig
 from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+from config.EnvConfig import EnvConfig
 
 
 def initSentryMonitoring():

@@ -254,3 +254,76 @@ class AttendanceLeavesModule(BaseModel):
         onupdate=lambda: datetime.now(ZoneInfo("UTC")),
         nullable=True,
     )
+
+
+class AttendancePunchInOutModule(BaseModel):
+    __tablename__ = "attendance_punch_in_out_module"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    user_id = Column(
+        CHAR(36),
+        ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+    user = relationship("User", back_populates="attendance")
+
+    punch_in_time = Column(String(255), nullable=False)
+    punch_out_time = Column(String(255), nullable=False)
+
+    status = Column(
+        Enum(
+            "active",
+            "completed",
+            "system_ended",
+            name="attendance_punch_in_out_module_status_enum",
+        ),
+        default="active",
+    )
+
+    punch_in_coordinates = Column(Text, nullable=False)
+    punch_out_coordinates = Column(Text, nullable=False)
+    is_mislinious = Column(Boolean, nullable=False, default=False)
+
+    total_working_hours = Column(Float, default=0)
+    total_break_hours = Column(Float, default=0)
+    gross_hours = Column(Float, default=0)
+
+    attendance_breaks = relationship(
+        "AttendanceBreakModel", back_populates="session", cascade="all, delete", uselist=True
+    )
+
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
+
+
+class AttendanceBreakModel(BaseModel):
+    __tablename__ = "attendance_break_model"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    session_id = Column(
+        CHAR(36),
+        ForeignKey("attendance_punch_in_out_module.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session = relationship("AttendancePunchInOutModule", back_populates="attendance_breaks")
+
+    break_start_time = Column(String(255), nullable=False)
+    break_end_time = Column(String(255), nullable=False)
+
+    break_duration = Column(Float, default=0)
+
+    punch_in_coordinates = Column(Text, nullable=False)
+    punch_out_coordinates = Column(Text, nullable=False)
+    is_mislinious = Column(Boolean, nullable=False, default=False)
+
+    status = Column(
+        Enum("active", "completed", "system_ended", name="break_status_enum"),
+        default="active",
+    )

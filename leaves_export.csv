@@ -1,0 +1,2 @@
+start_date,end_date,start_half,end_half,leave_name,leave_code,status,total_days,description,documents,created_at,updated_at,created_by
+2026-03-12,2026-03-14,second_half,second_half,Annual Leave test one,ALV-TEST,rejected,2.5,sada,[],2026-03-12T09:53:20,2026-03-12T10:13:11,"{""first_name"": ""super"", ""last_name"": ""admin""}"

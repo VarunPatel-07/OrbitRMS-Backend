@@ -15,10 +15,12 @@ from fastapi import (
     status,
 )
 from sqlalchemy.orm import aliased, joinedload
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import CreatePasswordHtmlBody, VerifyEmailHtmlBody
+from middleware.RateLimiting import limiter
 from middleware.verifyToken import verify_token
 from models.pydantic.Admin.AdminAuthenticationModel import ResendVerificationMail
 from models.pydantic.HelperPydanticModel import (
@@ -26,7 +28,6 @@ from models.pydantic.HelperPydanticModel import (
     VerifyEmailPydanticBody,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
     filter_fields,

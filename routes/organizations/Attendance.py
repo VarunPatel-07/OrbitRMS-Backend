@@ -1,13 +1,15 @@
 import json
 import math
+import os
 import uuid
-from tracemalloc import start
-from urllib.parse import unquote
 from datetime import date
+from tracemalloc import start
 from typing import List, Optional
-from fastapi.concurrency import run_in_threadpool
+from urllib.parse import unquote
+
 import cloudinary
 import cloudinary.uploader
+import pandas as pd
 from fastapi import (
     APIRouter,
     Depends,
@@ -19,19 +21,28 @@ from fastapi import (
     UploadFile,
     status,
 )
-from .AttendanceLeaveQueryFilter import attendance_leave_query_filter
-from utils.helper.helper import parse_to_utc_date
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.sql import Models
-from middleware.RateLimiting import limiter
-from utils.helper.helper import filter_fields
-from utils.helper.helper import model_to_filtered_dict
+from utils.helper.helper import filter_fields, model_to_filtered_dict, parse_to_utc_date
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+
+from .AttendanceLeaveQueryFilter import (
+    attendance_leave_team_organization_query_filter,
+    attendance_self_leave_quey_filter,
+)
 
 attendanceRoute = APIRouter(prefix="/app/v1/attendance", tags=["Attendance"])
 
@@ -52,7 +63,7 @@ def upload_leave_documents_function(upload_file: UploadFile):
 
     result = cloudinary.uploader.upload(
         upload_file.file,
-        resource_type="auto",  # ✅ supports pdf correctly
+        resource_type="auto",
         public_id=unique_public_id,
         folder=folder,
     )
@@ -74,13 +85,13 @@ def upload_leave_documents_function(upload_file: UploadFile):
     }
 
 
+# The APi To Apply The Leave By The Self
 @attendanceRoute.post("/apply/leave", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def handel_apply_ratelimiting(
+async def handel_apply_leave(
     request: Request,
     db: db_dependencies,
     user: dict = Depends(UserAuthenticatorMiddleware),
-    # employee_id: str = Optional[Query(None, alias="employee-id")],
     leave_type_id: str = Form(...),
     start_date: str = Form(...),
     start_half: str = Form(...),
@@ -88,8 +99,9 @@ async def handel_apply_ratelimiting(
     end_half: str = Form(...),
     current_date: str = Form(...),
     description: str = Form(None),
-    notify_to: Optional[str] = Form(None),
+    notify_to: Optional[List[str]] = Form(None),
     documents: Optional[List[UploadFile]] = File(None),
+    employee_id: Optional[str] = Query(None, alias="employee-id"),
 ):
     try:
 
@@ -97,7 +109,49 @@ async def handel_apply_ratelimiting(
         end_date_utc = parse_to_utc_date(end_date)
         current_date_utc = parse_to_utc_date(current_date)
 
-        query_id = user.id
+        query_id = employee_id if employee_id else user.id
+
+        existing_leaves = (
+            db.query(Models.AttendanceLeavesModule)
+            .filter(
+                Models.AttendanceLeavesModule.user_id == query_id,
+                Models.AttendanceLeavesModule.status != "rejected",
+                Models.AttendanceLeavesModule.start_date <= end_date,
+                Models.AttendanceLeavesModule.end_date >= start_date,
+            )
+            .all()
+        )
+
+        for applied_leave in existing_leaves:
+            if applied_leave.start_date == start_date and applied_leave.end_date == end_date:
+                if applied_leave.start_half == "first_half" and start_half == "first_half":
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "success": SUCCESS.FALSE,
+                        },
+                    )
+                if applied_leave.end_half == "second_half" and end_half == "second_half":
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "success": SUCCESS.FALSE,
+                        },
+                    )
+                if (
+                    applied_leave.start_half == "first_half"
+                    and applied_leave.end_half == "second_half"
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "success": SUCCESS.FALSE,
+                        },
+                    )
+
         employee_info = db.query(Models.User).filter(Models.User.id == query_id).first()
 
         if not employee_info:
@@ -163,7 +217,7 @@ async def handel_apply_ratelimiting(
             db.query(Models.LeaveBalance)
             .filter(
                 Models.LeaveBalance.leave_type_id == leave_type_id,
-                Models.LeaveBalance.user_id == user.id,
+                Models.LeaveBalance.user_id == query_id,
             )
             .first()
         )
@@ -196,25 +250,13 @@ async def handel_apply_ratelimiting(
         notify_to_users_array = []
 
         if notify_to:
-            employee_array = json.loads(notify_to)
-            for employee in employee_array:
-                user_info = (
-                    db.query(Models.User)
-                    .filter(Models.User.id == employee.get("employee_id"))
-                    .first()
-                )
+
+            for employee_id in notify_to:
+                print("employee_id", employee_id)
+                user_info = db.query(Models.User).filter(Models.User.id == employee_id).first()
 
                 if user_info:
-                    notify_to_users_array.append(
-                        **filter_fields(
-                            user_info.personal_info,
-                            fields=["first_name", "middle_name", "last_name", "full_name"],
-                        ),
-                        **filter_fields(
-                            user_info.employee_info,
-                            fields=["employee_code"],
-                        ),
-                    )
+                    notify_to_users_array.append(user_info)
 
         leave_info = Models.AttendanceLeavesModule(
             leave_type_id=leave_type_id,
@@ -256,6 +298,17 @@ async def handel_apply_ratelimiting(
         )
 
 
+# The Api For The Editing The Api By The Self
+@attendanceRoute.put("/edit/leave", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def handel_edit_leave(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    pass
+
+
 @attendanceRoute.get("/fetch/leaves", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def fetch_users_leave(
@@ -264,8 +317,14 @@ async def fetch_users_leave(
     user: dict = Depends(UserAuthenticatorMiddleware),
     page: int = Query(..., alias="page"),
     limit: int = Query(..., alias="limit"),
+    filter: Optional[str] = Query(None, alias="filter"),
 ):
     try:
+        filter_data = ""
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
+
         employee_data = (
             db.query(Models.User)
             .options(
@@ -297,11 +356,28 @@ async def fetch_users_leave(
         _data = []
 
         for data in leaves:
+            if filter_data:
+                if not attendance_self_leave_quey_filter(data, filter=filter_data):
+                    continue
             _data.append(
                 {
-                    **filter_fields(data, fields=["-leave_type"]),
+                    **filter_fields(data, fields=["-leave_type", "-notify_to_id"]),
                     "leave_name": data.leave_type.leave_name,
                     "leave_code": data.leave_type.leave_code,
+                    "notify_to_users": [
+                        {
+                            **filter_fields(
+                                notify_user.personal_info,
+                                fields=["first_name", "middle_name", "last_name", "full_name"],
+                            ),
+                            **filter_fields(
+                                notify_user.employee_info,
+                                fields=["employee_code"],
+                            ),
+                            "id": notify_user.id,
+                        }
+                        for notify_user in data.notify_to_users
+                    ],
                     "reporting_manager": (
                         {
                             **filter_fields(
@@ -414,10 +490,12 @@ async def fetch_all_leave_balance(
     request: Request,
     db: db_dependencies,
     user: dict = Depends(UserAuthenticatorMiddleware),
+    employee_id: Optional[str] = Query(None, alias="employee-id"),
 ):
     try:
+        query_id = employee_id if employee_id else user.id
         query_data = (
-            db.query(Models.LeaveBalance).filter(Models.LeaveBalance.user_id == user.id).all()
+            db.query(Models.LeaveBalance).filter(Models.LeaveBalance.user_id == query_id).all()
         )
 
         data = []
@@ -493,7 +571,6 @@ async def fetch_users_leave(
     try:
 
         filter_data = ""
-        print(filter)
         if filter:
             decoded = unquote(filter)
             filter_data = json.loads(decoded)
@@ -527,14 +604,17 @@ async def fetch_users_leave(
 
                 employee_id = employee.id
                 if filter_data:
-                    if not attendance_leave_query_filter(leave, employee_id, filter=filter_data):
+                    if not attendance_leave_team_organization_query_filter(
+                        leave, employee_id, filter=filter_data
+                    ):
                         continue
 
                 start_date_utc = parse_to_utc_date(leave.start_date)
                 end_date_utc = parse_to_utc_date(leave.end_date)
 
                 if start_date_utc <= today <= end_date_utc:
-                    employees_on_leave.add(employee.id)
+                    if leave.status not in ["cancelled", "rejected"]:
+                        employees_on_leave.add(employee.id)
 
                 if leave.is_planned:
                     planned_leaves.add(leave.id)
@@ -553,6 +633,7 @@ async def fetch_users_leave(
                             leave,
                             fields=[
                                 "-leave_type",
+                                "-notify_to_id",
                             ],
                         ),
                         "leave_name": leave.leave_type.leave_name,
@@ -624,6 +705,20 @@ async def fetch_users_leave(
                             if employee.employee_info and employee.employee_info.reporting_manager
                             else {}
                         ),
+                        "notify_to_users": [
+                            {
+                                **filter_fields(
+                                    notify_user.personal_info,
+                                    fields=["first_name", "middle_name", "last_name", "full_name"],
+                                ),
+                                **filter_fields(
+                                    notify_user.employee_info,
+                                    fields=["employee_code"],
+                                ),
+                                "id": notify_user.id,
+                            }
+                            for notify_user in leave.notify_to_users
+                        ],
                     }
                 )
 
@@ -678,9 +773,15 @@ async def fetch_users_leave(
     user: dict = Depends(UserAuthenticatorMiddleware),
     page: int = Query(..., alias="page"),
     limit: int = Query(..., alias="limit"),
+    filter: Optional[str] = Query(None, alias="filter"),
 ):
     try:
         _data = []
+
+        filter_data = ""
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
 
         org_team_data = (
             db.query(Models.User)
@@ -707,11 +808,19 @@ async def fetch_users_leave(
         for employee in org_team_data:
             for leave in employee.applied_leaves:
 
+                employee_id = employee.id
+                if filter_data:
+                    if not attendance_leave_team_organization_query_filter(
+                        leave, employee_id, filter=filter_data
+                    ):
+                        continue
+
                 start_date_utc = parse_to_utc_date(leave.start_date)
                 end_date_utc = parse_to_utc_date(leave.end_date)
 
                 if start_date_utc <= today <= end_date_utc:
-                    employees_on_leave.add(employee.id)
+                    if leave.status not in ["cancelled", "rejected"]:
+                        employees_on_leave.add(employee.id)
 
                 if leave.is_planned:
                     planned_leaves.add(leave.id)
@@ -730,6 +839,7 @@ async def fetch_users_leave(
                             leave,
                             fields=[
                                 "-leave_type",
+                                "-notify_to_id",
                             ],
                         ),
                         "leave_name": leave.leave_type.leave_name,
@@ -801,6 +911,20 @@ async def fetch_users_leave(
                             if employee.employee_info and employee.employee_info.reporting_manager
                             else {}
                         ),
+                        "notify_to_users": [
+                            {
+                                **filter_fields(
+                                    notify_user.personal_info,
+                                    fields=["first_name", "middle_name", "last_name", "full_name"],
+                                ),
+                                **filter_fields(
+                                    notify_user.employee_info,
+                                    fields=["employee_code"],
+                                ),
+                                "id": notify_user.id,
+                            }
+                            for notify_user in leave.notify_to_users
+                        ],
                     }
                 )
 
@@ -923,7 +1047,7 @@ async def update_leave_request(
         db.commit()
 
         return {
-            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
+            "message": f"Leave {leave_status} Successfully",
             "success": SUCCESS.TRUE,
             "data": {},
         }
@@ -975,3 +1099,93 @@ async def fetch_all_leave_type(
                 "success": SUCCESS.FALSE,
             },
         )
+
+
+# leave_data = [
+#     {
+#         "start_date": "2026-03-12",
+#         "end_date": "2026-03-14",
+#         "start_half": "second_half",
+#         "end_half": "second_half",
+#         "leave_name": "Annual Leave test one",
+#         "leave_code": "ALV-TEST",
+#         "status": "rejected",
+#         "total_days": 2.5,
+#         "description": "sada",
+#         "documents": "[]",
+#         "created_at": "2026-03-12T09:53:20",
+#         "updated_at": "2026-03-12T10:13:11",
+#         "created_by": '{"first_name": "super", "last_name": "admin"}',
+#     }
+# ]
+
+
+# @attendanceRoute.get("/export/leaves/csv")
+# async def export_leaves_csv():
+
+#     df = pd.DataFrame(leave_data)
+
+#     file_path = "leaves_export.csv"
+#     df.to_csv(file_path, index=False)
+
+#     return FileResponse(file_path, media_type="text/csv", filename="leaves_export.csv")
+
+
+# @attendanceRoute.get("/export/leaves/pdf")
+# async def export_leaves_pdf():
+
+#     file_path = "leaves_export.pdf"
+
+#     styles = getSampleStyleSheet()
+
+#     elements = []
+
+#     title = Paragraph("Leave Report", styles["Title"])
+#     elements.append(title)
+
+#     table_data = [
+#         [
+#             "Leave Name",
+#             "Leave Code",
+#             "Start Date",
+#             "End Date",
+#             "Start Half",
+#             "End Half",
+#             "Total Days",
+#             "Status",
+#         ]
+#     ]
+
+#     for leave in leave_data:
+#         table_data.append(
+#             [
+#                 leave["leave_name"],
+#                 leave["leave_code"],
+#                 leave["start_date"],
+#                 leave["end_date"],
+#                 leave["start_half"],
+#                 leave["end_half"],
+#                 leave["total_days"],
+#                 leave["status"],
+#             ]
+#         )
+
+#     table = Table(table_data)
+
+#     table.setStyle(
+#         TableStyle(
+#             [
+#                 ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+#                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+#                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+#                 ("GRID", (0, 0), (-1, -1), 1, colors.black),
+#             ]
+#         )
+#     )
+
+#     elements.append(table)
+
+#     doc = SimpleDocTemplate(file_path, pagesize=A4)
+#     doc.build(elements)
+
+#     return FileResponse(file_path, media_type="application/pdf", filename="leaves_export.pdf")

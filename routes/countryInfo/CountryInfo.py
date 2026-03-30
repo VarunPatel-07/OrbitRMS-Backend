@@ -7,14 +7,15 @@ import httpx
 import requests
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, Request, status
-from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.CacheDatabase import cache_database
 from middleware.RateLimiting import limiter
 from utils.helper.formateDateOnTheBaseOfTheCountry import (
     formateDateOnTheBaseOfTheCountry,
 )
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
@@ -361,7 +362,11 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
         cache_data = await cache_database.get(cache_data_key)
         if cache_data:
             sorted_cached_data = json.loads(cache_data)
-            return {"message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY, "success": SUCCESS.TRUE, "data": sorted_cached_data}
+            return {
+                "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
+                "data": sorted_cached_data,
+            }
 
         response = await fetch_data(url=REST_API_URL)
 
@@ -398,7 +403,11 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
         data.sort(key=lambda x: x["country_name"], reverse=reverse)
 
         await cache_database.set(cache_data_key, json.dumps(data), ex=30 * 24 * 3600)
-        return {"message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY, "success": SUCCESS.TRUE, "data": data}
+        return {
+            "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": data,
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

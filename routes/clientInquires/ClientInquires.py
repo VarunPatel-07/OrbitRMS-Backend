@@ -19,12 +19,13 @@ from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import NewClientInquiryAccruedMail
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
     filter_fields,
@@ -33,7 +34,6 @@ from utils.helper.helper import (
     validate_field,
 )
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
-from constants.constant import SUCCESS
 
 from .ClientInquiresQueryFilter import apply_client_inquiry_query_filter
 
@@ -75,7 +75,10 @@ async def Fetch_Client_Inquires(
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND, "success": SUCCESS.FALSE},
+                detail={
+                    "message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
             )
 
         query_data = db.query(Models.ClientInquiresData).filter(
@@ -152,7 +155,10 @@ async def DeleteClientInquire(
         if not client_inquiry:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND, "success": SUCCESS.FALSE},
+                detail={
+                    "message": ERROR_MESSAGE.CLIENT_INQUIRY_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
             )
         db.delete(client_inquiry)
         db.commit()

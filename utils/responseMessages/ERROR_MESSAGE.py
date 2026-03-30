@@ -1,3 +1,7 @@
+from re import L
+
+from aiohttp.hdrs import LOCATION
+
 SIGN_IN_ERROR_MESSAGE = "Error accrued while signing in"
 SIGN_IN_INVALID_CREDENTIALS = "Invalid Email Or Password"
 SIGN_IN_ACCOUNT_INACTIVE = "Account is deactivated. Access denied."
@@ -227,6 +231,10 @@ INVALID_SORTING_ARGUMENT = "Invalid Sorting Argument"
 UNABLE_TO_DELETE_HOLIDAY = "Unable To Delete Holiday"
 LEAVE_TYPE_ALREADY_EXISTS = "Leave Type With This Name Or Code AllReady Exist"
 UNABLE_TO_ADD_LEAVE_TYPE = "Unable Add Leave Type"
+UNABLE_TO_FETCH_LOCATION_CONFIG = "Unable To Fetch Location Config Right Now"
+UNABLE_TO_ADD_LOCATION_CONFIG = "Unable To ADD Location Config Right Now"
+LOCATION_CONFIG_NOT_FOUND = "Location Config Not Found"
+UNABLE_TO_EDIT_LOCATION_CONFIG = "Unable To Edit Location Config Right Now"
 UNABLE_TO_ENABLE_API_RIGHT_NOW = "Unable To Enable Api Right Now"
 INVALID_QUERY_ARGUMENT = "Invalid Query Argument"
 UNABLE_TO_UPDATE_RECIPIENT_EMAIL = "Unable To Update Recipient Email Right Now"
@@ -252,3 +260,8 @@ NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE = (
 PLEASE_PROVIDE_APPROPRIATE_LEAVE_STATUS = "please provide appropriate leave status"
 LEAVE_BALANCE_NOT_FOUND = "Leave Balance Not Found"
 LEAVE_REQUEST_NOT_ALLOWED = "You can't update a leave that is rejected or cancelled"
+
+
+LEAVE_REQUEST_ALREADY_APPLIED = "You already applied leave for this day."
+
+LOCATION_CONFIG_ALREADY_EXISTS = "Location Config With This Name Is Already Exist"

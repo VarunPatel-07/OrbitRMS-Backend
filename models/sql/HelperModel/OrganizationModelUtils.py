@@ -244,3 +244,34 @@ class LeaveBalance(BaseModel):
         onupdate=lambda: datetime.now(ZoneInfo("UTC")),
         nullable=True,
     )
+
+
+class OrganizationLocationsConfig(BaseModel):
+    __tablename__ = "organization_locations_config"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    location_name = Column(String(255), nullable=False, default=None)
+    location_coordinates = Column(Text, nullable=False, default=None)
+
+    allowed_radius_meters = Column(Integer, default=500, nullable=False)
+
+    status = Column(Boolean, default=True, nullable=False)
+
+    organization_id = Column(
+        CHAR(36),
+        ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization = relationship("Organization", back_populates="locations_config")
+
+    created_by = Column(JSON, nullable=True)
+    updated_by = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
