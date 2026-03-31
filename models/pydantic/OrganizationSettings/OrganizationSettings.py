@@ -22,3 +22,16 @@ class CreateLeaveTypePydanticModel(BaseModel):
     employee_status: List[str]
     marital_status: List[str]
     status: bool
+
+
+class LocationCoordinatesPydanticModel(BaseModel):
+    latitude: float
+    longitude: float
+    accuracy: float
+
+
+class AddEditLocationConfigPydanticModel(BaseModel):
+    location_name: str
+    location_coordinates: LocationCoordinatesPydanticModel
+    allowed_radius_meters: int
+    status: bool

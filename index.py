@@ -10,8 +10,6 @@ from sqlalchemy.orm import Session
 
 from config.EnvConfig import EnvConfig
 from constants.constant import SERVER_ERROR_STATUS_CODE, SUCCESS
-from monitoring import initSentryMonitoring
-from utils.responseMessages import ERROR_MESSAGE
 from database.CacheDatabase import cache_database
 from database.Database import DATABASE_ENGINE, SessionLocal, database
 from jobs.backgroundHandler.DataSeederHelper import initializing_OrbitAdmin_On_App_start
@@ -19,8 +17,9 @@ from jobs.schedulers.BulkCommentFeeder import BulkCommentFeeder
 from jobs.schedulers.BulkLikeFeeder import BulkLikeFeeder
 from jobs.schedulers.MaintenanceModeScheduler import ping_maintenance_mode_scheduler
 from middleware.CustomCorsMiddleWare import CustomCorsModule
-from models.sql.Models import BaseModel
 from middleware.RateLimiting import custom_rate_limit_handler, limiter
+from models.sql.Models import BaseModel
+from monitoring import initSentryMonitoring
 from routes.admin.auth.authentication import adminAuthRoute
 from routes.admin.imageUploadation.ImageUploadation import adminImgRoute
 from routes.admin.logsManager.logsController import logsController
@@ -47,6 +46,7 @@ from routes.socialMedia.SocialAccounts import SocialAccount
 from routes.uploadation.upload import imgRoute
 from utils.logging.failureLogger import failureLogger
 from utils.logging.runtimeLogger import runtimeLogger
+from utils.responseMessages import ERROR_MESSAGE
 
 load_dotenv(override=True)
 
@@ -244,5 +244,3 @@ async def health_status(request: Request):
                 "error": str(e),
             },
         )
-
-

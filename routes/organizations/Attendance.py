@@ -1,11 +1,15 @@
-import concurrent.futures
 import json
 import math
-from datetime import date
-from typing import List, Optional
+import os
 import uuid
+from datetime import date
+from tracemalloc import start
+from typing import List, Optional
+from urllib.parse import unquote
+
 import cloudinary
 import cloudinary.uploader
+import pandas as pd
 from fastapi import (
     APIRouter,
     Depends,
@@ -17,17 +21,28 @@ from fastapi import (
     UploadFile,
     status,
 )
-from utils.helper.helper import parse_to_utc_date
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
 from sqlalchemy import and_
-from constants.constant import SUCCESS
+from sqlalchemy.orm import joinedload
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.sql import Models
-from middleware.RateLimiting import limiter
-from utils.helper.helper import filter_fields
-from utils.helper.helper import model_to_filtered_dict
+from utils.helper.helper import filter_fields, model_to_filtered_dict, parse_to_utc_date
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
+
+from .AttendanceLeaveQueryFilter import (
+    attendance_leave_team_organization_query_filter,
+    attendance_self_leave_quey_filter,
+)
 
 attendanceRoute = APIRouter(prefix="/app/v1/attendance", tags=["Attendance"])
 
@@ -41,19 +56,42 @@ cloudinary.config(
 )
 
 
-def upload_pdf_function(document):
-    result = cloudinary.uploader.upload(document)
+def upload_leave_documents_function(upload_file: UploadFile):
+    unique_public_id = str(uuid.uuid4())
+    folder = "leave_documents"
+    file_name = upload_file.filename
 
-    return result["secure_url"]
+    result = cloudinary.uploader.upload(
+        upload_file.file,
+        resource_type="auto",
+        public_id=unique_public_id,
+        folder=folder,
+    )
+
+    public_id = result["public_id"]
+
+    media_asset_url = (
+        f"{EnvConfig.ORBITRMS_MEDIA_SERVICE_BASE_URL}/{folder}/{unique_public_id}/{file_name}"
+    )
+
+    return {
+        "asset_id": result["asset_id"],
+        "public_id": public_id,
+        "file_name": file_name,
+        "file_type": upload_file.content_type,
+        "folder": folder,
+        "original_url": result["secure_url"],
+        "media_asset_url": media_asset_url,
+    }
 
 
+# The APi To Apply The Leave By The Self
 @attendanceRoute.post("/apply/leave", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def handel_apply_ratelimiting(
+async def handel_apply_leave(
     request: Request,
     db: db_dependencies,
     user: dict = Depends(UserAuthenticatorMiddleware),
-    # employee_id: str = Optional[Query(None, alias="employee-id")],
     leave_type_id: str = Form(...),
     start_date: str = Form(...),
     start_half: str = Form(...),
@@ -61,8 +99,9 @@ async def handel_apply_ratelimiting(
     end_half: str = Form(...),
     current_date: str = Form(...),
     description: str = Form(None),
-    notify_to: Optional[str] = Form(None),
+    notify_to: Optional[List[str]] = Form(None),
     documents: Optional[List[UploadFile]] = File(None),
+    employee_id: Optional[str] = Query(None, alias="employee-id"),
 ):
     try:
 
@@ -70,11 +109,49 @@ async def handel_apply_ratelimiting(
         end_date_utc = parse_to_utc_date(end_date)
         current_date_utc = parse_to_utc_date(current_date)
 
-        print("start_date_utc", start_date_utc)
-        print("end_date_utc", end_date_utc)
-        print("current_date_utc", current_date_utc)
+        query_id = employee_id if employee_id else user.id
 
-        query_id = user.id
+        existing_leaves = (
+            db.query(Models.AttendanceLeavesModule)
+            .filter(
+                Models.AttendanceLeavesModule.user_id == query_id,
+                Models.AttendanceLeavesModule.status != "rejected",
+                Models.AttendanceLeavesModule.start_date <= end_date,
+                Models.AttendanceLeavesModule.end_date >= start_date,
+            )
+            .all()
+        )
+
+        for applied_leave in existing_leaves:
+            if applied_leave.start_date == start_date and applied_leave.end_date == end_date:
+                if applied_leave.start_half == "first_half" and start_half == "first_half":
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "success": SUCCESS.FALSE,
+                        },
+                    )
+                if applied_leave.end_half == "second_half" and end_half == "second_half":
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "success": SUCCESS.FALSE,
+                        },
+                    )
+                if (
+                    applied_leave.start_half == "first_half"
+                    and applied_leave.end_half == "second_half"
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "success": SUCCESS.FALSE,
+                        },
+                    )
+
         employee_info = db.query(Models.User).filter(Models.User.id == query_id).first()
 
         if not employee_info:
@@ -140,7 +217,7 @@ async def handel_apply_ratelimiting(
             db.query(Models.LeaveBalance)
             .filter(
                 Models.LeaveBalance.leave_type_id == leave_type_id,
-                Models.LeaveBalance.user_id == user.id,
+                Models.LeaveBalance.user_id == query_id,
             )
             .first()
         )
@@ -166,21 +243,17 @@ async def handel_apply_ratelimiting(
         uploaded_documents = []
 
         if documents:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                result = list(executor.map(upload_pdf_function, documents))
-
-            uploaded_documents += result
+            uploaded_documents = [
+                await run_in_threadpool(upload_leave_documents_function, doc) for doc in documents
+            ]
 
         notify_to_users_array = []
 
         if notify_to:
-            employee_array = json.loads(notify_to)
-            for employee in employee_array:
-                user_info = (
-                    db.query(Models.User)
-                    .filter(Models.User.id == employee.get("employee_id"))
-                    .first()
-                )
+
+            for employee_id in notify_to:
+                print("employee_id", employee_id)
+                user_info = db.query(Models.User).filter(Models.User.id == employee_id).first()
 
                 if user_info:
                     notify_to_users_array.append(user_info)
@@ -225,6 +298,17 @@ async def handel_apply_ratelimiting(
         )
 
 
+# The Api For The Editing The Api By The Self
+@attendanceRoute.put("/edit/leave", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def handel_edit_leave(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    pass
+
+
 @attendanceRoute.get("/fetch/leaves", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def fetch_users_leave(
@@ -233,17 +317,108 @@ async def fetch_users_leave(
     user: dict = Depends(UserAuthenticatorMiddleware),
     page: int = Query(..., alias="page"),
     limit: int = Query(..., alias="limit"),
+    filter: Optional[str] = Query(None, alias="filter"),
 ):
     try:
-        query_data = db.query(Models.User).filter(Models.User.id == user.id).first()
-        _data = [data for data in query_data.applied_leaves]
+        filter_data = ""
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
 
-        total_data = len(_data)
+        employee_data = (
+            db.query(Models.User)
+            .options(
+                joinedload(Models.User.personal_info),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.reporting_manager)
+                .joinedload(Models.User.personal_info),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.reporting_manager)
+                .joinedload(Models.User.employee_info),
+            )
+            .filter(Models.User.id == user.id)
+            .first()
+        )
+
+        leave_query = (
+            db.query(Models.AttendanceLeavesModule)
+            .options(joinedload(Models.AttendanceLeavesModule.leave_type))
+            .filter(Models.AttendanceLeavesModule.user_id == user.id)
+            .order_by(Models.AttendanceLeavesModule.created_at.desc())
+        )
+
+        total_data = leave_query.count()
         page = page if page else 1
         limit = limit if limit else 10
-        start = (page - 1) * limit
-        end = start + limit
-        query_data = _data[start:end]
+
+        leaves = leave_query.offset((page - 1) * limit).limit(limit).all()
+
+        _data = []
+
+        for data in leaves:
+            if filter_data:
+                if not attendance_self_leave_quey_filter(data, filter=filter_data):
+                    continue
+            _data.append(
+                {
+                    **filter_fields(data, fields=["-leave_type", "-notify_to_id"]),
+                    "leave_name": data.leave_type.leave_name,
+                    "leave_code": data.leave_type.leave_code,
+                    "notify_to_users": [
+                        {
+                            **filter_fields(
+                                notify_user.personal_info,
+                                fields=["first_name", "middle_name", "last_name", "full_name"],
+                            ),
+                            **filter_fields(
+                                notify_user.employee_info,
+                                fields=["employee_code"],
+                            ),
+                            "id": notify_user.id,
+                        }
+                        for notify_user in data.notify_to_users
+                    ],
+                    "reporting_manager": (
+                        {
+                            **filter_fields(
+                                employee_data.employee_info.reporting_manager,
+                                fields=["id"],
+                            ),
+                            **(
+                                filter_fields(
+                                    employee_data.employee_info.reporting_manager.personal_info,
+                                    fields=[
+                                        "-id",
+                                        "first_name",
+                                        "last_name",
+                                        "middle_name",
+                                        "profile_picture",
+                                        "profile_picture_bg",
+                                        "full_name",
+                                    ],
+                                )
+                                if employee_data.employee_info.reporting_manager
+                                and employee_data.employee_info.reporting_manager.personal_info
+                                else {}
+                            ),
+                            **(
+                                filter_fields(
+                                    employee_data.employee_info.reporting_manager.employee_info,
+                                    fields=[
+                                        "employee_code",
+                                    ],
+                                )
+                                if employee_data.employee_info.reporting_manager
+                                and employee_data.employee_info.reporting_manager.employee_info
+                                else {}
+                            ),
+                        }
+                        if employee_data.employee_info
+                        and employee_data.employee_info.reporting_manager
+                        else {}
+                    ),
+                }
+            )
 
         return {
             "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
@@ -315,32 +490,54 @@ async def fetch_all_leave_balance(
     request: Request,
     db: db_dependencies,
     user: dict = Depends(UserAuthenticatorMiddleware),
+    employee_id: Optional[str] = Query(None, alias="employee-id"),
 ):
     try:
+        query_id = employee_id if employee_id else user.id
         query_data = (
-            db.query(Models.LeaveBalance).filter(Models.LeaveBalance.user_id == user.id).all()
+            db.query(Models.LeaveBalance).filter(Models.LeaveBalance.user_id == query_id).all()
         )
 
         data = []
 
         for _data in query_data:
-            if _data.leave_type.status:
-                data.append(
-                    {
-                        **filter_fields(_data, ["-leave_type", "-last_refill_date"]),
-                        **filter_fields(
-                            _data.leave_type,
-                            [
-                                "-updated_at",
-                                "-updated_by",
-                                "-created_by",
-                                "-created_at",
-                                "-refill_quarterly",
-                                "-refill_from",
-                            ],
-                        ),
-                    }
-                )
+            available_gender = (
+                json.loads(_data.leave_type.gender) if _data.leave_type.gender else []
+            )
+            available_emp_status = (
+                json.loads(_data.leave_type.employee_status)
+                if _data.leave_type.employee_status
+                else []
+            )
+            marital_status = (
+                json.loads(_data.leave_type.marital_status)
+                if _data.leave_type.marital_status
+                else []
+            )
+
+            if (
+                user.personal_info.gender in available_gender
+                and user.employee_info.status in available_emp_status
+                and user.family_info[0].marital_status in marital_status
+            ):
+
+                if _data.leave_type.status:
+                    data.append(
+                        {
+                            **filter_fields(_data, ["-leave_type", "-last_refill_date"]),
+                            **filter_fields(
+                                _data.leave_type,
+                                [
+                                    "-updated_at",
+                                    "-updated_by",
+                                    "-created_by",
+                                    "-created_at",
+                                    "-refill_quarterly",
+                                    "-refill_from",
+                                ],
+                            ),
+                        }
+                    )
 
         return {
             "message": SUCCESS_MESSAGE.LEAVES_FETCHED_SUCCESSFULLY,
@@ -359,3 +556,636 @@ async def fetch_all_leave_balance(
                 "success": SUCCESS.FALSE,
             },
         )
+
+
+@attendanceRoute.get("/fetch/team/leaves", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_users_leave(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    page: int = Query(..., alias="page"),
+    limit: int = Query(..., alias="limit"),
+    filter: Optional[str] = Query(None, alias="filter"),
+):
+    try:
+
+        filter_data = ""
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
+
+        _data = []
+
+        team_data = (
+            db.query(Models.User)
+            .options(
+                joinedload(Models.User.personal_info),
+                joinedload(Models.User.applied_leaves).joinedload(
+                    Models.AttendanceLeavesModule.leave_type
+                ),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.reporting_manager)
+                .joinedload(Models.User.personal_info),
+            )
+            .filter(Models.User.employee_info.has(reporting_to_id=user.id))
+            .all()
+        )
+
+        today = date.today()
+        employees_on_leave = set()
+        planned_leaves = set()
+        unplanned_leaves = set()
+        pending_leaves = set()
+        cancelled_leaves = set()
+
+        for employee in team_data:
+            for leave in employee.applied_leaves:
+
+                employee_id = employee.id
+                if filter_data:
+                    if not attendance_leave_team_organization_query_filter(
+                        leave, employee_id, filter=filter_data
+                    ):
+                        continue
+
+                start_date_utc = parse_to_utc_date(leave.start_date)
+                end_date_utc = parse_to_utc_date(leave.end_date)
+
+                if start_date_utc <= today <= end_date_utc:
+                    if leave.status not in ["cancelled", "rejected"]:
+                        employees_on_leave.add(employee.id)
+
+                if leave.is_planned:
+                    planned_leaves.add(leave.id)
+                else:
+                    unplanned_leaves.add(leave.id)
+
+                if leave.status == "pending":
+                    pending_leaves.add(leave.id)
+
+                if leave.status == "cancelled":
+                    cancelled_leaves.add(leave.id)
+
+                _data.append(
+                    {
+                        **filter_fields(
+                            leave,
+                            fields=[
+                                "-leave_type",
+                                "-notify_to_id",
+                            ],
+                        ),
+                        "leave_name": leave.leave_type.leave_name,
+                        "leave_code": leave.leave_type.leave_code,
+                        "employee_info": {
+                            "id": employee.id,
+                            **(
+                                filter_fields(
+                                    employee.personal_info,
+                                    fields=[
+                                        "-id",
+                                        "first_name",
+                                        "last_name",
+                                        "middle_name",
+                                        "profile_picture",
+                                        "profile_picture_bg",
+                                        "full_name",
+                                    ],
+                                )
+                                if employee.personal_info
+                                else {}
+                            ),
+                            **(
+                                filter_fields(
+                                    employee.employee_info,
+                                    fields=[
+                                        "employee_code",
+                                    ],
+                                )
+                                if employee.employee_info
+                                else {}
+                            ),
+                        },
+                        "reporting_manager": (
+                            {
+                                **filter_fields(
+                                    employee.employee_info.reporting_manager,
+                                    fields=["id"],
+                                ),
+                                **(
+                                    filter_fields(
+                                        employee.employee_info.reporting_manager.personal_info,
+                                        fields=[
+                                            "-id",
+                                            "first_name",
+                                            "last_name",
+                                            "middle_name",
+                                            "profile_picture",
+                                            "profile_picture_bg",
+                                            "full_name",
+                                        ],
+                                    )
+                                    if employee.employee_info.reporting_manager
+                                    and employee.employee_info.reporting_manager.personal_info
+                                    else {}
+                                ),
+                                **(
+                                    filter_fields(
+                                        employee.employee_info.reporting_manager.employee_info,
+                                        fields=[
+                                            "employee_code",
+                                        ],
+                                    )
+                                    if employee.employee_info.reporting_manager
+                                    and employee.employee_info.reporting_manager.employee_info
+                                    else {}
+                                ),
+                            }
+                            if employee.employee_info and employee.employee_info.reporting_manager
+                            else {}
+                        ),
+                        "notify_to_users": [
+                            {
+                                **filter_fields(
+                                    notify_user.personal_info,
+                                    fields=["first_name", "middle_name", "last_name", "full_name"],
+                                ),
+                                **filter_fields(
+                                    notify_user.employee_info,
+                                    fields=["employee_code"],
+                                ),
+                                "id": notify_user.id,
+                            }
+                            for notify_user in leave.notify_to_users
+                        ],
+                    }
+                )
+
+        total_data = len(_data)
+        sorted_data = sorted(_data, key=lambda x: x["created_at"], reverse=True)
+        page = page if page else 1
+        limit = limit if limit else 10
+        start = (page - 1) * limit
+        end = start + limit
+        query_data = sorted_data[start:end]
+
+        return {
+            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": {
+                "applied_leaves": query_data,
+                "team_summary": {
+                    "total_employees": len(team_data),
+                    "employees_on_leave": len(employees_on_leave),
+                    "planned_leaves": len(planned_leaves),
+                    "unplanned_leaves": len(unplanned_leaves),
+                    "pending_leaves": len(pending_leaves),
+                    "cancelled_leaves": len(cancelled_leaves),
+                },
+            },
+            "metadata": {
+                "total_data": total_data,
+                "total_pages": math.ceil(total_data / limit),
+                "current_page": page,
+                "record_per_page": limit,
+            },
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.get("/fetch/organization/leaves", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_users_leave(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    page: int = Query(..., alias="page"),
+    limit: int = Query(..., alias="limit"),
+    filter: Optional[str] = Query(None, alias="filter"),
+):
+    try:
+        _data = []
+
+        filter_data = ""
+        if filter:
+            decoded = unquote(filter)
+            filter_data = json.loads(decoded)
+
+        org_team_data = (
+            db.query(Models.User)
+            .options(
+                joinedload(Models.User.personal_info),
+                joinedload(Models.User.applied_leaves).joinedload(
+                    Models.AttendanceLeavesModule.leave_type
+                ),
+                joinedload(Models.User.employee_info)
+                .joinedload(Models.EmployeeInfo.reporting_manager)
+                .joinedload(Models.User.personal_info),
+            )
+            .filter(Models.User.organization_id == user.organization_id)
+            .all()
+        )
+
+        today = date.today()
+        employees_on_leave = set()
+        planned_leaves = set()
+        unplanned_leaves = set()
+        pending_leaves = set()
+        cancelled_leaves = set()
+
+        for employee in org_team_data:
+            for leave in employee.applied_leaves:
+
+                employee_id = employee.id
+                if filter_data:
+                    if not attendance_leave_team_organization_query_filter(
+                        leave, employee_id, filter=filter_data
+                    ):
+                        continue
+
+                start_date_utc = parse_to_utc_date(leave.start_date)
+                end_date_utc = parse_to_utc_date(leave.end_date)
+
+                if start_date_utc <= today <= end_date_utc:
+                    if leave.status not in ["cancelled", "rejected"]:
+                        employees_on_leave.add(employee.id)
+
+                if leave.is_planned:
+                    planned_leaves.add(leave.id)
+                else:
+                    unplanned_leaves.add(leave.id)
+
+                if leave.status == "pending":
+                    pending_leaves.add(leave.id)
+
+                if leave.status == "cancelled":
+                    cancelled_leaves.add(leave.id)
+
+                _data.append(
+                    {
+                        **filter_fields(
+                            leave,
+                            fields=[
+                                "-leave_type",
+                                "-notify_to_id",
+                            ],
+                        ),
+                        "leave_name": leave.leave_type.leave_name,
+                        "leave_code": leave.leave_type.leave_code,
+                        "employee_info": {
+                            "id": employee.id,
+                            **(
+                                filter_fields(
+                                    employee.personal_info,
+                                    fields=[
+                                        "-id",
+                                        "first_name",
+                                        "last_name",
+                                        "middle_name",
+                                        "profile_picture",
+                                        "profile_picture_bg",
+                                        "full_name",
+                                    ],
+                                )
+                                if employee.personal_info
+                                else {}
+                            ),
+                            **(
+                                filter_fields(
+                                    employee.employee_info,
+                                    fields=[
+                                        "employee_code",
+                                    ],
+                                )
+                                if employee.employee_info
+                                else {}
+                            ),
+                        },
+                        "reporting_manager": (
+                            {
+                                **filter_fields(
+                                    employee.employee_info.reporting_manager,
+                                    fields=["id"],
+                                ),
+                                **(
+                                    filter_fields(
+                                        employee.employee_info.reporting_manager.personal_info,
+                                        fields=[
+                                            "-id",
+                                            "first_name",
+                                            "last_name",
+                                            "middle_name",
+                                            "profile_picture",
+                                            "profile_picture_bg",
+                                            "full_name",
+                                        ],
+                                    )
+                                    if employee.employee_info.reporting_manager
+                                    and employee.employee_info.reporting_manager.personal_info
+                                    else {}
+                                ),
+                                **(
+                                    filter_fields(
+                                        employee.employee_info.reporting_manager.employee_info,
+                                        fields=[
+                                            "employee_code",
+                                        ],
+                                    )
+                                    if employee.employee_info.reporting_manager
+                                    and employee.employee_info.reporting_manager.employee_info
+                                    else {}
+                                ),
+                            }
+                            if employee.employee_info and employee.employee_info.reporting_manager
+                            else {}
+                        ),
+                        "notify_to_users": [
+                            {
+                                **filter_fields(
+                                    notify_user.personal_info,
+                                    fields=["first_name", "middle_name", "last_name", "full_name"],
+                                ),
+                                **filter_fields(
+                                    notify_user.employee_info,
+                                    fields=["employee_code"],
+                                ),
+                                "id": notify_user.id,
+                            }
+                            for notify_user in leave.notify_to_users
+                        ],
+                    }
+                )
+
+        total_data = len(_data)
+        sorted_data = sorted(_data, key=lambda x: x["created_at"], reverse=True)
+        page = page if page else 1
+        limit = limit if limit else 10
+        start = (page - 1) * limit
+        end = start + limit
+        query_data = sorted_data[start:end]
+
+        return {
+            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": {
+                "applied_leaves": query_data,
+                "team_summary": {
+                    "total_employees": len(org_team_data),
+                    "employees_on_leave": len(employees_on_leave),
+                    "planned_leaves": len(planned_leaves),
+                    "unplanned_leaves": len(unplanned_leaves),
+                    "pending_leaves": len(pending_leaves),
+                    "cancelled_leaves": len(cancelled_leaves),
+                },
+            },
+            "metadata": {
+                "total_data": total_data,
+                "total_pages": math.ceil(total_data / limit),
+                "current_page": page,
+                "record_per_page": limit,
+            },
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.put("/leave-request/update", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def update_leave_request(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    leave_status: str = Query(..., alias="status"),
+    leave_id: str = Query(..., alias="id"),
+):
+    try:
+        query_data = (
+            db.query(Models.AttendanceLeavesModule)
+            .options(joinedload(Models.AttendanceLeavesModule.user))
+            .filter(Models.AttendanceLeavesModule.id == leave_id)
+        ).first()
+
+        reporting_manager_id = query_data.user.employee_info.reporting_to_id
+
+        if query_data.status in ["rejected", "cancelled"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={
+                    "message": ERROR_MESSAGE.LEAVE_REQUEST_NOT_ALLOWED,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        if not reporting_manager_id == user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": ERROR_MESSAGE.NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        if not leave_status in ["pending", "approved", "rejected", "cancelled"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": ERROR_MESSAGE.PLEASE_PROVIDE_APPROPRIATE_LEAVE_STATUS,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        updated_created_by_user = model_to_filtered_dict(
+            user.personal_info, ["user_id", "first_name", "last_name"]
+        )
+
+        query_data.status = leave_status
+        query_data.updated_by = json.dumps(updated_created_by_user)
+
+        if leave_status in ["rejected", "cancelled"]:
+            leave_balance = (
+                db.query(Models.LeaveBalance)
+                .filter(
+                    Models.LeaveBalance.leave_type_id == query_data.leave_type_id,
+                    Models.LeaveBalance.user_id == query_data.user_id,
+                )
+                .first()
+            )
+
+            if not leave_balance:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={
+                        "message": ERROR_MESSAGE.LEAVE_BALANCE_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            leave_balance.available_leaves += query_data.total_days
+
+        db.commit()
+
+        return {
+            "message": f"Leave {leave_status} Successfully",
+            "success": SUCCESS.TRUE,
+            "data": {},
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.get("/fetch/leave-types", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_all_leave_type(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        query_data = (
+            db.query(Models.LeavesSettings)
+            .filter(Models.LeavesSettings.organization_id == user.organization_id)
+            .all()
+        )
+
+        _data = []
+
+        for data in query_data:
+            _data.append(data.leave_code)
+
+        return {
+            "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": _data,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+# leave_data = [
+#     {
+#         "start_date": "2026-03-12",
+#         "end_date": "2026-03-14",
+#         "start_half": "second_half",
+#         "end_half": "second_half",
+#         "leave_name": "Annual Leave test one",
+#         "leave_code": "ALV-TEST",
+#         "status": "rejected",
+#         "total_days": 2.5,
+#         "description": "sada",
+#         "documents": "[]",
+#         "created_at": "2026-03-12T09:53:20",
+#         "updated_at": "2026-03-12T10:13:11",
+#         "created_by": '{"first_name": "super", "last_name": "admin"}',
+#     }
+# ]
+
+
+# @attendanceRoute.get("/export/leaves/csv")
+# async def export_leaves_csv():
+
+#     df = pd.DataFrame(leave_data)
+
+#     file_path = "leaves_export.csv"
+#     df.to_csv(file_path, index=False)
+
+#     return FileResponse(file_path, media_type="text/csv", filename="leaves_export.csv")
+
+
+# @attendanceRoute.get("/export/leaves/pdf")
+# async def export_leaves_pdf():
+
+#     file_path = "leaves_export.pdf"
+
+#     styles = getSampleStyleSheet()
+
+#     elements = []
+
+#     title = Paragraph("Leave Report", styles["Title"])
+#     elements.append(title)
+
+#     table_data = [
+#         [
+#             "Leave Name",
+#             "Leave Code",
+#             "Start Date",
+#             "End Date",
+#             "Start Half",
+#             "End Half",
+#             "Total Days",
+#             "Status",
+#         ]
+#     ]
+
+#     for leave in leave_data:
+#         table_data.append(
+#             [
+#                 leave["leave_name"],
+#                 leave["leave_code"],
+#                 leave["start_date"],
+#                 leave["end_date"],
+#                 leave["start_half"],
+#                 leave["end_half"],
+#                 leave["total_days"],
+#                 leave["status"],
+#             ]
+#         )
+
+#     table = Table(table_data)
+
+#     table.setStyle(
+#         TableStyle(
+#             [
+#                 ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+#                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+#                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+#                 ("GRID", (0, 0), (-1, -1), 1, colors.black),
+#             ]
+#         )
+#     )
+
+#     elements.append(table)
+
+#     doc = SimpleDocTemplate(file_path, pagesize=A4)
+#     doc.build(elements)
+
+#     return FileResponse(file_path, media_type="application/pdf", filename="leaves_export.pdf")

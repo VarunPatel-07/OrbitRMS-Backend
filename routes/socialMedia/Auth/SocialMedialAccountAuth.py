@@ -12,8 +12,8 @@ from sqlalchemy.orm import joinedload
 from config.EnvConfig import EnvConfig
 from constants.constant import USER_FRIENDLY_ERRORS
 from database.Database import db_dependencies
-from models.sql import Models
 from middleware.RateLimiting import limiter
+from models.sql import Models
 from utils.helper.helper import redirect_with_error
 
 from ..Services.FacebookService import FacebookService

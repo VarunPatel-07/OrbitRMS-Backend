@@ -1,0 +1,15 @@
+"{'asset_id': '312b25719953e58cc315e694975ba7cc', 'public_id': 'leave_documents/Dhvani-biodata.pdf', 'version': 1772445647, 'version_id': 'f5b8c9a4f70157dcdae49cf960da94fe', 'signature': '2babc785d5f16ec2b43b6574bd15d8ee8eecb5e1', 'resource_type': 'raw', 'created_at': '2026-03-02T10: 00: 47Z', 'tags': [], 'bytes': 1614837, 'type': 'upload', 'etag': 'd5f5deb17021470e1b196989ebb3f1a4', 'placeholder': False, 'url': 'http: //res.cloudinary.com/ditphgtvl/raw/upload/v1772445647/leave_documents/Dhvani-biodata.pdf', 'secure_url': 'https://res.cloudinary.com/ditphgtvl/raw/upload/v1772445647/leave_documents/Dhvani-biodata.pdf', 'asset_folder': 'leave_documents', 'display_name': 'Dhvani-biodata.pdf', 'original_filename': 'stream', 'api_key': '116725644869546'}"
+
+
+
+the link to the chatgpt "conversation"
+"https://chatgpt.com/share/69a560f8-75dc-8007-bdac-9e4a1d6e4382"
+
+
+"[{\"asset_id\": \"cc0553903ecb4c0f88955b94ebbe7658\", \"public_id\": \"leave_documents/4851ffb2-5fa0-422d-ad11-4085ca72d7c9\", \"file_name\": \"CustomerBookingConfirmation_MN2HOO94OKGIU5MR5501 (1).pdf\", \"original_url\": \"https://res.cloudinary.com/ditphgtvl/raw/authenticated/s--5IBLhD6r--/v1772455130/leave_documents/4851ffb2-5fa0-422d-ad11-4085ca72d7c9\", \"media_asset_url\": \"media.orbitrms.com/uploads/public/leave_documents/4851ffb2-5fa0-422d-ad11-4085ca72d7c9/CustomerBookingConfirmation_MN2HOO94OKGIU5MR5501 (1).pdf\"}]"
+
+"{\"start_date\":\"2026-03-02T18:30:00.000Z\",\"end_date\":\"2026-03-18T18:30:00.000Z\"}"
+
+
+
+[{"field_name":"employee","operator":"is","value":"[\"e5992f1d-7d3e-4e22-b2ef-035543c39a4f\"]"}]

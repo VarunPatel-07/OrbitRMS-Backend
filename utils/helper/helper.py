@@ -6,7 +6,7 @@ import os
 import random
 import secrets
 import string
-from datetime import datetime, date, timezone
+from datetime import date, datetime, timezone
 from typing import Dict, List, Optional, Union
 from zoneinfo import ZoneInfo
 
@@ -370,15 +370,15 @@ def parse_to_utc_date(date_str: str) -> date:
 
         if "T" not in date_str:
             return datetime.strptime(date_str, "%Y-%m-%d").date()
-
-        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        return dt.astimezone(timezone.utc).date()
+        else:
+            dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+            return dt.astimezone(timezone.utc).date()
 
     except ValueError:
         raise HTTPException(
             status_code=400,
             detail={
-                "message": "Invalid date format. Expected YYYY-MM-DD or ISO datetime",
+                "message": f"Invalid date format. Expected YYYY-MM-DD or ISO datetime {date_str}",
                 "success": False,
             },
         )

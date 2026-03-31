@@ -1,6 +1,6 @@
-from curses import ERR
 import json
 import os
+from curses import ERR
 from datetime import datetime
 from typing import Optional
 
@@ -9,11 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
-from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
 from models.pydantic.ConfigModule.ConfigModule import (
@@ -26,8 +27,8 @@ from models.pydantic.ConfigModule.ConfigModule import (
     RoleAssociatedPermissionModule,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.helper import model_to_filtered_dict
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
@@ -1726,7 +1727,10 @@ async def delete_designation(
 
         status = "enabled" if inquiry_form.email_notification else "disabled"
 
-        return {"success": SUCCESS.TRUE, "message": f"Email notifications have been {status} successfully."}
+        return {
+            "success": SUCCESS.TRUE,
+            "message": f"Email notifications have been {status} successfully.",
+        }
 
     except HTTPException as http_exception:
         raise http_exception

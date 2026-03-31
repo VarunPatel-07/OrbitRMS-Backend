@@ -13,17 +13,17 @@ from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import NewClientInquiryAccruedMail
-from models.sql import Models
 from middleware.RateLimiting import limiter
+from models.sql import Models
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
     is_valid_type,
     validate_field,
 )
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
-from constants.constant import SUCCESS
 
 load_dotenv(override=True)
 API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING

@@ -34,6 +34,7 @@ from .HelperModel.OrganizationModelUtils import (
     OrganizationContactInfo,
     OrganizationGeneralInfo,
     OrganizationSettings,
+    OrganizationLocationsConfig,
 )
 from .HelperModel.SocialMediaModule import SocialMediaAccount, SocialMediaPosts
 from .HelperModel.UserModelUtils import (
@@ -47,6 +48,7 @@ from .HelperModel.UserModelUtils import (
     PersonalInfo,
     Sessions,
     SocialLinks,
+    AttendancePunchInOutModule,
 )
 
 # This IS The Table That Will Connect The Multiple Leave Records
@@ -152,6 +154,10 @@ class User(BaseModel):
 
     leave_balance = relationship("LeaveBalance", back_populates="user")
 
+    attendance = relationship(
+        "AttendancePunchInOutModule", back_populates="user", cascade="all, delete", uselist=True
+    )
+
     family_info = relationship("FamilyInfo", back_populates="user", cascade="all, delete")
     same_as_current_address = Column(Boolean, nullable=False, default=True)
 
@@ -252,6 +258,12 @@ class Organization(BaseModel):
 
     leaves_settings = relationship(
         "LeavesSettings", back_populates="organization", uselist=True, cascade="all, delete"
+    )
+    locations_config = relationship(
+        "OrganizationLocationsConfig",
+        back_populates="organization",
+        uselist=True,
+        cascade="all, delete",
     )
 
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)

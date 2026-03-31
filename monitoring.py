@@ -7,6 +7,8 @@ from constants.constant import (
 )
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
+from config.EnvConfig import EnvConfig
+
 
 def initSentryMonitoring():
 

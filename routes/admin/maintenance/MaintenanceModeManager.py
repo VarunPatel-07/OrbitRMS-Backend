@@ -9,9 +9,11 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import joinedload
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
+from middleware.RateLimiting import limiter
 from middleware.verifyToken import verify_token
 from models.pydantic.Admin.AdminAuthenticationModel import (
     MaintenanceModeData,
@@ -20,7 +22,6 @@ from models.pydantic.Admin.AdminAuthenticationModel import (
     ScheduleMaintenanceModeData,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.helper import (
     model_to_filtered_dict,
     parse_date,
@@ -717,7 +718,10 @@ async def Save_Message(
         if not maintenance_mode:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"message": ERROR_MESSAGE.NO_MAINTENANCE_LOG_FOUND, "success": SUCCESS.FAlSE},
+                detail={
+                    "message": ERROR_MESSAGE.NO_MAINTENANCE_LOG_FOUND,
+                    "success": SUCCESS.FAlSE,
+                },
             )
 
         maintenance_mode.message = maintenance_mode_data.message

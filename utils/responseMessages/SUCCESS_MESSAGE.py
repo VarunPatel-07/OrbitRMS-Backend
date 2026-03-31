@@ -1,4 +1,7 @@
 # ==== Authentication Success Messages ====
+from dns.rdatatype import LOC
+
+
 SIGN_IN_SUCCESS_MESSAGE = "User Sign In Successfully"
 ADMIN_SIGN_IN_SUCCESS_MESSAGE = "Admin Sign In Successfully"
 ADMIN_OTP_VERIFY_SUCCESS_MESSAGE = "Admin OTP Verify Successfully"
@@ -127,6 +130,8 @@ USER_INFO_FETCHED_SUCCESSFULLY = "User Info Fetched Successfully"
 EMPLOYEES_FETCHED_SUCCESSFULLY = "Employees Fetched Successfully"
 ORGANIZATION_INFO_FETCHED_SUCCESSFULLY = "Organization Info Fetched Successfully"
 HOLIDAY_ADDED_SUCCESSFULLY = "Holiday Added Successfully"
+LOCATION_CONFIG_ADDED_SUCCESSFULLY = "Location Added Successfully"
+LOCATION_CONFIG_UPDATED_SUCCESSFULLY = "Location Updated Successfully"
 HOLIDAY_EDITED_SUCCESSFULLY = "Holiday Updated Successfully"
 HOLIDAYS_FETCHED_SUCCESSFULLY = "Holiday Fetched Successfully"
 HOLIDAY_DELETED_SUCCESSFULLY = "Holiday Deleted Successfully"
@@ -152,3 +157,7 @@ RESPONSE_GENERATED_SUCCESSFULLY = "response generated successfully"
 LEAVE_APPLIED_SUCCESSFULLY = "Leave Added Successfully"
 LEAVES_FETCHED_SUCCESSFULLY = "All Leaves Fetched Successfully"
 POST_UPLOADED_SUCCESSFULLY = "Post Uploaded Successfully"
+
+
+LOCATION_CONFIG_FETCHED_SUCCESSFULLY = "Location Config Fetched Successfully"
+LOCATION_CONFIG_DELETED_SUCCESSFULLY = "Location Config Deleted Successfully"

@@ -15,14 +15,18 @@ from fastapi import (
     status,
 )
 from fastapi.encoders import jsonable_encoder
+from openai.types import Model
+from pydantic import Json
 from sqlalchemy import and_
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql import func
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import WelcomeMailForNewlyAddedEmployee
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
 from models.pydantic.HelperPydanticModel import WelcomeEmployeeMailModel
@@ -30,7 +34,6 @@ from models.pydantic.Organizations.AddEditEmployeePydanticModal import (
     AddEditUserProfileModel,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.createModelInstance import cerate_model_instance
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
@@ -1136,6 +1139,82 @@ async def Fetch_Employee(
             "message": SUCCESS_MESSAGE.EMPLOYEES_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": _data,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Fetching All The Employee",
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@employee_router.get("/fetch/employee/all", status_code=status.HTTP_200_OK)
+async def Fetch_Employee(
+    request: Request,
+    db: db_dependencies,
+    scope: str = Query(
+        ..., description="scope is used to determine for the team or the organization"
+    ),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        if scope not in ["team", "organization", "emp_rm"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": ERROR_MESSAGE.INVALID_SCOPE_FIELD,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+        cache_key = f"org_{user.organization_id}_employees"
+
+        cached_data = await cache_database.get(cache_key)
+
+        employees = list()
+
+        if cached_data:
+            employees = json.loads(cached_data)
+        else:
+            query_data = (
+                db.query(Models.User)
+                .join(Models.EmployeeInfo, Models.User.id == Models.EmployeeInfo.user_id)
+                .options(joinedload(Models.User.employee_info))
+                .filter(
+                    Models.User.organization_id == user.organization_id,
+                )
+                .all()
+            )
+            employees = [
+                {
+                    "id": emp.id,
+                    "full_name": emp.personal_info.full_name,
+                    "employee_code": emp.employee_info.employee_code,
+                    "reporting_to_id": emp.employee_info.reporting_to_id,
+                }
+                for emp in query_data
+            ]
+
+            await cache_database.set(cache_key, json.dumps(employees), ex=3600)
+
+        if scope == "team":
+
+            filtered_data = [emp for emp in employees if emp["reporting_to_id"] == user.id]
+
+        elif scope == "emp_rm":
+            filtered_data = [emp for emp in employees if emp["id"] != user.id]
+
+        else:
+            filtered_data = employees
+
+        return {
+            "message": SUCCESS_MESSAGE.EMPLOYEES_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": filtered_data,
         }
     except HTTPException as http_exception:
         raise http_exception
