@@ -33,13 +33,15 @@ from .HelperModel.OrganizationModelUtils import (
     OrganizationAddress,
     OrganizationContactInfo,
     OrganizationGeneralInfo,
-    OrganizationSettings,
     OrganizationLocationsConfig,
+    OrganizationSettings,
 )
 from .HelperModel.SocialMediaModule import SocialMediaAccount, SocialMediaPosts
 from .HelperModel.UserModelUtils import (
     Address,
+    AttendanceBreakModel,
     AttendanceLeavesModule,
+    AttendancePunchInOutModule,
     Children,
     EmergencyContact,
     EmployeeInfo,
@@ -48,7 +50,6 @@ from .HelperModel.UserModelUtils import (
     PersonalInfo,
     Sessions,
     SocialLinks,
-    AttendancePunchInOutModule,
 )
 
 # This IS The Table That Will Connect The Multiple Leave Records
