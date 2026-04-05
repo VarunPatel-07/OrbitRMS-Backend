@@ -2,7 +2,7 @@ import json
 import math
 import os
 import uuid
-from datetime import date
+from datetime import date, datetime
 from tracemalloc import start
 from typing import List, Optional
 from urllib.parse import unquote
@@ -22,12 +22,6 @@ from fastapi import (
     status,
 )
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
-from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
 from config.EnvConfig import EnvConfig
@@ -35,7 +29,11 @@ from constants.constant import SUCCESS
 from database.Database import db_dependencies
 from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
+from models.pydantic.Organizations.AttendancePydanticModal import (
+    AttendancePunchInPydantic,
+)
 from models.sql import Models
+from utils.helper.calculateDistanceWithHaversine import calculateDistanceWithHaversine
 from utils.helper.helper import filter_fields, model_to_filtered_dict, parse_to_utc_date
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
@@ -1088,6 +1086,854 @@ async def fetch_all_leave_type(
             "success": SUCCESS.TRUE,
             "data": _data,
         }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.post("/punch-in", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def AttendancePunchIn(
+    request: Request,
+    db: db_dependencies,
+    data: AttendancePunchInPydantic,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        active_session = (
+            db.query(Models.AttendancePunchInOutModule)
+            .filter(
+                Models.AttendancePunchInOutModule.user_id == user.id,
+                Models.AttendancePunchInOutModule.status == "active",
+            )
+            .first()
+        )
+
+        if active_session:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.ACTIVE_ATTENDANCE_SESSION_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+        query_data = (
+            db.query(Models.OrganizationLocationsConfig)
+            .filter(Models.OrganizationLocationsConfig.organization_id == user.organization_id)
+            .all()
+        )
+
+        if not query_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.NO_LOCATION_CONFIG_ADDED,
+                    "error": str(e),
+                    "success": SUCCESS.FALSE,
+                },
+            )
+        is_with_in_range = False
+        if not data.is_work_from_home:
+            for location_config in query_data:
+
+                user_location_coordinates = {
+                    "latitude": (
+                        data.location_coordinates.get("latitude")
+                        if isinstance(data.location_coordinates, dict)
+                        else data.location_coordinates.latitude
+                    ),
+                    "longitude": (
+                        data.location_coordinates.get("longitude")
+                        if isinstance(data.location_coordinates, dict)
+                        else data.location_coordinates.longitude
+                    ),
+                }
+
+                org_location_coordinates = json.loads(location_config.location_coordinates)
+
+                allowed_radius_meters = (
+                    location_config.allowed_radius_meters
+                    if location_config.allowed_radius_meters
+                    else 500
+                )
+
+                distance = calculateDistanceWithHaversine(
+                    userLocation={
+                        "latitude": user_location_coordinates["latitude"],
+                        "longitude": user_location_coordinates["longitude"],
+                    },
+                    orgLocation={
+                        "latitude": org_location_coordinates["latitude"],
+                        "longitude": org_location_coordinates["longitude"],
+                    },
+                )
+
+                if distance <= allowed_radius_meters:
+                    is_with_in_range = True
+                    break
+                else:
+                    continue
+
+            if is_with_in_range:
+                attendance_data = Models.AttendancePunchInOutModule(
+                    user_id=user.id,
+                    punch_in_time=datetime.utcnow(),
+                    punch_in_coordinates=json.dumps(data.location_coordinates.model_dump()),
+                    is_work_from_home=data.is_work_from_home,
+                    status="active",
+                )
+                db.add(attendance_data)
+                db.commit()
+                db.refresh(attendance_data)
+
+                return {
+                    "message": SUCCESS_MESSAGE.ATTENDANCE_PUNCH_IN_SUCCESSFULLY,
+                    "success": SUCCESS.TRUE,
+                    "data": {
+                        "attendance_id": attendance_data.id,
+                        "punch_in_time": attendance_data.punch_in_time,
+                    },
+                }
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": ERROR_MESSAGE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+        else:
+            attendance_data = Models.AttendancePunchInOutModule(
+                user_id=user.id,
+                punch_in_time=datetime.utcnow(),
+                punch_in_coordinates=json.dumps(data.location_coordinates.model_dump()),
+                is_work_from_home=data.is_work_from_home,
+                status="active",
+            )
+            db.add(attendance_data)
+            db.commit()
+            db.refresh(attendance_data)
+
+            return {
+                "message": SUCCESS_MESSAGE.ATTENDANCE_PUNCH_IN_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
+                "data": {
+                    "attendance_id": attendance_data.id,
+                    "punch_in_time": attendance_data.punch_in_time,
+                },
+            }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.get("/attendance-status", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def punch_in_out_status(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        active_session = (
+            db.query(Models.AttendancePunchInOutModule)
+            .filter(
+                Models.AttendancePunchInOutModule.user_id == user.id,
+                Models.AttendancePunchInOutModule.status == "active",
+            )
+            .first()
+        )
+
+        if not active_session:
+            last_session = (
+                db.query(Models.AttendancePunchInOutModule)
+                .filter(Models.AttendancePunchInOutModule.user_id == user.id)
+                .order_by(Models.AttendancePunchInOutModule.punch_in_time.desc())
+                .first()
+            )
+
+            if not last_session:
+                return {
+                    "message": SUCCESS_MESSAGE.NO_ACTIVE_ATTENDANCE_SESSION,
+                    "success": SUCCESS.TRUE,
+                }
+
+            last_session_break_minutes = 0
+
+            for data in last_session.attendance_breaks:
+                if data.break_duration:
+                    last_session_break_minutes += data.break_duration
+                elif data.break_start_time and not data.break_end_time:
+                    break_start_time = data.break_start_time
+
+                    if isinstance(break_start_time, str):
+                        break_start_time = datetime.fromisoformat(break_start_time)
+
+                    now = datetime.utcnow()
+                    active_break_minutes = (now - break_start_time).total_seconds() / 60
+                    last_session_break_minutes += active_break_minutes
+
+            last_session_break_hours = int(last_session_break_minutes) / 60
+
+            return {
+                "message": SUCCESS_MESSAGE.NO_ACTIVE_ATTENDANCE_SESSION,
+                "success": SUCCESS.TRUE,
+                "data": {
+                    "last_session": {
+                        "is_punched_in": False,
+                        "is_on_break": False,
+                        "punch_in_time": last_session.punch_in_time,
+                        "punch_out_time": last_session.punch_out_time,
+                        "total_break_hours": last_session_break_hours,
+                        "status": last_session.status,
+                    },
+                },
+            }
+
+        is_on_break: bool = False
+
+        for breaks in active_session.attendance_breaks:
+            if breaks.status == "active":
+                is_on_break = True
+                break
+
+        total_break_minutes = 0
+
+        for b in active_session.attendance_breaks:
+            if b.break_duration:
+                total_break_minutes += b.break_duration
+            elif b.break_start_time and not b.break_end_time:
+                break_start_time = b.break_start_time
+                if isinstance(break_start_time, str):
+                    break_start_time = datetime.fromisoformat(break_start_time)
+                now = datetime.utcnow()  # or datetime.now() based on your timezone handling
+                active_break_minutes = (now - break_start_time).total_seconds() / 60
+                total_break_minutes += active_break_minutes
+
+        total_break_hours = int(total_break_minutes) / 60
+
+        return {
+            "message": SUCCESS_MESSAGE.ATTENDANCE_SESSION_ACTIVE,
+            "success": SUCCESS.TRUE,
+            "data": {
+                "current_session": {
+                    "is_punched_in": True,
+                    "is_on_break": is_on_break,
+                    "punch_in_time": active_session.punch_in_time,
+                    "total_break_hours": total_break_hours,
+                }
+            },
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.get("/punch-in-out/fetch", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def punch_in_out_status(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    month: int | None = Query(None, ge=1, le=12),
+    year: int | None = Query(None),
+):
+    try:
+        current_date = datetime.utcnow()
+        target_year = year if year else current_date.year
+        target_month = month if month else current_date.month
+
+        start_of_month = datetime(target_year, target_month, 1)
+
+        # handle December edge case
+        if target_month == 12:
+            end_of_month = datetime(target_year + 1, 1, 1)
+        else:
+            end_of_month = datetime(target_year, target_month + 1, 1)
+
+        monthly_data = (
+            db.query(Models.AttendancePunchInOutModule)
+            .filter(
+                Models.AttendancePunchInOutModule.user_id == user.id,
+                Models.AttendancePunchInOutModule.punch_in_time >= start_of_month,
+                Models.AttendancePunchInOutModule.punch_in_time < end_of_month,
+            )
+            .order_by(Models.AttendancePunchInOutModule.punch_in_time.desc())
+            .all()
+        )
+
+        return {
+            "message": SUCCESS_MESSAGE.ATTENDANCE_SESSION_ACTIVE,
+            "success": SUCCESS.TRUE,
+            "data": [
+                {
+                    **model_to_filtered_dict(session, ["-attendance_breaks"]),
+                    "breaks": [
+                        {**model_to_filtered_dict(attendance_break)}
+                        for attendance_break in session.attendance_breaks
+                    ],
+                }
+                for session in monthly_data
+                if session is not None
+            ],
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.post("/break/start-break", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def startBreak(
+    request: Request,
+    db: db_dependencies,
+    data: AttendancePunchInPydantic,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        active_session = (
+            db.query(Models.AttendancePunchInOutModule)
+            .filter(
+                Models.AttendancePunchInOutModule.user_id == user.id,
+                Models.AttendancePunchInOutModule.status == "active",
+            )
+            .first()
+        )
+
+        if not active_session:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.NO_ACTIVE_ATTENDANCE_SESSION,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        active_break = (
+            db.query(Models.AttendanceBreakModel)
+            .filter(
+                Models.AttendanceBreakModel.session_id == active_session.id,
+                Models.AttendanceBreakModel.status == "active",
+            )
+            .first()
+        )
+
+        if active_break:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        location_query_data = (
+            db.query(Models.OrganizationLocationsConfig)
+            .filter(Models.OrganizationLocationsConfig.organization_id == user.organization_id)
+            .all()
+        )
+
+        if not location_query_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.NO_LOCATION_CONFIG_ADDED,
+                    "error": str(e),
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        is_with_in_range = False
+
+        for location_config in location_query_data:
+
+            user_location_coordinates = {
+                "latitude": (
+                    data.location_coordinates.get("latitude")
+                    if isinstance(data.location_coordinates, dict)
+                    else data.location_coordinates.latitude
+                ),
+                "longitude": (
+                    data.location_coordinates.get("longitude")
+                    if isinstance(data.location_coordinates, dict)
+                    else data.location_coordinates.longitude
+                ),
+            }
+
+            org_location_coordinates = json.loads(location_config.location_coordinates)
+
+            allowed_radius_meters = (
+                location_config.allowed_radius_meters
+                if location_config.allowed_radius_meters
+                else 500
+            )
+
+            distance = calculateDistanceWithHaversine(
+                userLocation={
+                    "latitude": user_location_coordinates["latitude"],
+                    "longitude": user_location_coordinates["longitude"],
+                },
+                orgLocation={
+                    "latitude": org_location_coordinates["latitude"],
+                    "longitude": org_location_coordinates["longitude"],
+                },
+            )
+
+            if distance <= allowed_radius_meters:
+                is_with_in_range = True
+                break
+            else:
+                continue
+
+        if is_with_in_range:
+
+            brake_data = Models.AttendanceBreakModel(
+                session_id=active_session.id,
+                break_start_time=datetime.utcnow(),
+                status="active",
+                punch_in_coordinates=json.dumps(data.location_coordinates.model_dump()),
+            )
+            db.add(brake_data)
+            db.commit()
+            db.refresh(brake_data)
+            return {
+                "message": SUCCESS_MESSAGE.BREAK_STARTED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
+                "data": {
+                    "break_id": brake_data.id,
+                    "break_start_time": brake_data.break_start_time,
+                },
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.post("/break/end-break", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def endBreak(
+    request: Request,
+    db: db_dependencies,
+    data: AttendancePunchInPydantic,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        active_session = (
+            db.query(Models.AttendancePunchInOutModule)
+            .filter(
+                Models.AttendancePunchInOutModule.user_id == user.id,
+                Models.AttendancePunchInOutModule.status == "active",
+            )
+            .first()
+        )
+
+        if not active_session:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.NO_ACTIVE_ATTENDANCE_SESSION,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        location_query_data = (
+            db.query(Models.OrganizationLocationsConfig)
+            .filter(Models.OrganizationLocationsConfig.organization_id == user.organization_id)
+            .all()
+        )
+
+        if not location_query_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.NO_LOCATION_CONFIG_ADDED,
+                    "error": str(e),
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        is_with_in_range = False
+
+        for location_config in location_query_data:
+
+            user_location_coordinates = {
+                "latitude": (
+                    data.location_coordinates.get("latitude")
+                    if isinstance(data.location_coordinates, dict)
+                    else data.location_coordinates.latitude
+                ),
+                "longitude": (
+                    data.location_coordinates.get("longitude")
+                    if isinstance(data.location_coordinates, dict)
+                    else data.location_coordinates.longitude
+                ),
+            }
+
+            org_location_coordinates = json.loads(location_config.location_coordinates)
+
+            allowed_radius_meters = (
+                location_config.allowed_radius_meters
+                if location_config.allowed_radius_meters
+                else 500
+            )
+
+            distance = calculateDistanceWithHaversine(
+                userLocation={
+                    "latitude": user_location_coordinates["latitude"],
+                    "longitude": user_location_coordinates["longitude"],
+                },
+                orgLocation={
+                    "latitude": org_location_coordinates["latitude"],
+                    "longitude": org_location_coordinates["longitude"],
+                },
+            )
+
+            if distance <= allowed_radius_meters:
+                is_with_in_range = True
+                break
+            else:
+                continue
+
+        if is_with_in_range:
+
+            break_data = (
+                db.query(Models.AttendanceBreakModel)
+                .filter(
+                    Models.AttendanceBreakModel.session_id == active_session.id,
+                    Models.AttendanceBreakModel.status == "active",
+                )
+                .first()
+            )
+
+            punch_in_coords = (
+                json.loads(break_data.punch_in_coordinates)
+                if break_data.punch_in_coordinates
+                else None
+            )
+
+            is_mislinious: bool = False
+
+            if punch_in_coords:
+
+                distance = calculateDistanceWithHaversine(
+                    userLocation={
+                        "latitude": punch_in_coords["latitude"],
+                        "longitude": punch_in_coords["longitude"],
+                    },
+                    orgLocation={
+                        "latitude": data.location_coordinates.latitude,
+                        "longitude": data.location_coordinates.longitude,
+                    },
+                )
+
+                if distance > 1000:
+                    is_mislinious = True
+                else:
+                    is_mislinious = False
+            else:
+                is_mislinious = True
+
+            break_start_time = break_data.break_start_time
+            if isinstance(break_data.break_start_time, str):
+                break_start_time = datetime.fromisoformat(break_data.break_start_time)
+
+            break_data.break_end_time = datetime.utcnow()
+            break_data.break_duration = (
+                break_data.break_end_time - break_start_time
+            ).total_seconds() / 60
+            break_data.punch_out_coordinates = json.dumps(data.location_coordinates.model_dump())
+            break_data.is_mislinious = is_mislinious
+            break_data.status = "completed"
+
+            db.commit()
+
+            return {
+                "message": SUCCESS_MESSAGE.BREAK_ENDED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@attendanceRoute.post("/punch-out", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def AttendancePunchOut(
+    request: Request,
+    db: db_dependencies,
+    data: AttendancePunchInPydantic,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        active_session = (
+            db.query(Models.AttendancePunchInOutModule)
+            .filter(
+                Models.AttendancePunchInOutModule.user_id == user.id,
+                Models.AttendancePunchInOutModule.status == "active",
+            )
+            .first()
+        )
+
+        if not active_session:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.NO_ACTIVE_ATTENDANCE_SESSION,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+        query_data = (
+            db.query(Models.OrganizationLocationsConfig)
+            .filter(Models.OrganizationLocationsConfig.organization_id == user.organization_id)
+            .all()
+        )
+
+        if not query_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.NO_LOCATION_CONFIG_ADDED,
+                    "error": str(e),
+                    "success": SUCCESS.FALSE,
+                },
+            )
+        is_with_in_range = False
+
+        break_data = (
+            db.query(Models.AttendanceBreakModel)
+            .filter(
+                Models.AttendanceBreakModel.session_id == active_session.id,
+                Models.AttendanceBreakModel.status == "active",
+            )
+            .first()
+        )
+
+        if break_data:
+            break_start_time = break_data.break_start_time
+            if isinstance(break_data.break_start_time, str):
+                break_start_time = datetime.fromisoformat(break_data.break_start_time)
+
+            break_data.break_end_time = datetime.utcnow()
+            break_data.break_duration = (
+                break_data.break_end_time - break_start_time
+            ).total_seconds()
+            break_data.punch_out_coordinates = json.dumps(data.location_coordinates.model_dump())
+            break_data.is_mislinious = False
+            break_data.status = "completed"
+
+        if not data.is_work_from_home:
+            for location_config in query_data:
+
+                user_location_coordinates = {
+                    "latitude": (
+                        data.location_coordinates.get("latitude")
+                        if isinstance(data.location_coordinates, dict)
+                        else data.location_coordinates.latitude
+                    ),
+                    "longitude": (
+                        data.location_coordinates.get("longitude")
+                        if isinstance(data.location_coordinates, dict)
+                        else data.location_coordinates.longitude
+                    ),
+                }
+
+                org_location_coordinates = json.loads(location_config.location_coordinates)
+
+                allowed_radius_meters = (
+                    location_config.allowed_radius_meters
+                    if location_config.allowed_radius_meters
+                    else 500
+                )
+
+                distance = calculateDistanceWithHaversine(
+                    userLocation={
+                        "latitude": user_location_coordinates["latitude"],
+                        "longitude": user_location_coordinates["longitude"],
+                    },
+                    orgLocation={
+                        "latitude": org_location_coordinates["latitude"],
+                        "longitude": org_location_coordinates["longitude"],
+                    },
+                )
+
+                if distance <= allowed_radius_meters:
+                    is_with_in_range = True
+                    break
+                else:
+                    continue
+
+            if is_with_in_range:
+
+                punch_in_coords = (
+                    json.loads(active_session.punch_in_coordinates)
+                    if active_session.punch_in_coordinates
+                    else None
+                )
+
+                is_mislinious: bool = False
+
+                if punch_in_coords:
+
+                    distance = calculateDistanceWithHaversine(
+                        userLocation={
+                            "latitude": punch_in_coords["latitude"],
+                            "longitude": punch_in_coords["longitude"],
+                        },
+                        orgLocation={
+                            "latitude": data.location_coordinates.latitude,
+                            "longitude": data.location_coordinates.longitude,
+                        },
+                    )
+
+                    if distance > 1000:
+                        is_mislinious = True
+                    else:
+                        is_mislinious = False
+                else:
+                    is_mislinious = True
+
+                active_session.punch_out_time = datetime.utcnow()
+                active_session.punch_out_coordinates = json.dumps(
+                    data.location_coordinates.model_dump()
+                )
+                active_session.status = "completed"
+                active_session.is_mislinious = is_mislinious
+
+                punch_in_time = active_session.punch_in_time
+                if isinstance(active_session.punch_in_time, str):
+                    punch_in_time = datetime.fromisoformat(active_session.punch_in_time)
+
+                punch_out_time = active_session.punch_out_time
+                if isinstance(active_session.punch_out_time, str):
+                    punch_out_time = datetime.fromisoformat(active_session.punch_out_time)
+
+                gross_seconds = (punch_out_time - punch_in_time).total_seconds()
+                gross_hours = gross_seconds / 3600
+
+                total_break_minutes = sum(
+                    [b.break_duration or 0 for b in active_session.attendance_breaks]
+                )
+
+                total_break_hours = total_break_minutes / 60
+
+                total_working_hours = max(0, gross_hours - total_break_hours)
+                active_session.gross_hours = round(gross_hours, 2)
+                active_session.total_break_hours = round(total_break_hours, 2)
+                active_session.total_working_hours = round(total_working_hours, 2)
+
+                db.commit()
+                db.refresh(active_session)
+
+                return {
+                    "message": SUCCESS_MESSAGE.ATTENDANCE_PUNCH_IN_SUCCESSFULLY,
+                    "success": SUCCESS.TRUE,
+                }
+
+        else:
+            active_session.punch_out_time = datetime.utcnow()
+            active_session.punch_out_coordinates = json.dumps(
+                data.location_coordinates.model_dump()
+            )
+            active_session.status = "completed"
+            active_session.is_mislinious = False
+
+            punch_in_time = active_session.punch_in_time
+            if isinstance(active_session.punch_in_time, str):
+                punch_in_time = datetime.fromisoformat(active_session.punch_in_time)
+
+            punch_out_time = active_session.punch_out_time
+            if isinstance(active_session.punch_out_time, str):
+                punch_out_time = datetime.fromisoformat(active_session.punch_out_time)
+
+            gross_seconds = (punch_out_time - punch_in_time).total_seconds()
+            gross_hours = gross_seconds / 3600
+
+            total_break_minutes = sum(
+                [b.break_duration or 0 for b in active_session.attendance_breaks]
+            )
+
+            total_break_hours = total_break_minutes / 60
+
+            total_working_hours = max(0, gross_hours - total_break_hours)
+            active_session.gross_hours = round(gross_hours, 2)
+            active_session.total_break_hours = round(total_break_hours, 2)
+            active_session.total_working_hours = round(total_working_hours, 2)
+
+            db.commit()
+            db.refresh(active_session)
+
+            return {
+                "message": SUCCESS_MESSAGE.ATTENDANCE_PUNCH_IN_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
+            }
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:

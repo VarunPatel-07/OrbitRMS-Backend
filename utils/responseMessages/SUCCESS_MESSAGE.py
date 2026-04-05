@@ -1,7 +1,6 @@
 # ==== Authentication Success Messages ====
 from dns.rdatatype import LOC
 
-
 SIGN_IN_SUCCESS_MESSAGE = "User Sign In Successfully"
 ADMIN_SIGN_IN_SUCCESS_MESSAGE = "Admin Sign In Successfully"
 ADMIN_OTP_VERIFY_SUCCESS_MESSAGE = "Admin OTP Verify Successfully"
@@ -161,3 +160,13 @@ POST_UPLOADED_SUCCESSFULLY = "Post Uploaded Successfully"
 
 LOCATION_CONFIG_FETCHED_SUCCESSFULLY = "Location Config Fetched Successfully"
 LOCATION_CONFIG_DELETED_SUCCESSFULLY = "Location Config Deleted Successfully"
+
+
+ATTENDANCE_PUNCH_IN_SUCCESSFULLY = "Punch In Successfully"
+ATTENDANCE_PUNCH_OUT_SUCCESSFULLY = "Punch Out Successfully"
+
+BREAK_STARTED_SUCCESSFULLY = "Break Started Successfully"
+BREAK_ENDED_SUCCESSFULLY = "Break Ended Successfully"
+
+ATTENDANCE_SESSION_ACTIVE = "Active Attendance Session Found For This User"
+NO_ACTIVE_ATTENDANCE_SESSION = "No Active Attendance Session Found For This User"

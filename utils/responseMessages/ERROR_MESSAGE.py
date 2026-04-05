@@ -1,4 +1,5 @@
 from re import L
+from tkinter import NO
 
 from aiohttp.hdrs import LOCATION
 
@@ -248,6 +249,10 @@ NO_POST_FOUND = "No Post Found"
 UNABLE_TO_FIND_SOCIAL_MEDIA_ACCOUNT = "Unable To Find SocialMedia Account"
 ERROR_DURING_ORBIT_AI_CONVERSION = "An error occurred during The OrbitAi conversations"
 ERROR_WHILE_APPLYING_LEAVE = "error while Fetching The User Info"
+
+
+NO_LOCATION_CONFIG_ADDED = "No Location Config Added For This Organization Please Add Location Config To Enable Attendance Marking"
+
 ERROR_WHILE_FETCHING_LEAVE_BALANCE = "Error while Fetching Leave Balance The User Info"
 POST_WITH_THIS_ID_NOT_FOUND = "Post With This Id Not Found"
 ERROR_WHILE_POSTING_POST = "error while Posting A Post"
@@ -265,3 +270,13 @@ LEAVE_REQUEST_NOT_ALLOWED = "You can't update a leave that is rejected or cancel
 LEAVE_REQUEST_ALREADY_APPLIED = "You already applied leave for this day."
 
 LOCATION_CONFIG_ALREADY_EXISTS = "Location Config With This Name Is Already Exist"
+
+
+ACTIVE_ATTENDANCE_SESSION_FOUND = "Attendance Session Already Active For This User"
+OUT_OF_RANGE_ATTENDANCE_PUNCH = "You Are Out Of Range To Punch In/Out From This Location"
+ERROR_WHILE_FETCHING_ATTENDANCE_STATUS = "Error While Fetching Attendance Status For This User"
+
+NO_ACTIVE_ATTENDANCE_SESSION = "No Active Attendance Session Found For This User"
+CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND = (
+    "Can't Active Break Because Active Break Found For This User"
+)

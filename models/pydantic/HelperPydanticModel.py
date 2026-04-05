@@ -34,3 +34,8 @@ class ResetPasswordInstructionPydanticBody(BaseModel):
 class VerifyEmailPydanticBody(BaseModel):
     organization_name: str
     confirm_my_email: str
+
+
+class DistanceCalculatorLatLong(BaseModel):
+    latitude: float
+    longitude: float

@@ -269,7 +269,7 @@ class AttendancePunchInOutModule(BaseModel):
     user = relationship("User", back_populates="attendance")
 
     punch_in_time = Column(String(255), nullable=False)
-    punch_out_time = Column(String(255), nullable=False)
+    punch_out_time = Column(String(255), nullable=True, default=None)
 
     status = Column(
         Enum(
@@ -282,12 +282,14 @@ class AttendancePunchInOutModule(BaseModel):
     )
 
     punch_in_coordinates = Column(Text, nullable=False)
-    punch_out_coordinates = Column(Text, nullable=False)
+    punch_out_coordinates = Column(Text, nullable=True, default=None)
     is_mislinious = Column(Boolean, nullable=False, default=False)
 
     total_working_hours = Column(Float, default=0)
     total_break_hours = Column(Float, default=0)
     gross_hours = Column(Float, default=0)
+
+    is_work_from_home = Column(Boolean, nullable=False, default=False)
 
     attendance_breaks = relationship(
         "AttendanceBreakModel", back_populates="session", cascade="all, delete", uselist=True
@@ -315,12 +317,12 @@ class AttendanceBreakModel(BaseModel):
     session = relationship("AttendancePunchInOutModule", back_populates="attendance_breaks")
 
     break_start_time = Column(String(255), nullable=False)
-    break_end_time = Column(String(255), nullable=False)
+    break_end_time = Column(String(255), nullable=True, default=None)
 
     break_duration = Column(Float, default=0)
 
-    punch_in_coordinates = Column(Text, nullable=False)
-    punch_out_coordinates = Column(Text, nullable=False)
+    punch_in_coordinates = Column(Text, nullable=True, default=None)
+    punch_out_coordinates = Column(Text, nullable=True, default=None)
     is_mislinious = Column(Boolean, nullable=False, default=False)
 
     status = Column(

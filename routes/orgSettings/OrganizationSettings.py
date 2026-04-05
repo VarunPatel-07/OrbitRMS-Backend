@@ -1,10 +1,9 @@
-from gettext import find
 import json
 import os
 from datetime import datetime
+from gettext import find
 from typing import Optional
 
-from PIL.ImImagePlugin import MODE
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -15,11 +14,14 @@ from fastapi import (
     Request,
     status,
 )
+from fastapi.encoders import jsonable_encoder
+from PIL.ImImagePlugin import MODE
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
 
 from config.EnvConfig import EnvConfig
 from constants.constant import SUCCESS
+from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
 from jobs.backgroundTasks.leavesModule.LeavesModule import (
     add_leaves_balance_in_employee,
@@ -28,8 +30,8 @@ from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.pydantic.OrganizationSettings.OrganizationSettings import (
     AddEditHolidayPydanticModel,
-    CreateLeaveTypePydanticModel,
     AddEditLocationConfigPydanticModel,
+    CreateLeaveTypePydanticModel,
 )
 from models.sql import Models
 from utils.helper.helper import filter_fields, model_to_filtered_dict
@@ -708,9 +710,25 @@ async def fetch_location_config(
             .all()
         )
 
+        cache_key = f"location_config_{user.organization_id}"
+
+        cache_data = await cache_database.get(cache_key)
+        print(cache_data, "cache_data")
+
+        if cache_data:
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.LOCATION_CONFIG_FETCHED_SUCCESSFULLY,
+                "data": json.loads(cache_data),
+            }
+
         query_data.sort(key=lambda x: x.created_at, reverse=(order == "desc"))
 
         data = [model_to_filtered_dict(_data) for _data in query_data]
+
+        print(data, "data")
+
+        await cache_database.set(cache_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
         return {
             "success": SUCCESS.TRUE,
@@ -749,6 +767,12 @@ async def add_location_config(
                     "success": SUCCESS.FALSE,
                 },
             )
+
+        cache_key = f"location_config_{user.organization_id}"
+
+        cache_data = await cache_database.get(cache_key)
+        if cache_data:
+            await cache_database.delete(cache_key)
 
         personal_info = (
             db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
