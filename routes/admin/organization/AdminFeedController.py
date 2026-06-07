@@ -28,9 +28,7 @@ from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
-adminFeedControl = APIRouter(
-    prefix="/app/v1/admin/organization-updates", tags=["organization-updates"]
-)
+adminFeedControl = APIRouter(prefix="/app/v1/admin/organization-updates", tags=["organization-updates"])
 
 API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
@@ -82,8 +80,7 @@ async def AddEditFeedPostController(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -131,9 +128,7 @@ async def AddEditFeedPostController(
                 )
 
             existing_post = (
-                db.query(Models.AdminOrganizationUpdates)
-                .filter(Models.AdminOrganizationUpdates.id == id)
-                .first()
+                db.query(Models.AdminOrganizationUpdates).filter(Models.AdminOrganizationUpdates.id == id).first()
             )
 
             if not existing_post:
@@ -188,9 +183,7 @@ async def FetchTheOrganizationPost(
     request: Request,
     db: db_dependencies,
     order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
-    field_name: Optional[str] = Query(
-        None, description="This Is An Optional Field", alias="field_name"
-    ),
+    field_name: Optional[str] = Query(None, description="This Is An Optional Field", alias="field_name"),
     token: str = Depends(verify_token),
 ):
     try:
@@ -218,8 +211,7 @@ async def FetchTheOrganizationPost(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -329,19 +321,14 @@ async def HandelDeletePostFunction(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
-        post = (
-            db.query(Models.AdminOrganizationUpdates)
-            .filter(Models.AdminOrganizationUpdates.id == id)
-            .first()
-        )
+        post = db.query(Models.AdminOrganizationUpdates).filter(Models.AdminOrganizationUpdates.id == id).first()
 
         if not post:
             raise HTTPException(

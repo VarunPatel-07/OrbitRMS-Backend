@@ -30,9 +30,7 @@ twitter_service = TwitterService(
 def beautifyErrorMessage(error_records: list):
     error_message = []
     for data in error_records:
-        error_message.append(
-            f"posted_with_errors_for_{data.get('platform')}:-> {data.get('error')}"
-        )
+        error_message.append(f"posted_with_errors_for_{data.get('platform')}:-> {data.get('error')}")
     return ",".join(error_message)
 
 
@@ -45,11 +43,7 @@ def HandelPostingToSocialMediaAccount(
     try:
         db: Session = SessionLocal()
 
-        post_data = (
-            db.query(Models.SocialMediaPosts)
-            .filter(Models.SocialMediaPosts.id == db_post_id)
-            .first()
-        )
+        post_data = db.query(Models.SocialMediaPosts).filter(Models.SocialMediaPosts.id == db_post_id).first()
 
         if not post_data:
             return
@@ -73,9 +67,7 @@ def HandelPostingToSocialMediaAccount(
                         media_urls=data.uploaded_file_url,
                     )
 
-                    post_publish_records.append(
-                        {"platform": "facebook", "post_id": facebook_result.get("id")}
-                    )
+                    post_publish_records.append({"platform": "facebook", "post_id": facebook_result.get("id")})
 
                 elif account.platform == "instagram" and "instagram" in platforms:
                     instagram_result = facebook_service.post_to_instagram(
@@ -85,9 +77,7 @@ def HandelPostingToSocialMediaAccount(
                         media_urls=data.uploaded_file_url,
                     )
 
-                    post_publish_records.append(
-                        {"platform": "instagram", "post_id": instagram_result.get("id")}
-                    )
+                    post_publish_records.append({"platform": "instagram", "post_id": instagram_result.get("id")})
 
                 elif account.platform == "twitter" and "twitter" in platforms:
                     access_token = account.access_token
@@ -163,9 +153,7 @@ def HandelDeletingPostFromSocialMediaAccount(organization_id: str, post_data: st
                     fb_accounts[0].access_token,
                 )
             if post.get("platform") == "twitter":
-                twitter_accounts = [
-                    acc for acc in social_media_accounts if acc.platform == "twitter"
-                ]
+                twitter_accounts = [acc for acc in social_media_accounts if acc.platform == "twitter"]
 
                 twitter_service.delete_tweet(
                     tweet_id=post.get("post_id"),

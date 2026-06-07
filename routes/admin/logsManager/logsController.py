@@ -105,8 +105,7 @@ async def FetchAllLogs(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -189,8 +188,7 @@ async def FetchAllLogs(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -268,8 +266,7 @@ async def FetchAllTheBackUpFiles(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -302,9 +299,7 @@ async def FetchAllTheBackUpFiles(
 
 @logsController.get("/logs/archive/files", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def FetchArchivedLogsFile(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
-):
+async def FetchArchivedLogsFile(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
         if not token:
             raise HTTPException(
@@ -330,8 +325,7 @@ async def FetchArchivedLogsFile(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -404,8 +398,7 @@ async def DownloadBackupFile(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -422,9 +415,7 @@ async def DownloadBackupFile(
 
         headers = {"Content-Disposition": f'attachment; filename="{full_path.name}"'}
 
-        return StreamingResponse(
-            iterfile(str(full_path)), headers=headers, media_type="application/x-tar"
-        )
+        return StreamingResponse(iterfile(str(full_path)), headers=headers, media_type="application/x-tar")
 
     except HTTPException as http_exception:
         raise http_exception
@@ -473,8 +464,7 @@ async def BulkDownloadArchiveFiles(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

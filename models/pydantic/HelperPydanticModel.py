@@ -39,3 +39,9 @@ class VerifyEmailPydanticBody(BaseModel):
 class DistanceCalculatorLatLong(BaseModel):
     latitude: float
     longitude: float
+
+
+class CrudeFunctionReturnType(BaseModel):
+    status_code: int
+    message: str
+    success: bool

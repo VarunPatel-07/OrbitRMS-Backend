@@ -53,9 +53,7 @@ def filter_fields(module: Union[dict, object], fields: Optional[List[str]] = [])
         if hasattr(module, "__dict__"):
             module = vars(module)  # Convert object attributes to a dictionary
         else:
-            raise ValueError(
-                f"Object of type {type(module)} does not have attributes to convert to a dictionary."
-            )
+            raise ValueError(f"Object of type {type(module)} does not have attributes to convert to a dictionary.")
 
     # Split fields into include and exclude lists
     exclude_fields: List[str] = []
@@ -206,9 +204,7 @@ def update_model_data(
         print(f"Record with {id_field}={model_id} not found")
         return None
     else:
-        updated_data_dict = (
-            updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
-        )
+        updated_data_dict = updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
         if not isinstance(updated_data_dict, dict):
             print(f"Expected updated_data to be a dict, but got {type(updated_data_dict)}")
             return None
@@ -252,9 +248,7 @@ def hash_fingerprint(fingerprint: str) -> str:
 
 
 def generate_api_secrets_api_key():
-    api_key = "api_" + "".join(
-        secrets.choice(string.ascii_letters + string.digits) for _ in range(24)
-    )
+    api_key = "api_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))
     api_secret = secrets.token_urlsafe(32)
 
     return api_key, api_secret
@@ -360,9 +354,7 @@ def validate_time_difference(start_date: str, end_date: str):
 def redirect_with_error(portal_slug: str, code: str):
     base_url = f"{EnvConfig.FRONTEND_URL}/{portal_slug}/social-media"
 
-    return RedirectResponse(
-        url=(f"{base_url}" f"?status=error" f"&modal=oauthError" f"&code={code}")
-    )
+    return RedirectResponse(url=(f"{base_url}" f"?status=error" f"&modal=oauthError" f"&code={code}"))
 
 
 def parse_to_utc_date(date_str: str) -> date:

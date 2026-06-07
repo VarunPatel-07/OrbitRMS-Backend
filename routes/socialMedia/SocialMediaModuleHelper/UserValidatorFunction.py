@@ -82,11 +82,7 @@ def UserValidatorFunction(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                "message": (
-                    "Account is deactivated. Access denied."
-                    if user.account_status
-                    else "User Not Found"
-                ),
+                "message": ("Account is deactivated. Access denied." if user.account_status else "User Not Found"),
                 "success": False,
             },
         )

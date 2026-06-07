@@ -119,8 +119,7 @@ async def OrbitAi_conversation_handler(
         )
 
         filtered_responses = [
-            {"content": choice.message.content, "role": choice.message.role}
-            for choice in response.choices
+            {"content": choice.message.content, "role": choice.message.role} for choice in response.choices
         ]
 
         return {

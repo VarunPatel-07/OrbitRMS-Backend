@@ -81,8 +81,7 @@ async def Fetch_All__Organization(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -143,23 +142,15 @@ async def Fetch_All__Organization(
                         else {}
                     ),
                     "email_domain_slug": (
-                        org.organization_settings.email_domain_slug
-                        if org.organization_settings
-                        else None
+                        org.organization_settings.email_domain_slug if org.organization_settings else None
                     ),
-                    "is_meta_verified": (
-                        org.general_info.is_meta_verified if org.general_info else None
-                    ),
+                    "is_meta_verified": (org.general_info.is_meta_verified if org.general_info else None),
                     "email_verified": org.general_info.email_verified if org.general_info else None,
                     "employee_code_prefix": (
-                        org.organization_settings.employee_code_prefix
-                        if org.organization_settings
-                        else None
+                        org.organization_settings.employee_code_prefix if org.organization_settings else None
                     ),
                     "intern_code_prefix": (
-                        org.organization_settings.intern_code_prefix
-                        if org.organization_settings
-                        else None
+                        org.organization_settings.intern_code_prefix if org.organization_settings else None
                     ),
                     "country_info": (
                         (
@@ -235,8 +226,7 @@ async def Organization_Setting(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -306,8 +296,7 @@ async def Fetch_Client_Organization_Details(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -423,8 +412,7 @@ async def Resend_Email_Verification_Link(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -565,8 +553,7 @@ async def Resend_Onboarding_Instruction(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -692,8 +679,7 @@ async def Delete_Organization(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

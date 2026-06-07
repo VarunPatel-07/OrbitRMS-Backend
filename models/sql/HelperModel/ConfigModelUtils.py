@@ -156,9 +156,7 @@ class RoleAssociatedPermissionModule(BaseModel):
         ForeignKey("config_role_associated_permissions.id", ondelete="CASCADE", onupdate="CASCADE"),
     )
 
-    role_module = relationship(
-        "ConfigRoleModule", back_populates="associated_permissions", cascade="all, delete"
-    )
+    role_module = relationship("ConfigRoleModule", back_populates="associated_permissions", cascade="all, delete")
 
     parent_module = relationship(
         "RoleAssociatedPermissionModule",
@@ -166,9 +164,7 @@ class RoleAssociatedPermissionModule(BaseModel):
         back_populates="sub_modules",
         cascade="all, delete",
     )
-    sub_modules = relationship(
-        "RoleAssociatedPermissionModule", back_populates="parent_module", cascade="all, delete"
-    )
+    sub_modules = relationship("RoleAssociatedPermissionModule", back_populates="parent_module", cascade="all, delete")
 
     permissions = relationship(
         "PermissionModule", back_populates="associated_permissions_module", cascade="all, delete"
@@ -190,9 +186,7 @@ class PermissionModule(BaseModel):
         nullable=False,
     )
 
-    associated_permissions_module = relationship(
-        "RoleAssociatedPermissionModule", back_populates="permissions"
-    )
+    associated_permissions_module = relationship("RoleAssociatedPermissionModule", back_populates="permissions")
 
 
 class InquiryFormSchema(BaseModel):
@@ -215,9 +209,7 @@ class InquiryFormSchema(BaseModel):
     )
     config_module = relationship("ConfigModule", back_populates="inquiry_form_schema")
 
-    inquiry_form_fields = relationship(
-        "InquiryFormFields", back_populates="inquiry_form_schema", cascade="all, delete"
-    )
+    inquiry_form_fields = relationship("InquiryFormFields", back_populates="inquiry_form_schema", cascade="all, delete")
 
     email_notification = Column(Boolean, nullable=True, default=False)
 

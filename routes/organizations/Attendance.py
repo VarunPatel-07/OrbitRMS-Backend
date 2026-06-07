@@ -2,7 +2,7 @@ import json
 import math
 import os
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from tracemalloc import start
 from typing import List, Optional
 from urllib.parse import unquote
@@ -250,7 +250,7 @@ async def handel_apply_leave(
         if notify_to:
 
             for employee_id in notify_to:
-                print("employee_id", employee_id)
+
                 user_info = db.query(Models.User).filter(Models.User.id == employee_id).first()
 
                 if user_info:
@@ -1108,6 +1108,9 @@ async def AttendancePunchIn(
     user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
+        today_start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end_date = today_start_date + timedelta(days=1)
+
         active_session = (
             db.query(Models.AttendancePunchInOutModule)
             .filter(
@@ -1125,6 +1128,26 @@ async def AttendancePunchIn(
                     "success": SUCCESS.FALSE,
                 },
             )
+
+        today_session = (
+            db.query(Models.AttendancePunchInOutModule)
+            .filter(
+                Models.AttendancePunchInOutModule.user_id == user.id,
+                Models.AttendancePunchInOutModule.punch_in_time >= today_start_date,
+                Models.AttendancePunchInOutModule.punch_in_time < today_end_date,
+            )
+            .first()
+        )
+
+        if today_session:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.ACTIVE_SESSION_FOR_TODAY,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
         query_data = (
             db.query(Models.OrganizationLocationsConfig)
             .filter(Models.OrganizationLocationsConfig.organization_id == user.organization_id)
@@ -1777,17 +1800,46 @@ async def AttendancePunchOut(
         )
 
         if break_data:
+
             break_start_time = break_data.break_start_time
             if isinstance(break_data.break_start_time, str):
                 break_start_time = datetime.fromisoformat(break_data.break_start_time)
 
             break_data.break_end_time = datetime.utcnow()
-            break_data.break_duration = (
+
+            break_data.total_break_minutes = (
                 break_data.break_end_time - break_start_time
-            ).total_seconds()
+            ).total_seconds() / 60
+
             break_data.punch_out_coordinates = json.dumps(data.location_coordinates.model_dump())
             break_data.is_mislinious = False
             break_data.status = "completed"
+
+        # * Now we are adding the data for the main session
+
+        active_session.punch_out_time = datetime.utcnow()
+        active_session.punch_out_coordinates = json.dumps(data.location_coordinates.model_dump())
+        active_session.status = "completed"
+
+        punch_in_time = active_session.punch_in_time
+        if isinstance(active_session.punch_in_time, str):
+            punch_in_time = datetime.fromisoformat(active_session.punch_in_time)
+
+        punch_out_time = active_session.punch_out_time
+        if isinstance(active_session.punch_out_time, str):
+            punch_out_time = datetime.fromisoformat(active_session.punch_out_time)
+
+        gross_seconds = (punch_out_time - punch_in_time).total_seconds()
+        total_gross_minutes = int(gross_seconds // 60)
+
+        total_break_minutes = sum([b.break_duration or 0 for b in active_session.attendance_breaks])
+
+        total_effective_minutes = max(0, total_gross_minutes - total_break_minutes)
+
+        active_session.total_gross_minutes = round(total_gross_minutes, 2)
+        active_session.total_break_minutes = round(total_break_minutes, 2)
+        active_session.total_effective_minutes = total_effective_minutes
+        active_session.session_completed = True
 
         if not data.is_work_from_home:
             for location_config in query_data:
@@ -1860,80 +1912,25 @@ async def AttendancePunchOut(
                 else:
                     is_mislinious = True
 
-                active_session.punch_out_time = datetime.utcnow()
-                active_session.punch_out_coordinates = json.dumps(
-                    data.location_coordinates.model_dump()
-                )
-                active_session.status = "completed"
-                active_session.is_mislinious = is_mislinious
-
-                punch_in_time = active_session.punch_in_time
-                if isinstance(active_session.punch_in_time, str):
-                    punch_in_time = datetime.fromisoformat(active_session.punch_in_time)
-
-                punch_out_time = active_session.punch_out_time
-                if isinstance(active_session.punch_out_time, str):
-                    punch_out_time = datetime.fromisoformat(active_session.punch_out_time)
-
-                gross_seconds = (punch_out_time - punch_in_time).total_seconds()
-                gross_hours = gross_seconds / 3600
-
-                total_break_minutes = sum(
-                    [b.break_duration or 0 for b in active_session.attendance_breaks]
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": ERROR_MESSAGE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
+                        "success": SUCCESS.FALSE,
+                    },
                 )
 
-                total_break_hours = total_break_minutes / 60
+        active_session.is_mislinious = is_mislinious
 
-                total_working_hours = max(0, gross_hours - total_break_hours)
-                active_session.gross_hours = round(gross_hours, 2)
-                active_session.total_break_hours = round(total_break_hours, 2)
-                active_session.total_working_hours = round(total_working_hours, 2)
+        db.commit()
+        db.refresh(active_session)
 
-                db.commit()
-                db.refresh(active_session)
+        return {
+            "message": SUCCESS_MESSAGE.ATTENDANCE_PUNCH_IN_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+        }
 
-                return {
-                    "message": SUCCESS_MESSAGE.ATTENDANCE_PUNCH_IN_SUCCESSFULLY,
-                    "success": SUCCESS.TRUE,
-                }
-
-        else:
-            active_session.punch_out_time = datetime.utcnow()
-            active_session.punch_out_coordinates = json.dumps(
-                data.location_coordinates.model_dump()
-            )
-            active_session.status = "completed"
-            active_session.is_mislinious = False
-
-            punch_in_time = active_session.punch_in_time
-            if isinstance(active_session.punch_in_time, str):
-                punch_in_time = datetime.fromisoformat(active_session.punch_in_time)
-
-            punch_out_time = active_session.punch_out_time
-            if isinstance(active_session.punch_out_time, str):
-                punch_out_time = datetime.fromisoformat(active_session.punch_out_time)
-
-            gross_seconds = (punch_out_time - punch_in_time).total_seconds()
-            gross_hours = gross_seconds / 3600
-
-            total_break_minutes = sum(
-                [b.break_duration or 0 for b in active_session.attendance_breaks]
-            )
-
-            total_break_hours = total_break_minutes / 60
-
-            total_working_hours = max(0, gross_hours - total_break_hours)
-            active_session.gross_hours = round(gross_hours, 2)
-            active_session.total_break_hours = round(total_break_hours, 2)
-            active_session.total_working_hours = round(total_working_hours, 2)
-
-            db.commit()
-            db.refresh(active_session)
-
-            return {
-                "message": SUCCESS_MESSAGE.ATTENDANCE_PUNCH_IN_SUCCESSFULLY,
-                "success": SUCCESS.TRUE,
-            }
     except HTTPException as http_exception:
         raise http_exception
     except Exception as e:
@@ -1945,93 +1942,3 @@ async def AttendancePunchOut(
                 "success": SUCCESS.FALSE,
             },
         )
-
-
-# leave_data = [
-#     {
-#         "start_date": "2026-03-12",
-#         "end_date": "2026-03-14",
-#         "start_half": "second_half",
-#         "end_half": "second_half",
-#         "leave_name": "Annual Leave test one",
-#         "leave_code": "ALV-TEST",
-#         "status": "rejected",
-#         "total_days": 2.5,
-#         "description": "sada",
-#         "documents": "[]",
-#         "created_at": "2026-03-12T09:53:20",
-#         "updated_at": "2026-03-12T10:13:11",
-#         "created_by": '{"first_name": "super", "last_name": "admin"}',
-#     }
-# ]
-
-
-# @attendanceRoute.get("/export/leaves/csv")
-# async def export_leaves_csv():
-
-#     df = pd.DataFrame(leave_data)
-
-#     file_path = "leaves_export.csv"
-#     df.to_csv(file_path, index=False)
-
-#     return FileResponse(file_path, media_type="text/csv", filename="leaves_export.csv")
-
-
-# @attendanceRoute.get("/export/leaves/pdf")
-# async def export_leaves_pdf():
-
-#     file_path = "leaves_export.pdf"
-
-#     styles = getSampleStyleSheet()
-
-#     elements = []
-
-#     title = Paragraph("Leave Report", styles["Title"])
-#     elements.append(title)
-
-#     table_data = [
-#         [
-#             "Leave Name",
-#             "Leave Code",
-#             "Start Date",
-#             "End Date",
-#             "Start Half",
-#             "End Half",
-#             "Total Days",
-#             "Status",
-#         ]
-#     ]
-
-#     for leave in leave_data:
-#         table_data.append(
-#             [
-#                 leave["leave_name"],
-#                 leave["leave_code"],
-#                 leave["start_date"],
-#                 leave["end_date"],
-#                 leave["start_half"],
-#                 leave["end_half"],
-#                 leave["total_days"],
-#                 leave["status"],
-#             ]
-#         )
-
-#     table = Table(table_data)
-
-#     table.setStyle(
-#         TableStyle(
-#             [
-#                 ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-#                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-#                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-#                 ("GRID", (0, 0), (-1, -1), 1, colors.black),
-#             ]
-#         )
-#     )
-
-#     elements.append(table)
-
-#     doc = SimpleDocTemplate(file_path, pagesize=A4)
-#     doc.build(elements)
-
-#     return FileResponse(file_path, media_type="application/pdf", filename="leaves_export.pdf")

@@ -64,9 +64,7 @@ def upgrade() -> None:
         sa.Column("api_secrete", sa.String(length=255), nullable=False),
         sa.Column("status", sa.Boolean(), nullable=False),
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -75,9 +73,7 @@ def upgrade() -> None:
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -123,9 +119,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.Column("admin_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["admin_id"], ["orbit_admin.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["admin_id"], ["orbit_admin.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -135,9 +129,7 @@ def upgrade() -> None:
         sa.Column("established_science", sa.DateTime(), nullable=True),
         sa.Column("registration_number", sa.String(length=255), nullable=True),
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -150,9 +142,7 @@ def upgrade() -> None:
         sa.Column("country", sa.String(length=255), nullable=True),
         sa.Column("country_code", sa.String(length=255), nullable=True),
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -162,9 +152,7 @@ def upgrade() -> None:
         sa.Column("company_email", sa.String(length=255), nullable=True),
         sa.Column("country_info", mysql.JSON(), nullable=True),
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -188,9 +176,7 @@ def upgrade() -> None:
         sa.Column("employee_count", sa.String(length=255), nullable=False),
         sa.Column("organization_profile_picture", sa.String(length=255), nullable=True),
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -248,9 +234,7 @@ def upgrade() -> None:
         sa.Column("default_timezone", sa.String(length=255), nullable=True),
         sa.Column("default_dateformat", sa.String(length=255), nullable=True),
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -279,9 +263,7 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["user_id"], ["orbit_admin.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["user_id"], ["orbit_admin.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -296,9 +278,7 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -321,9 +301,7 @@ def upgrade() -> None:
         sa.Column("organization_id", mysql.CHAR(length=36), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -357,9 +335,7 @@ def upgrade() -> None:
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
         sa.Column("leave_type_id", mysql.CHAR(length=36), nullable=False),
         sa.Column("start_date", sa.String(length=255), nullable=False),
-        sa.Column(
-            "start_half", sa.Enum("first_half", "second_half", name="half_day_enum"), nullable=False
-        ),
+        sa.Column("start_half", sa.Enum("first_half", "second_half", name="half_day_enum"), nullable=False),
         sa.Column("is_planned", sa.Boolean(), nullable=False),
         sa.Column(
             "status",
@@ -368,9 +344,7 @@ def upgrade() -> None:
         ),
         sa.Column("total_days", sa.Float(), nullable=False),
         sa.Column("end_date", sa.String(length=255), nullable=False),
-        sa.Column(
-            "end_half", sa.Enum("first_half", "second_half", name="half_day_enum"), nullable=False
-        ),
+        sa.Column("end_half", sa.Enum("first_half", "second_half", name="half_day_enum"), nullable=False),
         sa.Column("description", sa.String(length=255), nullable=True),
         sa.Column("documents", sa.Text(), nullable=True),
         sa.Column("notify_to_id", mysql.CHAR(length=36), nullable=True),
@@ -403,9 +377,7 @@ def upgrade() -> None:
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
         sa.Column("data", mysql.JSON(), nullable=True),
         sa.Column("client_inquire_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["client_inquire_id"], ["client_inquires.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["client_inquire_id"], ["client_inquires.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -422,9 +394,7 @@ def upgrade() -> None:
         sa.Column("updated_by", mysql.JSON(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -441,9 +411,7 @@ def upgrade() -> None:
         sa.Column("updated_by", mysql.JSON(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -461,9 +429,7 @@ def upgrade() -> None:
         sa.Column("config_module_id", mysql.CHAR(length=36), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -483,9 +449,7 @@ def upgrade() -> None:
         sa.Column("updated_by", mysql.JSON(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -517,9 +481,7 @@ def upgrade() -> None:
         sa.Column("updated_by", mysql.JSON(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("form_id"),
         sa.UniqueConstraint("form_name"),
@@ -533,9 +495,7 @@ def upgrade() -> None:
         sa.Column("last_refill_date", sa.Date(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["leave_type_id"], ["organization_leaves_settings.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["leave_type_id"], ["organization_leaves_settings.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
@@ -558,9 +518,7 @@ def upgrade() -> None:
         sa.Column("updated_by", mysql.JSON(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["config_module_id"], ["config_module.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -590,18 +548,14 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_id"], ["organization.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_organization_updates_user_id"), "organization_updates", ["user_id"], unique=False
-    )
+    op.create_index(op.f("ix_organization_updates_user_id"), "organization_updates", ["user_id"], unique=False)
     op.create_table(
         "personal_contact_info",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -708,9 +662,7 @@ def upgrade() -> None:
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
-        sa.ForeignKeyConstraint(
-            ["role_module_id"], ["config_role_module.id"], onupdate="CASCADE", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["role_module_id"], ["config_role_module.id"], onupdate="CASCADE", ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -755,9 +707,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id"),
     )
-    op.create_index(
-        op.f("ix_employee_info_employee_email"), "employee_info", ["employee_email"], unique=False
-    )
+    op.create_index(op.f("ix_employee_info_employee_email"), "employee_info", ["employee_email"], unique=False)
     op.create_table(
         "feed_comments",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
@@ -766,9 +716,7 @@ def upgrade() -> None:
         sa.Column("parent_id", mysql.CHAR(length=36), nullable=True),
         sa.Column("user_id", mysql.CHAR(length=36), nullable=False),
         sa.Column("organization_update_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_update_id"], ["organization_updates.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_update_id"], ["organization_updates.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
             ["parent_id"],
             ["feed_comments.id"],
@@ -785,18 +733,14 @@ def upgrade() -> None:
         ["organization_update_id"],
         unique=False,
     )
-    op.create_index(
-        op.f("ix_feed_comments_parent_id"), "feed_comments", ["parent_id"], unique=False
-    )
+    op.create_index(op.f("ix_feed_comments_parent_id"), "feed_comments", ["parent_id"], unique=False)
     op.create_index(op.f("ix_feed_comments_user_id"), "feed_comments", ["user_id"], unique=False)
     op.create_table(
         "feed_likes",
         sa.Column("id", mysql.CHAR(length=36), nullable=False),
         sa.Column("user_id", mysql.CHAR(length=36), nullable=False),
         sa.Column("organization_update_id", mysql.CHAR(length=36), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["organization_update_id"], ["organization_updates.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["organization_update_id"], ["organization_updates.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
@@ -885,9 +829,7 @@ def downgrade() -> None:
     op.drop_table("config_model_designations")
     op.drop_table("config_model_department")
     op.drop_table("client_inquires_data")
-    op.drop_index(
-        op.f("ix_attendance_leave_module_leave_type_id"), table_name="attendance_leave_module"
-    )
+    op.drop_index(op.f("ix_attendance_leave_module_leave_type_id"), table_name="attendance_leave_module")
     op.drop_table("attendance_leave_module")
     op.drop_index(op.f("ix_users_organization_id"), table_name="users")
     op.drop_table("users")
@@ -900,9 +842,7 @@ def downgrade() -> None:
         table_name="organization_leaves_settings",
     )
     op.drop_table("organization_leaves_settings")
-    op.drop_index(
-        op.f("ix_organization_general_info_primary_email"), table_name="organization_general_info"
-    )
+    op.drop_index(op.f("ix_organization_general_info_primary_email"), table_name="organization_general_info")
     op.drop_index(
         op.f("ix_organization_general_info_indexed_email_domain"),
         table_name="organization_general_info",

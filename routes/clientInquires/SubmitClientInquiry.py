@@ -46,9 +46,7 @@ async def submit_inquiry(
 ):
     try:
 
-        client_inquires = (
-            db.query(Models.ClientInquires).filter(Models.ClientInquires.api_key == api_key).first()
-        )
+        client_inquires = db.query(Models.ClientInquires).filter(Models.ClientInquires.api_key == api_key).first()
         if not client_inquires:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -186,9 +184,7 @@ async def submit_inquiry(
             )
 
         null_required_field = [
-            field
-            for field in required_fields
-            if not validate_field(payload.get(field["field_name"]))
+            field for field in required_fields if not validate_field(payload.get(field["field_name"]))
         ]
 
         if null_required_field:
@@ -211,9 +207,7 @@ async def submit_inquiry(
                 value = payload.get(field_name)
 
                 if not is_valid_type(value, field_type):
-                    invalid_type_fields.append(
-                        f"Expected type '{field_type}' for the '{field_name}'"
-                    )
+                    invalid_type_fields.append(f"Expected type '{field_type}' for the '{field_name}'")
 
         for invalid_type in invalid_type_fields:
             raise HTTPException(

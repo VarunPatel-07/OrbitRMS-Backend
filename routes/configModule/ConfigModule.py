@@ -75,13 +75,9 @@ async def project_status_function(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        personal_info = (
-            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
-        )
+        personal_info = db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
 
-        updated_created_by_user = model_to_filtered_dict(
-            personal_info, ["user_id", "first_name", "last_name"]
-        )
+        updated_created_by_user = model_to_filtered_dict(personal_info, ["user_id", "first_name", "last_name"])
 
         query = db.query(Models.ProjectStatus).filter(
             func.lower(Models.ProjectStatus.status_name) == func.lower(data.status_name),
@@ -142,9 +138,7 @@ async def project_status_function(
                     },
                 )
 
-            project_status = (
-                db.query(Models.ProjectStatus).filter(Models.ProjectStatus.id == id).first()
-            )
+            project_status = db.query(Models.ProjectStatus).filter(Models.ProjectStatus.id == id).first()
 
             if not project_status:
                 raise HTTPException(
@@ -213,9 +207,7 @@ async def fetch_project_status(
             }
 
         config_module = (
-            db.query(Models.ConfigModule)
-            .filter(Models.ConfigModule.organization_id == user.organization_id)
-            .first()
+            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
         )
 
         if not config_module:
@@ -237,9 +229,7 @@ async def fetch_project_status(
             .order_by(sort_func(Models.ProjectStatus.created_at))
         )
 
-        data = [
-            model_to_filtered_dict(each_project_status) for each_project_status in project_status
-        ]
+        data = [model_to_filtered_dict(each_project_status) for each_project_status in project_status]
 
         await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(data)), ex=3600)
 
@@ -286,9 +276,7 @@ async def delete_project_status(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        project_status = (
-            db.query(Models.ProjectStatus).filter(Models.ProjectStatus.id == id).first()
-        )
+        project_status = db.query(Models.ProjectStatus).filter(Models.ProjectStatus.id == id).first()
         if not project_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -353,9 +341,7 @@ async def add_edit_department(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        personal_info = (
-            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
-        )
+        personal_info = db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
 
         query = db.query(Models.Department).filter(
             func.lower(Models.Department.department_name) == func.lower(data.department_name)
@@ -374,9 +360,7 @@ async def add_edit_department(
                 },
             )
 
-        updated_created_by_user = model_to_filtered_dict(
-            personal_info, ["user_id", "first_name", "last_name"]
-        )
+        updated_created_by_user = model_to_filtered_dict(personal_info, ["user_id", "first_name", "last_name"])
 
         if type == "add":
 
@@ -486,9 +470,7 @@ async def fetch_all_department_type(
             }
 
         config_module = (
-            db.query(Models.ConfigModule)
-            .filter(Models.ConfigModule.organization_id == user.organization_id)
-            .first()
+            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
         )
 
         if not config_module:
@@ -619,9 +601,7 @@ async def add_edit_designations(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        personal_info = (
-            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
-        )
+        personal_info = db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
 
         query = db.query(Models.Designations).filter(
             func.lower(Models.Designations.designations_name) == func.lower(data.designations_name)
@@ -639,9 +619,7 @@ async def add_edit_designations(
                 },
             )
 
-        updated_created_by_user = model_to_filtered_dict(
-            personal_info, ["user_id", "first_name", "last_name"]
-        )
+        updated_created_by_user = model_to_filtered_dict(personal_info, ["user_id", "first_name", "last_name"])
 
         if type == "add":
 
@@ -686,9 +664,7 @@ async def add_edit_designations(
                     },
                 )
 
-            designations = (
-                db.query(Models.Designations).filter(Models.Designations.id == id).first()
-            )
+            designations = db.query(Models.Designations).filter(Models.Designations.id == id).first()
 
             if not designations:
                 raise HTTPException(
@@ -754,9 +730,7 @@ async def fetch_all_designations(
             }
 
         config_module = (
-            db.query(Models.ConfigModule)
-            .filter(Models.ConfigModule.organization_id == user.organization_id)
-            .first()
+            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
         )
 
         if not config_module:
@@ -885,9 +859,7 @@ def recursive_creation_helper(
         db.add(permission_module)
 
     for submodule in module_data.get("sub_modules"):
-        recursive_creation_helper(
-            submodule, db, role_module_id, parent_module.id  # Set parent ID for submodules
-        )
+        recursive_creation_helper(submodule, db, role_module_id, parent_module.id)  # Set parent ID for submodules
 
     return parent_module
 
@@ -921,9 +893,7 @@ async def fetch_all_role_of_organization(
             }
 
         config_module = (
-            db.query(Models.ConfigModule)
-            .filter(Models.ConfigModule.organization_id == user.organization_id)
-            .first()
+            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
         )
 
         if not config_module:
@@ -1195,9 +1165,7 @@ async def update(
                 "data": role_permission_module,
             }
         else:
-            permission = (
-                db.query(Models.PermissionModule).filter(Models.PermissionModule.id == id).first()
-            )
+            permission = db.query(Models.PermissionModule).filter(Models.PermissionModule.id == id).first()
 
             if not permission:
                 raise HTTPException(
@@ -1240,9 +1208,7 @@ async def Add_Edit_Roles_Permissions(
     db: db_dependencies,
     data: AddRolesPermission,
     type: str = Query("add", description="The Type Should Be Add Edit"),
-    edit_role_id: Optional[str] = Query(
-        None, description="The Edit Role Id Is Required To Edit Role"
-    ),
+    edit_role_id: Optional[str] = Query(None, description="The Edit Role Id Is Required To Edit Role"),
     user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
@@ -1263,9 +1229,7 @@ async def Add_Edit_Roles_Permissions(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        personal_info = (
-            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
-        )
+        personal_info = db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
 
         if type.lower() == "add":
 
@@ -1317,9 +1281,7 @@ async def Add_Edit_Roles_Permissions(
                     },
                 )
 
-            created_by_user = model_to_filtered_dict(
-                personal_info, ["user_id", "first_name", "last_name"]
-            )
+            created_by_user = model_to_filtered_dict(personal_info, ["user_id", "first_name", "last_name"])
 
             config_role_module = Models.ConfigRoleModule(
                 role_name=data.role_name,
@@ -1337,9 +1299,7 @@ async def Add_Edit_Roles_Permissions(
 
             for module in modules:
 
-                permission_module = recursive_creation_helper(
-                    module, db, role_module_id=config_role_module.id
-                )
+                permission_module = recursive_creation_helper(module, db, role_module_id=config_role_module.id)
 
                 config_role_module.associated_permissions.append(permission_module)
 
@@ -1377,14 +1337,10 @@ async def Add_Edit_Roles_Permissions(
                     },
                 )
 
-            update_by_user = model_to_filtered_dict(
-                personal_info, ["user_id", "first_name", "last_name"]
-            )
+            update_by_user = model_to_filtered_dict(personal_info, ["user_id", "first_name", "last_name"])
 
             config_role_module = (
-                db.query(Models.ConfigRoleModule)
-                .filter(Models.ConfigRoleModule.id == edit_role_id)
-                .first()
+                db.query(Models.ConfigRoleModule).filter(Models.ConfigRoleModule.id == edit_role_id).first()
             )
 
             config_role_module.role_name = data.role_name
@@ -1430,9 +1386,7 @@ async def Delete_Roles_Permission(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        config_role_module = (
-            db.query(Models.ConfigRoleModule).filter(Models.ConfigRoleModule.id == id).first()
-        )
+        config_role_module = db.query(Models.ConfigRoleModule).filter(Models.ConfigRoleModule.id == id).first()
 
         if not config_role_module:
             raise HTTPException(
@@ -1500,9 +1454,7 @@ async def Fetch_Inquiry_Form_Schema(
             }
 
         config_module = (
-            db.query(Models.ConfigModule)
-            .filter(Models.ConfigModule.organization_id == user.organization_id)
-            .first()
+            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
         )
 
         if not config_module:
@@ -1574,9 +1526,7 @@ async def Add_Edit_Inquiry_Form_Schema(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        personal_info = (
-            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
-        )
+        personal_info = db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
 
         query = db.query(Models.InquiryFormSchema).filter(
             or_(
@@ -1601,9 +1551,7 @@ async def Add_Edit_Inquiry_Form_Schema(
                 },
             )
 
-        created_updated_by_user = model_to_filtered_dict(
-            personal_info, ["user_id", "first_name", "last_name"]
-        )
+        created_updated_by_user = model_to_filtered_dict(personal_info, ["user_id", "first_name", "last_name"])
 
         if type == "add":
 
@@ -1653,9 +1601,7 @@ async def Add_Edit_Inquiry_Form_Schema(
                     },
                 )
 
-            inquiry_form = (
-                db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
-            )
+            inquiry_form = db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
 
             if not inquiry_form:
                 raise HTTPException(
@@ -1692,9 +1638,7 @@ async def Add_Edit_Inquiry_Form_Schema(
         )
 
 
-@configRoute.put(
-    path="/inquiry_form_schema/toggle/email-notification", status_code=status.HTTP_200_OK
-)
+@configRoute.put(path="/inquiry_form_schema/toggle/email-notification", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
 async def delete_designation(
     request: Request,
@@ -1711,9 +1655,7 @@ async def delete_designation(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        inquiry_form = (
-            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
-        )
+        inquiry_form = db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
 
         if not inquiry_form:
             raise HTTPException(
@@ -1762,9 +1704,7 @@ async def delete_designation(
         if cached_data:
             await cache_database.delete(cache_data_key)
 
-        inquiry_form_field = (
-            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
-        )
+        inquiry_form_field = db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == id).first()
 
         if not inquiry_form_field:
             raise HTTPException(
@@ -1820,9 +1760,7 @@ async def Client_Form_Schema(
             }
 
         config_module = (
-            db.query(Models.ConfigModule)
-            .filter(Models.ConfigModule.organization_id == user.organization_id)
-            .first()
+            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
         )
 
         if not config_module:
@@ -1835,9 +1773,7 @@ async def Client_Form_Schema(
             )
 
         inquiry_form_schema = (
-            db.query(Models.InquiryFormSchema)
-            .filter(Models.InquiryFormSchema.id == form_schema_id)
-            .first()
+            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == form_schema_id).first()
         )
 
         if not inquiry_form_schema:
@@ -1866,9 +1802,7 @@ async def Client_Form_Schema(
             "form_fields": data,
         }
 
-        await cache_database.set(
-            cache_data_key, json.dumps(jsonable_encoder(filtered_data)), ex=3600
-        )
+        await cache_database.set(cache_data_key, json.dumps(jsonable_encoder(filtered_data)), ex=3600)
 
         return {
             "success": True,
@@ -1919,14 +1853,10 @@ async def add_edit_Client_Form_Schema(
                 },
             )
 
-        personal_info = (
-            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
-        )
+        personal_info = db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
 
         inquiry_form_schema = (
-            db.query(Models.InquiryFormSchema)
-            .filter(Models.InquiryFormSchema.id == form_schema_id)
-            .first()
+            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == form_schema_id).first()
         )
 
         if not inquiry_form_schema:
@@ -1956,9 +1886,7 @@ async def add_edit_Client_Form_Schema(
                 },
             )
 
-        created_updated_by_user = model_to_filtered_dict(
-            personal_info, ["user_id", "first_name", "last_name"]
-        )
+        created_updated_by_user = model_to_filtered_dict(personal_info, ["user_id", "first_name", "last_name"])
 
         if type == "add":
 
@@ -1999,9 +1927,7 @@ async def add_edit_Client_Form_Schema(
                     },
                 )
 
-            form_field = (
-                db.query(Models.InquiryFormFields).filter(Models.InquiryFormFields.id == id).first()
-            )
+            form_field = db.query(Models.InquiryFormFields).filter(Models.InquiryFormFields.id == id).first()
 
             if not form_field:
                 raise HTTPException(
@@ -2050,9 +1976,7 @@ async def delete_designation(
             await cache_database.delete(cache_data_key)
 
         inquiry_form_schema = (
-            db.query(Models.InquiryFormSchema)
-            .filter(Models.InquiryFormSchema.id == form_schema_id)
-            .first()
+            db.query(Models.InquiryFormSchema).filter(Models.InquiryFormSchema.id == form_schema_id).first()
         )
 
         if not inquiry_form_schema:

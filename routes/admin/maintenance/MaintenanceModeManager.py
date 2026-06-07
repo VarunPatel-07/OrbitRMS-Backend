@@ -82,8 +82,7 @@ async def Toggle_Maintenance_Mode(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -92,11 +91,7 @@ async def Toggle_Maintenance_Mode(
         maintenance_mode = db.query(Models.MaintenanceMode).first()
 
         if type == "activate":
-            maintenance_logs = (
-                db.query(Models.MaintenanceLog)
-                .filter(Models.MaintenanceLog.status == "active")
-                .all()
-            )
+            maintenance_logs = db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.status == "active").all()
 
             if maintenance_logs:
                 raise HTTPException(
@@ -224,8 +219,7 @@ async def Maintenance_Mode_Schedule_Toggler(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -249,12 +243,7 @@ async def Maintenance_Mode_Schedule_Toggler(
                 },
             )
 
-        if (
-            validate_time_difference(
-                maintenance_mode_data.started_at, maintenance_mode_data.ended_at
-            )
-            <= 30
-        ):
+        if validate_time_difference(maintenance_mode_data.started_at, maintenance_mode_data.ended_at) <= 30:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -263,9 +252,7 @@ async def Maintenance_Mode_Schedule_Toggler(
                 },
             )
 
-        maintenance_logs = (
-            db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.status == "active").all()
-        )
+        maintenance_logs = db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.status == "active").all()
 
         if maintenance_logs:
             raise HTTPException(
@@ -350,8 +337,7 @@ async def Toggle_Maintenance_Mode(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -361,9 +347,7 @@ async def Toggle_Maintenance_Mode(
         maintenance_mode = db.query(Models.MaintenanceMode).first()
 
         maintenance_logs = (
-            db.query(Models.MaintenanceLog)
-            .filter(Models.MaintenanceLog.status.in_(["active", "scheduled"]))
-            .first()
+            db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.status.in_(["active", "scheduled"])).first()
         )
 
         return {
@@ -434,8 +418,7 @@ async def Fetch_ALL_Maintenance_Mode_History(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -468,9 +451,7 @@ async def Fetch_ALL_Maintenance_Mode_History(
 
         maintenance_logs = query_data.all()
 
-        maintenance_logs = sorted(
-            maintenance_logs, key=lambda x: x.created_at, reverse=(order.lower() == "desc")
-        )
+        maintenance_logs = sorted(maintenance_logs, key=lambda x: x.created_at, reverse=(order.lower() == "desc"))
 
         return {
             "message": SUCCESS_MESSAGE.ORGANIZATIONS_FETCHED_SUCCESSFULLY,
@@ -531,17 +512,14 @@ async def Edit_Scheduler_Info(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FAlSE},
             )
 
-        maintenance_log = (
-            db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.id == id).first()
-        )
+        maintenance_log = db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.id == id).first()
 
         if not maintenance_log:
             raise HTTPException(
@@ -552,12 +530,7 @@ async def Edit_Scheduler_Info(
                 },
             )
 
-        if (
-            validate_time_difference(
-                maintenance_mode_data.started_at, maintenance_mode_data.ended_at
-            )
-            <= 30
-        ):
+        if validate_time_difference(maintenance_mode_data.started_at, maintenance_mode_data.ended_at) <= 30:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -624,17 +597,14 @@ async def Edit_Scheduler_Info(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FAlSE},
             )
 
-        maintenance_log = (
-            db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.id == id).first()
-        )
+        maintenance_log = db.query(Models.MaintenanceLog).filter(Models.MaintenanceLog.id == id).first()
 
         if not maintenance_log:
             raise HTTPException(
@@ -703,17 +673,14 @@ async def Save_Message(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FAlSE},
             )
 
-        maintenance_mode = (
-            db.query(Models.MaintenanceMode).filter(Models.MaintenanceMode.id == id).first()
-        )
+        maintenance_mode = db.query(Models.MaintenanceMode).filter(Models.MaintenanceMode.id == id).first()
 
         if not maintenance_mode:
             raise HTTPException(

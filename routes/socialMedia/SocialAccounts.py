@@ -47,11 +47,7 @@ async def Fetch_All_The_Linked_Account(
     request: Request, db: db_dependencies, user: dict = Depends(UserAuthenticatorMiddleware)
 ):
     try:
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -115,9 +111,7 @@ async def Post_Content_To_Social_Media(
         db.add(post_data)
         db.commit()
 
-        background_task_data = SocialMediaPostBackgroundTaskData(
-            caption=caption, uploaded_file_url=images
-        )
+        background_task_data = SocialMediaPostBackgroundTaskData(caption=caption, uploaded_file_url=images)
 
         background_task.add_task(
             HandelPostingToSocialMediaAccount,
@@ -166,11 +160,7 @@ async def Fetch_All_Created_Scheduled_Posts(
                 },
             )
 
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -223,11 +213,7 @@ async def Post_Content_To_Social_Media(
     id: str = Query(..., alias="id"),
 ):
     try:
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -292,9 +278,7 @@ async def handel_disconnecting_social_media_account(
     user: dict = Depends(UserAuthenticatorMiddleware),
     account_id: str = Query(..., alias="id"),
 ):
-    organization = (
-        db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
-    )
+    organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
     if not organization:
         raise HTTPException(
@@ -345,9 +329,7 @@ async def handel_disconnecting_social_media_account(
     user: dict = Depends(UserAuthenticatorMiddleware),
     account_id: str = Query(..., alias="id"),
 ):
-    organization = (
-        db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
-    )
+    organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
     if not organization:
         raise HTTPException(
