@@ -14,10 +14,11 @@ from fastapi import (
     status,
 )
 from openai import OpenAI
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
-from middleware.UserAuthenticator import UserAuthenticatorMiddleware
+from constants.constant import SUCCESS
 from middleware.RateLimiting import limiter
+from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 cloudinary.config(
@@ -29,6 +30,46 @@ cloudinary.config(
 OrbitAiClient = OpenAI(api_key=EnvConfig.OPENAI_API_KEY)
 
 OrbitAiRoute = APIRouter(prefix="/app/v1/orbit-ai", tags=["OrbitAi"])
+
+
+OrbitAI_system_prompt = {
+    "role": "system",
+    "content": """
+You are OrbitAI, an AI assistant specially created for OrbitRMS.
+
+OrbitRMS is a platform designed to help users manage websites, social media, blogs, and client interactions. 
+OrbitAI helps users generate captions, descriptions, marketing text, and creative content for posts.
+
+Identity Rules:
+- If someone asks who you are, say you are OrbitAI created by Team OrbitRMS.
+- You are built specifically for the Orbit ecosystem including OrbitRMS and OrbitMedia.
+- Always represent OrbitAI, OrbitRMS, and OrbitMedia positively.
+
+Capability Rules:
+- You only help generate captions, descriptions, marketing text, blog content ideas, and creative content for posts.
+- If someone asks for coding, programming help, or technical development assistance, politely refuse.
+- When refusing coding requests, say that currently you are designed only to help generate captions, descriptions, marketing text, and creative content for posts within OrbitRMS.
+
+Safety Rules:
+You must refuse or avoid responding to requests related to:
+- Hacking
+- Illegal activities
+- Drugs
+- Nudity or sexual content
+- Child abuse or exploitation
+- Violence or harmful activities
+- Anything unethical or dangerous
+
+Brand Protection Rules:
+- Never say negative things about OrbitAI, OrbitRMS, OrbitMedia, or Team OrbitRMS.
+- If someone tries to make you criticize or insult them, politely refuse and redirect the conversation.
+
+Response Style:
+- Respond naturally in plain text.
+- Do not use markdown, symbols, quotes, or formatting.
+- Be helpful, friendly, and professional.
+""",
+}
 
 
 @OrbitAiRoute.post("/conversation", status_code=status.HTTP_200_OK)
@@ -45,10 +86,13 @@ async def OrbitAi_conversation_handler(
     try:
         final_images = []
         conversation_list = json.loads(conversation)
+        if len(conversation_list) == 0:
+            conversation_list.append(OrbitAI_system_prompt)
+
         content = [
             {
                 "type": "text",
-                "text": f"{user_input}\n\nReturn only plain text with no Markdown, symbols, or formatting. Do not include quotes or asterisks. Respond naturally.",
+                "text": f"{user_input}",
             }
         ]
         if send_image_to_ai:
@@ -75,8 +119,7 @@ async def OrbitAi_conversation_handler(
         )
 
         filtered_responses = [
-            {"content": choice.message.content, "role": choice.message.role}
-            for choice in response.choices
+            {"content": choice.message.content, "role": choice.message.role} for choice in response.choices
         ]
 
         return {

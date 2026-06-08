@@ -25,19 +25,13 @@ def Apply_Organization_Query_Filter(query, filters):
                 conditions.append(normalized_db_name.ilike(f"%{normalized_input}%"))
 
             if operator == "contains":
-                conditions.append(
-                    Models.OrganizationGeneralInfo.organization_name.ilike(f"%{value}%")
-                )
+                conditions.append(Models.OrganizationGeneralInfo.organization_name.ilike(f"%{value}%"))
 
             if operator == "starts_with":
-                conditions.append(
-                    Models.OrganizationGeneralInfo.organization_name.ilike(f"{value}%")
-                )
+                conditions.append(Models.OrganizationGeneralInfo.organization_name.ilike(f"{value}%"))
 
             if operator == "ends_with":
-                conditions.append(
-                    Models.OrganizationGeneralInfo.organization_name.ilike(f"%{value}")
-                )
+                conditions.append(Models.OrganizationGeneralInfo.organization_name.ilike(f"%{value}"))
 
         #
         # * Now We Will Check For The Organization With The Primary Email
@@ -46,9 +40,7 @@ def Apply_Organization_Query_Filter(query, filters):
         if field_name == "primary_email":
 
             if operator == "equals" or operator == "is":
-                normalized_db_name = func.replace(
-                    func.trim(Models.OrganizationGeneralInfo.primary_email), "  ", " "
-                )
+                normalized_db_name = func.replace(func.trim(Models.OrganizationGeneralInfo.primary_email), "  ", " ")
                 normalized_input = value.strip().replace("  ", " ")
                 conditions.append(normalized_db_name.ilike(f"%{normalized_input}%"))
 
@@ -67,9 +59,7 @@ def Apply_Organization_Query_Filter(query, filters):
 
         if field_name == "primary_number":
             if operator == "equals" or operator == "is":
-                normalized_db_name = func.replace(
-                    func.trim(Models.OrganizationGeneralInfo.primary_number), "  ", " "
-                )
+                normalized_db_name = func.replace(func.trim(Models.OrganizationGeneralInfo.primary_number), "  ", " ")
                 normalized_input = value.strip().replace("  ", " ")
                 conditions.append(normalized_db_name.ilike(f"%{normalized_input}%"))
 
@@ -112,9 +102,7 @@ def Apply_Organization_Query_Filter(query, filters):
         if field_name == "country":
             if operator == "equals" or operator == "is":
 
-                normalized_db_name = func.replace(
-                    func.trim(Models.OrganizationAddress.country), "  ", " "
-                )
+                normalized_db_name = func.replace(func.trim(Models.OrganizationAddress.country), "  ", " ")
 
                 parsed_value = []
 

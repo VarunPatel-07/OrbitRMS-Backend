@@ -1,11 +1,12 @@
 import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
 from config.EnvConfig import EnvConfig
 from constants.constant import (
     PRODUCTION_ENVIRONMENT,
-    SENTRY_TRACE_SAMPLE_RATE,
     SENTRY_SEND_DEFAULT_PII,
+    SENTRY_TRACE_SAMPLE_RATE,
 )
-from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 
 def initSentryMonitoring():

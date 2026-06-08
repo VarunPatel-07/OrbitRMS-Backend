@@ -29,9 +29,7 @@ class Children(BaseModel):
     gender: str
     date_of_birth: str
 
-    model_config = {
-        "json_schema_extra": {"family_info": {"exclude": True}}  # ✅ Use this instead of 'fields'
-    }
+    model_config = {"json_schema_extra": {"family_info": {"exclude": True}}}  # ✅ Use this instead of 'fields'
 
 
 class FamilyInfo(BaseModel):

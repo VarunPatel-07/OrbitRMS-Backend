@@ -13,9 +13,7 @@ def apply_client_inquiry_query_filter(query_data, filters):
         all_conditions = []
 
         if field_name in ["form_id", "form_name"]:
-            normalized_db_name = func.replace(
-                func.trim(getattr(Models.ClientInquiresData, field_name)), "  ", " "
-            )
+            normalized_db_name = func.replace(func.trim(getattr(Models.ClientInquiresData, field_name)), "  ", " ")
 
             values = value if isinstance(value, list) else [value]
 

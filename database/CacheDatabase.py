@@ -24,6 +24,4 @@ if BACKEND_APP_ENVIRONMENT in ["PRODUCTION", "BETA-STAGING", "STAGING"]:
         decode_responses=True,
     )
 else:
-    cache_database = Redis(
-        host=CACHED_DATABASE_HOST, port=CACHED_DATABASE_PORT, decode_responses=True
-    )
+    cache_database = Redis(host=CACHED_DATABASE_HOST, port=CACHED_DATABASE_PORT, decode_responses=True)
