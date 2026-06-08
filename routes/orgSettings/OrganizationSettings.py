@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from gettext import find
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -13,21 +14,26 @@ from fastapi import (
     Request,
     status,
 )
+from fastapi.encoders import jsonable_encoder
+from PIL.ImImagePlugin import MODE
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
+from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
 from jobs.backgroundTasks.leavesModule.LeavesModule import (
     add_leaves_balance_in_employee,
 )
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.pydantic.OrganizationSettings.OrganizationSettings import (
     AddEditHolidayPydanticModel,
+    AddEditLocationConfigPydanticModel,
     CreateLeaveTypePydanticModel,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields, model_to_filtered_dict
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
@@ -40,10 +46,7 @@ API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING.strip()
 def has_view_access(array_of_modules, label):
     for module in array_of_modules:
         if module.module_label == label:
-            if any(
-                permission.label == "view" and permission.is_allowed
-                for permission in module.permissions or []
-            ):
+            if any(permission.label == "view" and permission.is_allowed for permission in module.permissions or []):
                 return True
 
         if getattr(module, "sub_modules", None):
@@ -77,8 +80,7 @@ async def FetchTheInfoOfTheOrganization(
             db.query(Models.RoleAssociatedPermissionModule)
             .filter(
                 and_(
-                    Models.RoleAssociatedPermissionModule.role_module_id
-                    == user.employee_info.employee_role_id,
+                    Models.RoleAssociatedPermissionModule.role_module_id == user.employee_info.employee_role_id,
                     Models.RoleAssociatedPermissionModule.module_label == "general_info",
                 )
             )
@@ -165,9 +167,7 @@ async def AddEditHoliday(
                 },
             )
 
-        personal_info = (
-            db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
-        )
+        personal_info = db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
 
         if type == "add":
 
@@ -189,8 +189,7 @@ async def AddEditHoliday(
             existing_holiday = (
                 db.query(Models.OrganizationHolidaysSchema)
                 .filter(
-                    func.lower(Models.OrganizationHolidaysSchema.holiday_name)
-                    == func.lower(data.holiday_name),
+                    func.lower(Models.OrganizationHolidaysSchema.holiday_name) == func.lower(data.holiday_name),
                     Models.OrganizationHolidaysSchema.year == data.year,
                 )
                 .first()
@@ -204,9 +203,7 @@ async def AddEditHoliday(
                         "success": SUCCESS.FALSE,
                     },
                 )
-            created_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
+            created_by_user = model_to_filtered_dict(personal_info, ["id", "first_name", "last_name"])
 
             current_date = datetime.utcnow()
             custom_date = current_date.replace(year=data.year)
@@ -239,8 +236,7 @@ async def AddEditHoliday(
             existing_holiday = (
                 db.query(Models.OrganizationHolidaysSchema)
                 .filter(
-                    func.lower(Models.OrganizationHolidaysSchema.holiday_name)
-                    == func.lower(data.holiday_name),
+                    func.lower(Models.OrganizationHolidaysSchema.holiday_name) == func.lower(data.holiday_name),
                     Models.OrganizationHolidaysSchema.id != id,
                     Models.OrganizationHolidaysSchema.year == data.year,
                 )
@@ -257,9 +253,7 @@ async def AddEditHoliday(
                 )
 
             holiday = (
-                db.query(Models.OrganizationHolidaysSchema)
-                .filter(Models.OrganizationHolidaysSchema.id == id)
-                .first()
+                db.query(Models.OrganizationHolidaysSchema).filter(Models.OrganizationHolidaysSchema.id == id).first()
             )
 
             if not holiday:
@@ -271,9 +265,7 @@ async def AddEditHoliday(
                     },
                 )
 
-            updated_by_user = model_to_filtered_dict(
-                personal_info, ["id", "first_name", "last_name"]
-            )
+            updated_by_user = model_to_filtered_dict(personal_info, ["id", "first_name", "last_name"])
 
             current_date = datetime.utcnow()
             custom_date = current_date.replace(year=data.year)
@@ -309,9 +301,7 @@ async def Fetch_Holiday(
     db: db_dependencies,
     year: str = Query(..., description="To Fetch The Holiday According To The year"),
     order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
-    field_name: Optional[str] = Query(
-        None, description="This Is An Optional Field", alias="field_name"
-    ),
+    field_name: Optional[str] = Query(None, description="This Is An Optional Field", alias="field_name"),
     user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
@@ -320,9 +310,7 @@ async def Fetch_Holiday(
             order = "asc"
 
         config_module = (
-            db.query(Models.ConfigModule)
-            .filter(Models.ConfigModule.organization_id == user.organization_id)
-            .first()
+            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
         )
 
         if not config_module:
@@ -345,13 +333,9 @@ async def Fetch_Holiday(
 
         if order == "asc":
 
-            holidays = query_data.filter(Models.OrganizationHolidaysSchema.year == year).order_by(
-                asc(column_field)
-            )
+            holidays = query_data.filter(Models.OrganizationHolidaysSchema.year == year).order_by(asc(column_field))
         elif order == "desc":
-            holidays = query_data.filter(Models.OrganizationHolidaysSchema.year == year).order_by(
-                desc(column_field)
-            )
+            holidays = query_data.filter(Models.OrganizationHolidaysSchema.year == year).order_by(desc(column_field))
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -395,9 +379,7 @@ async def delete_holiday(
         #
 
         holidays = (
-            db.query(Models.OrganizationHolidaysSchema)
-            .filter(Models.OrganizationHolidaysSchema.id == id)
-            .first()
+            db.query(Models.OrganizationHolidaysSchema).filter(Models.OrganizationHolidaysSchema.id == id).first()
         )
         if not holidays:
             raise HTTPException(
@@ -452,11 +434,7 @@ async def create_leave_type(
                 },
             )
 
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -467,9 +445,7 @@ async def create_leave_type(
                 },
             )
 
-        updated_created_by_user = model_to_filtered_dict(
-            user.personal_info, ["user_id", "first_name", "last_name"]
-        )
+        updated_created_by_user = model_to_filtered_dict(user.personal_info, ["user_id", "first_name", "last_name"])
 
         leave_data = Models.LeavesSettings(
             leave_name=data.leave_name,
@@ -565,9 +541,7 @@ async def edit_leave_type(
                 },
             )
 
-        updated_created_by_user = model_to_filtered_dict(
-            user.personal_info, ["user_id", "first_name", "last_name"]
-        )
+        updated_created_by_user = model_to_filtered_dict(user.personal_info, ["user_id", "first_name", "last_name"])
 
         find_leave.leave_name = data.leave_name
         find_leave.leave_code = data.leave_code
@@ -611,16 +585,10 @@ async def fetch_all_leave_types(
     request: Request, db: db_dependencies, user: dict = Depends(UserAuthenticatorMiddleware)
 ):
     try:
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         query_data = (
-            db.query(Models.LeavesSettings)
-            .filter(Models.LeavesSettings.organization_id == organization.id)
-            .all()
+            db.query(Models.LeavesSettings).filter(Models.LeavesSettings.organization_id == organization.id).all()
         )
 
         data = [model_to_filtered_dict(_data) for _data in query_data]
@@ -650,11 +618,7 @@ async def fetch_all_leave_types(
     request: Request, db: db_dependencies, user: dict = Depends(UserAuthenticatorMiddleware)
 ):
     try:
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         query_data = (
             db.query(Models.LeavesSettings)
@@ -666,8 +630,7 @@ async def fetch_all_leave_types(
         )
 
         data = [
-            {"leave_name": _data.leave_name, "leave_code": _data.leave_code, "id": _data.id}
-            for _data in query_data
+            {"leave_name": _data.leave_name, "leave_code": _data.leave_code, "id": _data.id} for _data in query_data
         ]
 
         return {
@@ -683,6 +646,245 @@ async def fetch_all_leave_types(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": ERROR_MESSAGE.UNABLE_TO_ADD_LEAVE_TYPE,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.get(path="/location-config/fetch", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def fetch_location_config(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
+):
+    try:
+        query_data = (
+            db.query(Models.OrganizationLocationsConfig)
+            .filter(Models.OrganizationLocationsConfig.organization_id == user.organization_id)
+            .all()
+        )
+
+        cache_key = f"location_config_{user.organization_id}"
+
+        cache_data = await cache_database.get(cache_key)
+        print(cache_data, "cache_data")
+
+        if cache_data:
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.LOCATION_CONFIG_FETCHED_SUCCESSFULLY,
+                "data": json.loads(cache_data),
+            }
+
+        query_data.sort(key=lambda x: x.created_at, reverse=(order == "desc"))
+
+        data = [model_to_filtered_dict(_data) for _data in query_data]
+
+        print(data, "data")
+
+        await cache_database.set(cache_key, json.dumps(jsonable_encoder(data)), ex=3600)
+
+        return {
+            "success": SUCCESS.TRUE,
+            "message": SUCCESS_MESSAGE.LOCATION_CONFIG_FETCHED_SUCCESSFULLY,
+            "data": data,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_FETCH_LOCATION_CONFIG,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.post(path="/location-config/add-edit", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def add_location_config(
+    request: Request,
+    db: db_dependencies,
+    data: AddEditLocationConfigPydanticModel,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    type: str = Query(..., description="Operation Type: add or edit", alias="type"),
+    id: Optional[str] = Query(None, description="Id Is Required For The Edit Function", alias="id"),
+):
+    try:
+        if type not in ["add", "edit"]:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail={
+                    "message": ERROR_MESSAGE.INVALID_TYPE,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        cache_key = f"location_config_{user.organization_id}"
+
+        cache_data = await cache_database.get(cache_key)
+        if cache_data:
+            await cache_database.delete(cache_key)
+
+        personal_info = db.query(Models.PersonalInfo).filter(Models.PersonalInfo.user_id == user.id).first()
+
+        if type == "add":
+            find_location_config = (
+                db.query(Models.OrganizationLocationsConfig)
+                .filter(
+                    Models.OrganizationLocationsConfig.organization_id == user.organization_id,
+                    Models.OrganizationLocationsConfig.location_name == data.location_name,
+                )
+                .first()
+            )
+
+            if find_location_config:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": ERROR_MESSAGE.LOCATION_CONFIG_ALREADY_EXISTS,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            location_config = Models.OrganizationLocationsConfig(
+                location_name=data.location_name,
+                location_coordinates=json.dumps(data.location_coordinates.model_dump()),
+                allowed_radius_meters=data.allowed_radius_meters,
+                status=data.status,
+                organization_id=user.organization_id,
+                created_by=json.dumps(model_to_filtered_dict(personal_info, ["id", "first_name", "last_name"])),
+            )
+
+            db.add(location_config)
+            db.commit()
+            db.refresh(location_config)
+
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.LOCATION_CONFIG_ADDED_SUCCESSFULLY,
+            }
+        else:
+            if type == "edit" and not id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": ERROR_MESSAGE.ID_REQUIRED_TO_OPERATION,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            location_config = (
+                db.query(Models.OrganizationLocationsConfig)
+                .filter(
+                    Models.OrganizationLocationsConfig.id == id,
+                    Models.OrganizationLocationsConfig.organization_id == user.organization_id,
+                )
+                .first()
+            )
+
+            if not location_config:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={
+                        "message": ERROR_MESSAGE.LOCATION_CONFIG_NOT_FOUND,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            duplicate_location_name = (
+                db.query(Models.OrganizationLocationsConfig)
+                .filter(
+                    Models.OrganizationLocationsConfig.location_name == data.location_name,
+                    Models.OrganizationLocationsConfig.organization_id == user.organization_id,
+                    Models.OrganizationLocationsConfig.id != id,
+                )
+                .first()
+            )
+
+            if duplicate_location_name:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": ERROR_MESSAGE.LOCATION_CONFIG_ALREADY_EXISTS,
+                        "success": SUCCESS.FALSE,
+                    },
+                )
+
+            location_config.location_name = data.location_name
+            location_config.location_coordinates = json.dumps(data.location_coordinates.model_dump())
+            location_config.allowed_radius_meters = data.allowed_radius_meters
+            location_config.status = data.status
+            location_config.updated_by = json.dumps(
+                model_to_filtered_dict(personal_info, ["id", "first_name", "last_name"])
+            )
+
+            db.commit()
+            db.refresh(location_config)
+
+            return {
+                "success": SUCCESS.TRUE,
+                "message": SUCCESS_MESSAGE.LOCATION_CONFIG_UPDATED_SUCCESSFULLY,
+            }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_ADD_LOCATION_CONFIG,
+                "success": SUCCESS.FALSE,
+                "error": str(e),
+            },
+        )
+
+
+@orgSettings.delete(path="/location-config/delete", status_code=status.HTTP_200_OK)
+@limiter.limit(API_RATE_LIMITING)
+async def delete_location_config(
+    request: Request,
+    db: db_dependencies,
+    user: dict = Depends(UserAuthenticatorMiddleware),
+    id: Optional[str] = Query(None, description="Id Is Required For The Edit Function", alias="id"),
+):
+    try:
+        location_config = (
+            db.query(Models.OrganizationLocationsConfig)
+            .filter(
+                Models.OrganizationLocationsConfig.id == id,
+                Models.OrganizationLocationsConfig.organization_id == user.organization_id,
+            )
+            .first()
+        )
+
+        if not location_config:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": ERROR_MESSAGE.LOCATION_CONFIG_NOT_FOUND,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        db.delete(location_config)
+        db.commit()
+
+        return {
+            "success": SUCCESS.TRUE,
+            "message": SUCCESS_MESSAGE.LOCATION_CONFIG_DELETED_SUCCESSFULLY,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": ERROR_MESSAGE.UNABLE_TO_ADD_LOCATION_CONFIG,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },

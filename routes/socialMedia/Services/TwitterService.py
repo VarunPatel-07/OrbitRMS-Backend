@@ -87,9 +87,7 @@ class TwitterService:
         response.raise_for_status()
         return response.json()
 
-    def post_tweet(
-        self, access_token: str, refresh_token: str, text: str, media_ids: Optional[list] = None
-    ) -> dict:
+    def post_tweet(self, access_token: str, refresh_token: str, text: str, media_ids: Optional[list] = None) -> dict:
 
         try:
             headers = {

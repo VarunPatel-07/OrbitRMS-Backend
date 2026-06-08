@@ -15,14 +15,18 @@ from fastapi import (
     status,
 )
 from fastapi.encoders import jsonable_encoder
+from openai.types import Model
+from pydantic import Json
 from sqlalchemy import and_
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql import func
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import WelcomeMailForNewlyAddedEmployee
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
 from models.pydantic.HelperPydanticModel import WelcomeEmployeeMailModel
@@ -30,7 +34,6 @@ from models.pydantic.Organizations.AddEditEmployeePydanticModal import (
     AddEditUserProfileModel,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.createModelInstance import cerate_model_instance
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
@@ -66,10 +69,7 @@ employee_router = APIRouter(prefix="/app/v1/employee", tags=["employee"])
 def has_view_access(array_of_modules, label):
     for module in array_of_modules:
         if module.module_label == label:
-            if any(
-                permission.label == "view" and permission.is_allowed
-                for permission in module.permissions or []
-            ):
+            if any(permission.label == "view" and permission.is_allowed for permission in module.permissions or []):
                 return True
 
         if getattr(module, "sub_modules", None):
@@ -90,9 +90,7 @@ async def handel_add_user_function(
 ):
     try:
 
-        organization_info = (
-            db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
-        )
+        organization_info = db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
 
         if not organization_info:
             raise HTTPException(
@@ -110,8 +108,7 @@ async def handel_add_user_function(
             db.query(Models.PersonalInfo)
             .join(Models.User, Models.PersonalInfo.user_id == Models.User.id)
             .filter(
-                Models.PersonalInfo.normalized_full_name
-                == normalize_name(data.personal_info.full_name),
+                Models.PersonalInfo.normalized_full_name == normalize_name(data.personal_info.full_name),
                 Models.User.organization_id == organization_id,
             )
             .first()
@@ -188,9 +185,7 @@ async def handel_add_user_function(
         # * Now We Are Validating The Reporting Manager And If It Exists Then We Will Add The Employee Info
         # * If Not Then We Will Raise An HTTP Exception
 
-        if not data.employee_info.reporting_to or not getattr(
-            data.employee_info.reporting_to, "id", None
-        ):
+        if not data.employee_info.reporting_to or not getattr(data.employee_info.reporting_to, "id", None):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -199,11 +194,7 @@ async def handel_add_user_function(
                 },
             )
 
-        reporting_to_user = (
-            db.query(Models.User)
-            .filter(Models.User.id == data.employee_info.reporting_to.id)
-            .first()
-        )
+        reporting_to_user = db.query(Models.User).filter(Models.User.id == data.employee_info.reporting_to.id).first()
         if not reporting_to_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -375,9 +366,7 @@ async def handel_fetch_profile_info(
                 .joinedload(Models.EmployeeInfo.reporting_manager)
                 .joinedload(Models.User.personal_info),
                 joinedload(Models.User.employee_info).joinedload(Models.EmployeeInfo.employee_role),
-                joinedload(Models.User.personal_contact_info).joinedload(
-                    Models.PersonalContactInfo.emergency_contacts
-                ),
+                joinedload(Models.User.personal_contact_info).joinedload(Models.PersonalContactInfo.emergency_contacts),
                 joinedload(Models.User.family_info).joinedload(Models.FamilyInfo.children),
                 joinedload(Models.User.current_address),
                 joinedload(Models.User.permanent_address),
@@ -391,8 +380,7 @@ async def handel_fetch_profile_info(
             db.query(Models.RoleAssociatedPermissionModule)
             .filter(
                 and_(
-                    Models.RoleAssociatedPermissionModule.role_module_id
-                    == user.employee_info.employee_role_id,
+                    Models.RoleAssociatedPermissionModule.role_module_id == user.employee_info.employee_role_id,
                     Models.RoleAssociatedPermissionModule.module_label == "employee_details",
                 )
             )
@@ -456,17 +444,13 @@ async def handel_fetch_profile_info(
                                     else {}
                                 ),
                             }
-                            if employee_data.employee_info
-                            and employee_data.employee_info.reporting_manager
+                            if employee_data.employee_info and employee_data.employee_info.reporting_manager
                             else {}
                         ),
                     }
                     if (
                         employee_data.employee_info
-                        and (
-                            has_view_access(all_modules, "employee_information")
-                            or employee_id == user.id
-                        )
+                        and (has_view_access(all_modules, "employee_information") or employee_id == user.id)
                     )
                     else None
                 ),
@@ -474,10 +458,7 @@ async def handel_fetch_profile_info(
                     filter_fields(employee_data.personal_info)
                     if (
                         employee_data.personal_info
-                        and (
-                            has_view_access(all_modules, "personal_information")
-                            or employee_id == user.id
-                        )
+                        and (has_view_access(all_modules, "personal_information") or employee_id == user.id)
                     )
                     else None
                 ),
@@ -485,10 +466,7 @@ async def handel_fetch_profile_info(
                     filter_fields(employee_data.personal_contact_info)
                     if (
                         employee_data.personal_contact_info
-                        and (
-                            has_view_access(all_modules, "personal_contact_information")
-                            or employee_id == user.id
-                        )
+                        and (has_view_access(all_modules, "personal_contact_information") or employee_id == user.id)
                     )
                     else None
                 ),
@@ -496,10 +474,7 @@ async def handel_fetch_profile_info(
                     filter_fields(employee_data.family_info[0])
                     if (
                         employee_data.family_info
-                        and (
-                            has_view_access(all_modules, "family_information")
-                            or employee_id == user.id
-                        )
+                        and (has_view_access(all_modules, "family_information") or employee_id == user.id)
                     )
                     else None
                 ),
@@ -537,9 +512,7 @@ async def handel_fetch_profile_info(
                 .joinedload(Models.EmployeeInfo.reporting_manager)
                 .joinedload(Models.User.personal_info),
                 joinedload(Models.User.employee_info).joinedload(Models.EmployeeInfo.employee_role),
-                joinedload(Models.User.personal_contact_info).joinedload(
-                    Models.PersonalContactInfo.emergency_contacts
-                ),
+                joinedload(Models.User.personal_contact_info).joinedload(Models.PersonalContactInfo.emergency_contacts),
                 joinedload(Models.User.family_info).joinedload(Models.FamilyInfo.children),
                 joinedload(Models.User.current_address),
                 joinedload(Models.User.permanent_address),
@@ -593,26 +566,15 @@ async def handel_fetch_profile_info(
                                 else {}
                             ),
                         }
-                        if employee_data.employee_info
-                        and employee_data.employee_info.reporting_manager
+                        if employee_data.employee_info and employee_data.employee_info.reporting_manager
                         else {}
                     ),
                 },
-                "personal_info": (
-                    filter_fields(employee_data.personal_info)
-                    if employee_data.personal_info
-                    else None
-                ),
+                "personal_info": (filter_fields(employee_data.personal_info) if employee_data.personal_info else None),
                 "personal_contact_info": (
-                    filter_fields(employee_data.personal_contact_info)
-                    if employee_data.personal_contact_info
-                    else None
+                    filter_fields(employee_data.personal_contact_info) if employee_data.personal_contact_info else None
                 ),
-                "family_info": (
-                    filter_fields(employee_data.family_info[0])
-                    if employee_data.family_info
-                    else None
-                ),
+                "family_info": (filter_fields(employee_data.family_info[0]) if employee_data.family_info else None),
             },
         }
 
@@ -667,8 +629,7 @@ async def edit_employee_profile(
         existing_user = (
             db.query(Models.PersonalInfo)
             .filter(
-                Models.PersonalInfo.normalized_full_name
-                == func.lower(data.personal_info.full_name),
+                Models.PersonalInfo.normalized_full_name == func.lower(data.personal_info.full_name),
                 Models.PersonalInfo.user_id != employee_id,
             )
             .first()
@@ -705,22 +666,14 @@ async def edit_employee_profile(
         if employee.personal_info:
             update_employee_data = data.personal_info.dict(exclude_unset=True)
             normalized_full_name = func.regexp_replace(
-                func.lower(
-                    func.regexp_replace(func.trim(data.personal_info.full_name), r"\s+", " ")
-                ),
+                func.lower(func.regexp_replace(func.trim(data.personal_info.full_name), r"\s+", " ")),
                 r"\s+",
                 "",
             )
             update_employee_data["normalized_full_name"] = normalized_full_name
-            db.query(Models.PersonalInfo).filter_by(user_id=employee.id).update(
-                update_employee_data
-            )
+            db.query(Models.PersonalInfo).filter_by(user_id=employee.id).update(update_employee_data)
 
-        reporting_to_user = (
-            db.query(Models.User)
-            .filter(Models.User.id == data.employee_info.reporting_to.id)
-            .first()
-        )
+        reporting_to_user = db.query(Models.User).filter(Models.User.id == data.employee_info.reporting_to.id).first()
         if not reporting_to_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -753,17 +706,13 @@ async def edit_employee_profile(
         contact_info_id = None
 
         if employee.personal_contact_info:
-            db.query(Models.PersonalContactInfo).filter_by(user_id=employee.id).update(
-                personal_contact_info_data
-            )
+            db.query(Models.PersonalContactInfo).filter_by(user_id=employee.id).update(personal_contact_info_data)
 
             contact_info_id = employee.personal_contact_info.id
             # # print("in the if")
 
         else:
-            new_personal_contact_info = Models.PersonalContactInfo(
-                user_id=employee.id, **personal_contact_info_data
-            )
+            new_personal_contact_info = Models.PersonalContactInfo(user_id=employee.id, **personal_contact_info_data)
             db.add(new_personal_contact_info)
             db.flush()
             contact_info_id = new_personal_contact_info.id
@@ -788,10 +737,7 @@ async def edit_employee_profile(
         if contacts_to_update:
             db.bulk_update_mappings(
                 Models.EmergencyContact,
-                [
-                    {**_contact.dict(exclude={"contact_id", "id"}), "id": _contact.id}
-                    for _contact in contacts_to_update
-                ],
+                [{**_contact.dict(exclude={"contact_id", "id"}), "id": _contact.id} for _contact in contacts_to_update],
             )
 
         if contacts_to_add:
@@ -806,14 +752,10 @@ async def edit_employee_profile(
                 ],
             )
 
-        find_family_info = (
-            db.query(Models.FamilyInfo).filter(Models.FamilyInfo.user_id == employee.id).first()
-        )
+        find_family_info = db.query(Models.FamilyInfo).filter(Models.FamilyInfo.user_id == employee.id).first()
         family_info_data = data.family_info.dict(exclude={"children"})
         if find_family_info:
-            db.query(Models.FamilyInfo).filter(Models.FamilyInfo.user_id == employee.id).update(
-                family_info_data
-            )
+            db.query(Models.FamilyInfo).filter(Models.FamilyInfo.user_id == employee.id).update(family_info_data)
 
         else:
             find_family_info = Models.FamilyInfo(user_id=employee.id, **family_info_data)
@@ -864,9 +806,9 @@ async def edit_employee_profile(
 
         if employee.current_address_id:
 
-            db.query(Models.Address).filter(
-                Models.Address.id == employee.current_address_id
-            ).update(data.current_address.dict())
+            db.query(Models.Address).filter(Models.Address.id == employee.current_address_id).update(
+                data.current_address.dict()
+            )
 
         else:
             current_address = Models.Address(**data.current_address.dict())
@@ -879,9 +821,9 @@ async def edit_employee_profile(
 
             if employee.permanent_address_id:
 
-                db.query(Models.Address).filter(
-                    Models.Address.id == employee.permanent_address_id
-                ).update(data.permanent_address.dict())
+                db.query(Models.Address).filter(Models.Address.id == employee.permanent_address_id).update(
+                    data.permanent_address.dict()
+                )
             else:
                 permanent_address = Models.Address(**data.current_address.dict())
                 db.add(permanent_address)
@@ -892,9 +834,7 @@ async def edit_employee_profile(
         elif employee.permanent_address_id:
 
             permanent_address = (
-                db.query(Models.Address)
-                .filter(Models.Address.id == employee.permanent_address_id)
-                .first()
+                db.query(Models.Address).filter(Models.Address.id == employee.permanent_address_id).first()
             )
             if permanent_address:
                 db.delete(permanent_address)
@@ -902,9 +842,7 @@ async def edit_employee_profile(
 
         existing_social_link = {
             str(social_link.id): social_link
-            for social_link in db.query(Models.SocialLinks)
-            .filter(Models.SocialLinks.user_id == employee.id)
-            .all()
+            for social_link in db.query(Models.SocialLinks).filter(Models.SocialLinks.user_id == employee.id).all()
         }
 
         social_links_to_update = []
@@ -919,10 +857,7 @@ async def edit_employee_profile(
         if social_links_to_update:
             db.bulk_update_mappings(
                 Models.SocialLinks,
-                [
-                    {**link.dict(exclude={"user_id", "id"}), "id": link.id}
-                    for link in social_links_to_update
-                ],
+                [{**link.dict(exclude={"user_id", "id"}), "id": link.id} for link in social_links_to_update],
             )
         if social_links_to_add:
             db.bulk_insert_mappings(
@@ -976,9 +911,7 @@ async def fetch_all_employee(
             decoded = unquote(filter)
             filter_data = json.loads(decoded)
 
-        query_data = db.query(Models.User).filter(
-            Models.User.organization_id == user.organization_id
-        )
+        query_data = db.query(Models.User).filter(Models.User.organization_id == user.organization_id)
 
         query_data = query_data.join(Models.User.personal_info)
 
@@ -1053,9 +986,7 @@ async def fetch_all_employee(
                     "personal_info": personal_info,
                     "employee_info": {
                         **employee_info,
-                        "reporting_manager": (
-                            reporting_manager_info if reporting_manager_info else None
-                        ),
+                        "reporting_manager": (reporting_manager_info if reporting_manager_info else None),
                     },
                 }
             )
@@ -1094,9 +1025,7 @@ async def Fetch_Employee(
     user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
-        query_data = db.query(Models.User).filter(
-            Models.User.organization_id == user.organization_id
-        )
+        query_data = db.query(Models.User).filter(Models.User.organization_id == user.organization_id)
 
         query_data = query_data.join(Models.User.personal_info)
 
@@ -1116,9 +1045,7 @@ async def Fetch_Employee(
             employee_dict = filter_fields(employee, fields=["account_status", "organization_id"])
             personal_info = filter_fields(employee.personal_info) if employee.personal_info else {}
             employee_info = (
-                filter_fields(employee.employee_info, fields=["-reporting_manager"])
-                if employee.employee_info
-                else {}
+                filter_fields(employee.employee_info, fields=["-reporting_manager"]) if employee.employee_info else {}
             )
 
             _data.append(
@@ -1137,6 +1064,80 @@ async def Fetch_Employee(
             "message": SUCCESS_MESSAGE.EMPLOYEES_FETCHED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": _data,
+        }
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "error while Fetching All The Employee",
+                "error": str(e),
+                "success": SUCCESS.FALSE,
+            },
+        )
+
+
+@employee_router.get("/fetch/employee/all", status_code=status.HTTP_200_OK)
+async def Fetch_Employee(
+    request: Request,
+    db: db_dependencies,
+    scope: str = Query(..., description="scope is used to determine for the team or the organization"),
+    user: dict = Depends(UserAuthenticatorMiddleware),
+):
+    try:
+        if scope not in ["team", "organization", "emp_rm"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": ERROR_MESSAGE.INVALID_SCOPE_FIELD,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+        cache_key = f"org_{user.organization_id}_employees"
+
+        cached_data = await cache_database.get(cache_key)
+
+        employees = list()
+
+        if cached_data:
+            employees = json.loads(cached_data)
+        else:
+            query_data = (
+                db.query(Models.User)
+                .join(Models.EmployeeInfo, Models.User.id == Models.EmployeeInfo.user_id)
+                .options(joinedload(Models.User.employee_info))
+                .filter(
+                    Models.User.organization_id == user.organization_id,
+                )
+                .all()
+            )
+            employees = [
+                {
+                    "id": emp.id,
+                    "full_name": emp.personal_info.full_name,
+                    "employee_code": emp.employee_info.employee_code,
+                    "reporting_to_id": emp.employee_info.reporting_to_id,
+                }
+                for emp in query_data
+            ]
+
+            await cache_database.set(cache_key, json.dumps(employees), ex=3600)
+
+        if scope == "team":
+
+            filtered_data = [emp for emp in employees if emp["reporting_to_id"] == user.id]
+
+        elif scope == "emp_rm":
+            filtered_data = [emp for emp in employees if emp["id"] != user.id]
+
+        else:
+            filtered_data = employees
+
+        return {
+            "message": SUCCESS_MESSAGE.EMPLOYEES_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": filtered_data,
         }
     except HTTPException as http_exception:
         raise http_exception

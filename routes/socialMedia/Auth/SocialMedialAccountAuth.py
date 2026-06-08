@@ -12,8 +12,8 @@ from sqlalchemy.orm import joinedload
 from config.EnvConfig import EnvConfig
 from constants.constant import USER_FRIENDLY_ERRORS
 from database.Database import db_dependencies
-from models.sql import Models
 from middleware.RateLimiting import limiter
+from models.sql import Models
 from utils.helper.helper import redirect_with_error
 
 from ..Services.FacebookService import FacebookService
@@ -23,9 +23,7 @@ from ..SocialMediaModuleHelper.UserValidatorFunction import UserValidatorFunctio
 # Set up logging
 logger = logging.getLogger(__name__)
 
-SocialAccountAuth = APIRouter(
-    prefix="/app/v1/social/media/accounts/authenticate", tags=["accounts"]
-)
+SocialAccountAuth = APIRouter(prefix="/app/v1/social/media/accounts/authenticate", tags=["accounts"])
 
 
 facebook_service = FacebookService(
@@ -104,9 +102,7 @@ async def facebook_callback(
 
         if error:
 
-            return redirect_with_error(
-                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_auth_denied
-            )
+            return redirect_with_error(organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_auth_denied)
 
         # Exchange code for token
         try:
@@ -145,9 +141,7 @@ async def facebook_callback(
                 raise ValueError("No pages found for this user")
         except Exception as e:
             logger.error(f"Failed to get user pages: {str(e)}")
-            return redirect_with_error(
-                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_no_pages_found
-            )
+            return redirect_with_error(organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_no_pages_found)
             # raise HTTPException(
             #     status_code=400,
             #     detail={"message": "Failed to retrieve Facebook pages", "error": str(e)},
@@ -237,9 +231,7 @@ async def facebook_callback(
 
         db.commit()
 
-        frontend_url = (
-            f"{EnvConfig.FRONTEND_URL}/{organization.general_info.portal_slug}/social-media/"
-        )
+        frontend_url = f"{EnvConfig.FRONTEND_URL}/{organization.general_info.portal_slug}/social-media/"
         clean_url = frontend_url.split("#")[0]
         return RedirectResponse(url=clean_url)
 
@@ -247,9 +239,7 @@ async def facebook_callback(
         raise  # Re-raise already handled exceptions
     except Exception as e:
         logger.error(f"Unexpected error in Facebook callback: {str(e)}")
-        return redirect_with_error(
-            organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_unexpected
-        )
+        return redirect_with_error(organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.fb_unexpected)
         # raise HTTPException(
         #     status_code=500,
         #     detail={
@@ -308,11 +298,7 @@ async def twitter_callback_handler(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": (
-                        "Account is deactivated. Access denied."
-                        if user.account_status
-                        else "User Not Found"
-                    ),
+                    "message": ("Account is deactivated. Access denied." if user.account_status else "User Not Found"),
                     "success": False,
                 },
             )
@@ -337,9 +323,7 @@ async def twitter_callback_handler(
             return RedirectResponse(url=f"{EnvConfig.FRONTEND_URL}/auth/sign-in")
 
         if error:
-            return redirect_with_error(
-                organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.tw_auth_denied
-            )
+            return redirect_with_error(organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.tw_auth_denied)
             # raise HTTPException(
             #     status_code=400,
             #     detail=f"Twitter authentication failed: {error_description}",
@@ -393,9 +377,7 @@ async def twitter_callback_handler(
 
         db.commit()
 
-        frontend_url = (
-            f"{EnvConfig.FRONTEND_URL}/{organization.general_info.portal_slug}/social-media/"
-        )
+        frontend_url = f"{EnvConfig.FRONTEND_URL}/{organization.general_info.portal_slug}/social-media/"
         clean_url = frontend_url.split("#")[0]
         return RedirectResponse(url=clean_url)
 
@@ -403,9 +385,7 @@ async def twitter_callback_handler(
         raise
     except Exception as e:
         logger.error(f"Unexpected error in Twitter callback: {str(e)}")
-        return redirect_with_error(
-            organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.tw_unexpected
-        )
+        return redirect_with_error(organization.general_info.portal_slug, USER_FRIENDLY_ERRORS.tw_unexpected)
         # raise HTTPException(
         #     status_code=500,
         #     detail={"message": "Unexpected error during Twitter authentication", "error": str(e)},

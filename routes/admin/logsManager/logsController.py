@@ -11,12 +11,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import joinedload
 
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
+from middleware.RateLimiting import limiter
 from middleware.verifyToken import verify_token
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
-from constants.constant import SUCCESS
 
 logsController = APIRouter(prefix="/app/v1/admin/monitoring")
 
@@ -106,8 +106,7 @@ async def FetchAllLogs(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -190,8 +189,7 @@ async def FetchAllLogs(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -269,8 +267,7 @@ async def FetchAllTheBackUpFiles(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -303,9 +300,7 @@ async def FetchAllTheBackUpFiles(
 
 @logsController.get("/logs/archive/files", status_code=status.HTTP_200_OK)
 @limiter.limit(API_RATE_LIMITING)
-async def FetchArchivedLogsFile(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
-):
+async def FetchArchivedLogsFile(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
         if not token:
             raise HTTPException(
@@ -331,8 +326,7 @@ async def FetchArchivedLogsFile(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -405,8 +399,7 @@ async def DownloadBackupFile(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -423,9 +416,7 @@ async def DownloadBackupFile(
 
         headers = {"Content-Disposition": f'attachment; filename="{full_path.name}"'}
 
-        return StreamingResponse(
-            iterfile(str(full_path)), headers=headers, media_type="application/x-tar"
-        )
+        return StreamingResponse(iterfile(str(full_path)), headers=headers, media_type="application/x-tar")
 
     except HTTPException as http_exception:
         raise http_exception
@@ -474,8 +465,7 @@ async def BulkDownloadArchiveFiles(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

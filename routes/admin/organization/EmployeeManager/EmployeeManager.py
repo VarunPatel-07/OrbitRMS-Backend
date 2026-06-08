@@ -8,12 +8,13 @@ from urllib.parse import unquote
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import joinedload
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
+from middleware.RateLimiting import limiter
 from middleware.verifyToken import verify_token
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
@@ -61,8 +62,7 @@ async def Fetch_All_The_Employee_Of_The_Organization(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -158,9 +158,7 @@ async def Fetch_All_The_Employee_Of_The_Organization(
                     "personal_info": personal_info,
                     "employee_info": {
                         **employee_info,
-                        "reporting_manager": (
-                            reporting_manager_info if reporting_manager_info else None
-                        ),
+                        "reporting_manager": (reporting_manager_info if reporting_manager_info else None),
                     },
                 }
             )
@@ -225,17 +223,14 @@ async def Fetch_Employee_Details(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
-        organization = (
-            db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -251,9 +246,7 @@ async def Fetch_Employee_Details(
                 .joinedload(Models.EmployeeInfo.reporting_manager)
                 .joinedload(Models.User.personal_info),
                 joinedload(Models.User.employee_info).joinedload(Models.EmployeeInfo.employee_role),
-                joinedload(Models.User.personal_contact_info).joinedload(
-                    Models.PersonalContactInfo.emergency_contacts
-                ),
+                joinedload(Models.User.personal_contact_info).joinedload(Models.PersonalContactInfo.emergency_contacts),
                 joinedload(Models.User.family_info).joinedload(Models.FamilyInfo.children),
                 joinedload(Models.User.current_address),
                 joinedload(Models.User.permanent_address),
@@ -305,26 +298,19 @@ async def Fetch_Employee_Details(
                                     else {}
                                 ),
                             }
-                            if employee_data.employee_info
-                            and employee_data.employee_info.reporting_manager
+                            if employee_data.employee_info and employee_data.employee_info.reporting_manager
                             else {}
                         ),
                     },
                     "personal_info": (
-                        filter_fields(employee_data.personal_info)
-                        if employee_data.personal_info
-                        else {}
+                        filter_fields(employee_data.personal_info) if employee_data.personal_info else {}
                     ),
                     "personal_contact_info": (
                         filter_fields(employee_data.personal_contact_info)
                         if employee_data.personal_contact_info
                         else {}
                     ),
-                    "family_info": (
-                        filter_fields(employee_data.family_info[0])
-                        if employee_data.family_info
-                        else {}
-                    ),
+                    "family_info": (filter_fields(employee_data.family_info[0]) if employee_data.family_info else {}),
                 }
                 if employee_data
                 else None
@@ -378,8 +364,7 @@ async def disableEmployee(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
