@@ -149,9 +149,7 @@ async def DeleteClientInquire(
 ):
     try:
 
-        client_inquiry = (
-            db.query(Models.ClientInquiresData).filter(Models.ClientInquiresData.id == id).first()
-        )
+        client_inquiry = db.query(Models.ClientInquiresData).filter(Models.ClientInquiresData.id == id).first()
         if not client_inquiry:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -27,12 +27,8 @@ def upgrade() -> None:
         existing_type=mysql.VARCHAR(length=255),
         nullable=True,
     )
-    op.alter_column(
-        "attendance_break_model", "punch_in_coordinates", existing_type=mysql.TEXT(), nullable=True
-    )
-    op.alter_column(
-        "attendance_break_model", "punch_out_coordinates", existing_type=mysql.TEXT(), nullable=True
-    )
+    op.alter_column("attendance_break_model", "punch_in_coordinates", existing_type=mysql.TEXT(), nullable=True)
+    op.alter_column("attendance_break_model", "punch_out_coordinates", existing_type=mysql.TEXT(), nullable=True)
     # ### end Alembic commands ###
 
 
@@ -44,9 +40,7 @@ def downgrade() -> None:
         existing_type=mysql.TEXT(),
         nullable=False,
     )
-    op.alter_column(
-        "attendance_break_model", "punch_in_coordinates", existing_type=mysql.TEXT(), nullable=False
-    )
+    op.alter_column("attendance_break_model", "punch_in_coordinates", existing_type=mysql.TEXT(), nullable=False)
     op.alter_column(
         "attendance_break_model",
         "break_end_time",

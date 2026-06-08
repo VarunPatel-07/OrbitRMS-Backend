@@ -73,9 +73,7 @@ def apply_query_filter(query, filters):
         if field_name == "employee_type":
             if operator == "equals" or operator == "is":
 
-                normalized_db_name = func.replace(
-                    func.trim(Models.EmployeeInfo.employee_type), "  ", " "
-                )
+                normalized_db_name = func.replace(func.trim(Models.EmployeeInfo.employee_type), "  ", " ")
 
                 if isinstance(value, str):
                     try:
@@ -112,9 +110,7 @@ def apply_query_filter(query, filters):
         if field_name == "reporting_manager":
 
             if operator == "equals" or operator == "is":
-                normalized_db_name = func.replace(
-                    func.trim(ReportingManagerInfo.full_name), "  ", " "
-                )
+                normalized_db_name = func.replace(func.trim(ReportingManagerInfo.full_name), "  ", " ")
                 normalized_input = value.strip().replace("  ", " ")
                 conditions.append(normalized_db_name.ilike(f"%{normalized_input}%"))
 

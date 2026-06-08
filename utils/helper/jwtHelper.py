@@ -39,9 +39,7 @@ def create_jwt_token(data: dict, expires_date: timedelta = None) -> str:
 
 def verify_jwt_token(jwt_token: str) -> dict:
     # try:
-    request_payload = jwt.decode(
-        jwt_token, EnvConfig.JWT_SECRET_KEY, algorithms=[EnvConfig.JWT_ALGORITHM]
-    )
+    request_payload = jwt.decode(jwt_token, EnvConfig.JWT_SECRET_KEY, algorithms=[EnvConfig.JWT_ALGORITHM])
     return request_payload
 
 

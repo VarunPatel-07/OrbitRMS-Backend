@@ -127,9 +127,7 @@ class User(BaseModel):
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    personal_info = relationship(
-        "PersonalInfo", back_populates="user", uselist=False, cascade="all, delete"
-    )
+    personal_info = relationship("PersonalInfo", back_populates="user", uselist=False, cascade="all, delete")
 
     employee_info = relationship(
         "EmployeeInfo",
@@ -155,9 +153,7 @@ class User(BaseModel):
 
     leave_balance = relationship("LeaveBalance", back_populates="user")
 
-    attendance = relationship(
-        "AttendancePunchInOutModule", back_populates="user", cascade="all, delete", uselist=True
-    )
+    attendance = relationship("AttendancePunchInOutModule", back_populates="user", cascade="all, delete", uselist=True)
 
     family_info = relationship("FamilyInfo", back_populates="user", cascade="all, delete")
     same_as_current_address = Column(Boolean, nullable=False, default=True)
@@ -165,12 +161,8 @@ class User(BaseModel):
     current_address_id = Column(CHAR(36), ForeignKey("address.id"), nullable=True)
     permanent_address_id = Column(CHAR(36), ForeignKey("address.id"), nullable=True)
 
-    current_address = relationship(
-        "Address", foreign_keys=[current_address_id], backref="users_current"
-    )
-    permanent_address = relationship(
-        "Address", foreign_keys=[permanent_address_id], backref="users_permanent"
-    )
+    current_address = relationship("Address", foreign_keys=[current_address_id], backref="users_current")
+    permanent_address = relationship("Address", foreign_keys=[permanent_address_id], backref="users_permanent")
 
     social_link = relationship("SocialLinks", back_populates="user", cascade="all, delete")
     password = Column(String(255), nullable=False)
@@ -222,15 +214,9 @@ class Organization(BaseModel):
         uselist=False,
         cascade="all, delete",
     )
-    address = relationship(
-        "OrganizationAddress", back_populates="organization", cascade="all, delete"
-    )
-    contact_info = relationship(
-        "OrganizationContactInfo", back_populates="organization", cascade="all, delete"
-    )
-    about_info = relationship(
-        "OrganizationAboutInfo", back_populates="organization", cascade="all, delete"
-    )
+    address = relationship("OrganizationAddress", back_populates="organization", cascade="all, delete")
+    contact_info = relationship("OrganizationContactInfo", back_populates="organization", cascade="all, delete")
+    about_info = relationship("OrganizationAboutInfo", back_populates="organization", cascade="all, delete")
     organization_settings = relationship(
         "OrganizationSettings", back_populates="organization", uselist=False, cascade="all, delete"
     )
@@ -238,17 +224,13 @@ class Organization(BaseModel):
 
     employees = relationship("User", back_populates="organization", cascade="all, delete")
 
-    config_modules = relationship(
-        "ConfigModule", back_populates="organization", cascade="all, delete"
-    )
+    config_modules = relationship("ConfigModule", back_populates="organization", cascade="all, delete")
 
     client_inquires = relationship(
         "ClientInquires", back_populates="organization", cascade="all, delete", uselist=False
     )
 
-    org_updates = relationship(
-        "OrganizationUpdates", back_populates="organization", cascade="all, delete"
-    )
+    org_updates = relationship("OrganizationUpdates", back_populates="organization", cascade="all, delete")
 
     social_media_accounts = relationship(
         "SocialMediaAccount", back_populates="organization", uselist=True, cascade="all, delete"
@@ -257,9 +239,7 @@ class Organization(BaseModel):
         "SocialMediaPosts", back_populates="organization", uselist=True, cascade="all, delete"
     )
 
-    leaves_settings = relationship(
-        "LeavesSettings", back_populates="organization", uselist=True, cascade="all, delete"
-    )
+    leaves_settings = relationship("LeavesSettings", back_populates="organization", uselist=True, cascade="all, delete")
     locations_config = relationship(
         "OrganizationLocationsConfig",
         back_populates="organization",
@@ -280,21 +260,13 @@ class Organization(BaseModel):
 class ConfigModule(BaseModel):
     __tablename__ = "config_module"
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_status = relationship(
-        "ProjectStatus", back_populates="config_module", cascade="all, delete"
-    )
+    project_status = relationship("ProjectStatus", back_populates="config_module", cascade="all, delete")
     department = relationship("Department", back_populates="config_module", cascade="all, delete")
-    designations = relationship(
-        "Designations", back_populates="config_module", cascade="all, delete"
-    )
+    designations = relationship("Designations", back_populates="config_module", cascade="all, delete")
 
-    inquiry_form_schema = relationship(
-        "InquiryFormSchema", back_populates="config_module", cascade="all, delete"
-    )
+    inquiry_form_schema = relationship("InquiryFormSchema", back_populates="config_module", cascade="all, delete")
 
-    roles_and_permissions = relationship(
-        "ConfigRoleModule", back_populates="config_module", cascade="all, delete"
-    )
+    roles_and_permissions = relationship("ConfigRoleModule", back_populates="config_module", cascade="all, delete")
     organization_holidays = relationship(
         "OrganizationHolidaysSchema", back_populates="config_module", cascade="all, delete"
     )
@@ -374,9 +346,7 @@ class OrganizationUpdates(BaseModel):
 
     likes = relationship("FeedLikes", back_populates="organization_updates", cascade="all, delete")
 
-    comments = relationship(
-        "FeedComments", back_populates="organization_updates", cascade="all, delete"
-    )
+    comments = relationship("FeedComments", back_populates="organization_updates", cascade="all, delete")
 
     # comments = relationship("FeedComments", back_populates="organization_updates", cascade="all, delete")
     user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False, index=True)

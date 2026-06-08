@@ -104,11 +104,7 @@ async def AddEditFeedPostController(
                     },
                 )
 
-            existing_post = (
-                db.query(Models.OrganizationUpdates)
-                .filter(Models.OrganizationUpdates.id == id)
-                .first()
-            )
+            existing_post = db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == id).first()
 
             if not existing_post:
                 raise HTTPException(
@@ -164,9 +160,7 @@ async def FetchTheOrganizationPost(
     request: Request,
     db: db_dependencies,
     order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
-    field_name: Optional[str] = Query(
-        None, description="This Is An Optional Field", alias="field_name"
-    ),
+    field_name: Optional[str] = Query(None, description="This Is An Optional Field", alias="field_name"),
     user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
@@ -176,12 +170,8 @@ async def FetchTheOrganizationPost(
         organization_updates = (
             db.query(Models.OrganizationUpdates)
             .options(
-                joinedload(Models.OrganizationUpdates.publisher).joinedload(
-                    Models.User.personal_info
-                ),
-                joinedload(Models.OrganizationUpdates.publisher).joinedload(
-                    Models.User.employee_info
-                ),
+                joinedload(Models.OrganizationUpdates.publisher).joinedload(Models.User.personal_info),
+                joinedload(Models.OrganizationUpdates.publisher).joinedload(Models.User.employee_info),
             )
             .filter(Models.OrganizationUpdates.organization_id == user.organization_id)
             .all()
@@ -226,9 +216,7 @@ async def FetchTheOrganizationPost(
                 )
 
                 publisher_employee_info = (
-                    filter_fields(
-                        data.publisher.employee_info, ["department", "designation", "employee_code"]
-                    )
+                    filter_fields(data.publisher.employee_info, ["department", "designation", "employee_code"])
                     if data.publisher
                     else {}
                 )
@@ -289,9 +277,7 @@ async def HandelDeletePostFunction(
 ):
     try:
 
-        post = (
-            db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == id).first()
-        )
+        post = db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == id).first()
 
         if not post:
             raise HTTPException(
@@ -437,11 +423,7 @@ async def HandelCommentReplayToggler(
         if cache_data:
             await cache_database.delete(cache_data_key)
 
-        post_data = (
-            db.query(Models.OrganizationUpdates)
-            .filter(Models.OrganizationUpdates.id == post_id)
-            .first()
-        )
+        post_data = db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == post_id).first()
         if not post_data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -451,9 +433,7 @@ async def HandelCommentReplayToggler(
                 },
             )
 
-        parent_comment = (
-            db.query(Models.FeedComments).filter(Models.FeedComments.id == comment_id).first()
-        )
+        parent_comment = db.query(Models.FeedComments).filter(Models.FeedComments.id == comment_id).first()
 
         if not parent_comment:
             raise HTTPException(
@@ -592,9 +572,7 @@ async def FetchLikesAndComment(
         query_option = (
             joinedload(Models.OrganizationUpdates.likes).joinedload(Models.FeedLikes.user)
             if type == "likes"
-            else joinedload(Models.OrganizationUpdates.comments).joinedload(
-                Models.FeedComments.user
-            )
+            else joinedload(Models.OrganizationUpdates.comments).joinedload(Models.FeedComments.user)
         )
 
         query_data = (
@@ -620,7 +598,7 @@ async def FetchLikesAndComment(
                         jsonable_encoder(
                             {
                                 "likes": likes_info_array,
-                                "total_likes": [like.id for like in query_data.likes],
+                                "total_likes": [like.user_id for like in query_data.likes],
                             }
                         )
                     ),
@@ -631,7 +609,7 @@ async def FetchLikesAndComment(
                 "success": SUCCESS.TRUE,
                 "data": {
                     "likes": likes_info_array,
-                    "total_likes": [like.id for like in query_data.likes],
+                    "total_likes": [like.user_id for like in query_data.likes],
                 },
             }
         else:
@@ -713,9 +691,7 @@ async def FetchLikesAndComment(
         query_option = (
             joinedload(Models.OrganizationUpdates.likes).joinedload(Models.FeedLikes.user)
             if type == "likes"
-            else joinedload(Models.OrganizationUpdates.comments).joinedload(
-                Models.FeedComments.user
-            )
+            else joinedload(Models.OrganizationUpdates.comments).joinedload(Models.FeedComments.user)
         )
 
         query_data = (

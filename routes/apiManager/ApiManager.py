@@ -63,9 +63,7 @@ async def Enable_Api(
 
                 api_key, api_secret = generate_api_secrets_api_key()
 
-                client_inquires.api_key = (
-                    api_key if not client_inquires.api_key else client_inquires.api_key
-                )
+                client_inquires.api_key = api_key if not client_inquires.api_key else client_inquires.api_key
 
                 client_inquires.api_secrete = (
                     api_secret if not client_inquires.api_secrete else client_inquires.api_secrete
@@ -115,9 +113,7 @@ async def Fetch_Status_OF_Api(
             .first()
         )
         config_module = (
-            db.query(Models.ConfigModule)
-            .filter(Models.ConfigModule.organization_id == user.organization_id)
-            .first()
+            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
         )
 
         inquiry_form_schemas = (
@@ -183,9 +179,7 @@ async def ReGenerateKeys(
                 detail={"message": ERROR_MESSAGE.INVALID_QUERY_ARGUMENT, "success": SUCCESS.FALSE},
             )
 
-        client_inquires = (
-            db.query(Models.ClientInquires).filter(Models.ClientInquires.id == id).first()
-        )
+        client_inquires = db.query(Models.ClientInquires).filter(Models.ClientInquires.id == id).first()
 
         if not client_inquires:
             raise HTTPException(
@@ -228,9 +222,7 @@ async def EnableMailNotification(
 ):
     try:
 
-        client_inquires = (
-            db.query(Models.ClientInquires).filter(Models.ClientInquires.id == id).first()
-        )
+        client_inquires = db.query(Models.ClientInquires).filter(Models.ClientInquires.id == id).first()
 
         if not client_inquires:
             raise HTTPException(
@@ -282,9 +274,7 @@ async def EnableMailNotification(
 ):
     try:
 
-        client_inquires = (
-            db.query(Models.ClientInquires).filter(Models.ClientInquires.id == id).first()
-        )
+        client_inquires = db.query(Models.ClientInquires).filter(Models.ClientInquires.id == id).first()
 
         if not client_inquires:
             raise HTTPException(
@@ -304,9 +294,7 @@ async def EnableMailNotification(
             "message": SUCCESS_MESSAGE.AUTHORIZED_RECIPIENT_EMAIL_UPDATED_SUCCESSFULLY,
             "success": SUCCESS.TRUE,
             "data": {
-                "authorized_recipient_email": json.loads(
-                    client_inquires.authorized_recipient_emails
-                ),
+                "authorized_recipient_email": json.loads(client_inquires.authorized_recipient_emails),
             },
         }
 

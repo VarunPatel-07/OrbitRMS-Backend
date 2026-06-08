@@ -110,6 +110,14 @@ class OrganizationSettings(BaseModel):
     default_timezone = Column(String(255), nullable=True, default=None)
     default_dateformat = Column(String(255), nullable=True, default=None)
 
+    total_gross_hours = Column(Integer, nullable=True, default=None)
+    total_effective_hours = Column(Integer, nullable=True, default=None)
+
+    half_day_gross_hours = Column(Integer, nullable=True, default=None)
+    half_day_effective_hours = Column(Integer, nullable=True, default=None)
+
+    error_corratin_metting = Column(Integer, nullable=True, default=None)
+
     organization_id = Column(
         CHAR(36),
         ForeignKey("organization.id", ondelete="CASCADE", onupdate="CASCADE"),
@@ -223,9 +231,7 @@ class LeaveBalance(BaseModel):
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    leave_type_id = Column(
-        CHAR(36), ForeignKey("organization_leaves_settings.id", ondelete="CASCADE")
-    )
+    leave_type_id = Column(CHAR(36), ForeignKey("organization_leaves_settings.id", ondelete="CASCADE"))
     leave_type = relationship("LeavesSettings", back_populates="leave_balance")
 
     user_id = Column(CHAR(36), ForeignKey("users.id"), nullable=False)

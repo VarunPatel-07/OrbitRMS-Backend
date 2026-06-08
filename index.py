@@ -173,21 +173,13 @@ async def root_health_check(request: Request):
             return {
                 "message": "Welcome To OrbitRMS. The app functionality is working fine.",
                 "database_status": db_status,
-                "status": (
-                    "The app is healthy."
-                    if db_status == "healthy"
-                    else "Database connection issue."
-                ),
+                "status": ("The app is healthy." if db_status == "healthy" else "Database connection issue."),
                 "cache_database": await cache_database.get("hello"),
                 "ENVIRONMENT": BACKEND_APP_ENVIRONMENT,
             }
         else:
             return Response(
-                status_code=(
-                    status.HTTP_200_OK
-                    if db_status == "healthy"
-                    else status.HTTP_503_SERVICE_UNAVAILABLE
-                )
+                status_code=(status.HTTP_200_OK if db_status == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE)
             )
     except HTTPException as http_exception:
         raise http_exception
@@ -219,19 +211,11 @@ async def health_status(request: Request):
             return {
                 "status": "ok" if db_status == "healthy" else "unhealthy",
                 "database": db_status,
-                "message": (
-                    "The app is healthy."
-                    if db_status == "healthy"
-                    else "Database connection issue."
-                ),
+                "message": ("The app is healthy." if db_status == "healthy" else "Database connection issue."),
             }
         else:
             return Response(
-                status_code=(
-                    status.HTTP_200_OK
-                    if db_status == "healthy"
-                    else status.HTTP_503_SERVICE_UNAVAILABLE
-                )
+                status_code=(status.HTTP_200_OK if db_status == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE)
             )
     except HTTPException as http_exception:
         raise http_exception

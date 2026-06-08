@@ -280,3 +280,8 @@ NO_ACTIVE_ATTENDANCE_SESSION = "No Active Attendance Session Found For This User
 CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND = (
     "Can't Active Break Because Active Break Found For This User"
 )
+
+ACTIVE_SESSION_FOR_TODAY = "You have already completed your attendance for today"
+INSUFFICIENT_LEAVE_BALANCE = (
+    "Insufficient leave balance. You cannot apply for more than your available leaves."
+)

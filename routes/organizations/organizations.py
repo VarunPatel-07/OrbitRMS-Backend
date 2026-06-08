@@ -142,12 +142,8 @@ async def verify_organization(
             db.refresh(config_module)
             db.refresh(user)
 
-            background_task.add_task(
-                roles_permission_initial_data_seeder_function, db, decrypted_org_id
-            )
-            background_task.add_task(
-                designation_initial_data_seeder, db, decrypted_org_id, organization.industry_slug
-            )
+            background_task.add_task(roles_permission_initial_data_seeder_function, db, decrypted_org_id)
+            background_task.add_task(designation_initial_data_seeder, db, decrypted_org_id, organization.industry_slug)
             background_task.add_task(
                 department_data_initial_data_seeder,
                 db,
@@ -274,9 +270,7 @@ async def onboard_organization(
 ):
     try:
         organization_id = urlsafe_data_decoding_function(organization_id)
-        organization = (
-            db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
         if not organization:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -324,9 +318,7 @@ async def onboard_organization(
         )
 
         normalized_full_name = func.regexp_replace(
-            func.lower(
-                func.regexp_replace(func.trim(data.employee_profile_info.full_name), r"\s+", " ")
-            ),
+            func.lower(func.regexp_replace(func.trim(data.employee_profile_info.full_name), r"\s+", " ")),
             r"\s+",
             "",
         )
@@ -447,9 +439,7 @@ async def fetch_organization_info(
                     else None
                 ),
                 "organization_settings": (
-                    filter_fields(
-                        organization.organization_settings[0], ["-id", "-organization_id"]
-                    )
+                    filter_fields(organization.organization_settings[0], ["-id", "-organization_id"])
                     if organization.organization_settings
                     else None
                 ),

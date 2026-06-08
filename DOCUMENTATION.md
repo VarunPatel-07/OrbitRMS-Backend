@@ -27,6 +27,7 @@
 ### Core Purpose
 
 The backend serves as the central API layer for:
+
 - **Organization Management**: Multi-tenant organization setup and configuration
 - **Employee Management**: Complete employee lifecycle management
 - **Attendance & Leaves**: Tracking attendance and managing leave requests
@@ -75,39 +76,47 @@ The backend serves as the central API layer for:
 ## Technology Stack
 
 ### Core Framework
+
 - **FastAPI** (0.115.6): Modern, fast web framework for building APIs
 - **Python 3.8+**: Programming language
 
 ### Database & ORM
+
 - **SQLAlchemy** (2.0.36): SQL toolkit and ORM
 - **MySQL**: Primary relational database (via PyMySQL/aiomysql)
 - **Alembic** (1.14.0): Database migration tool
 - **Redis/Valkey** (5.2.1): Caching and queue management
 
 ### Authentication & Security
+
 - **PyJWT** (2.10.1): JSON Web Token implementation
 - **bcrypt** (4.2.1): Password hashing
 - **cryptography** (44.0.0): Additional cryptographic functions
 - **slowapi** (0.1.9): Rate limiting
 
 ### Data Validation
+
 - **Pydantic** (2.10.4): Data validation using Python type annotations
 
 ### Background Tasks & Scheduling
+
 - **APScheduler** (3.11.0): Advanced Python Scheduler
 - **asyncio**: Asynchronous task processing
 
 ### External Services Integration
+
 - **OpenAI** (2.6.1): AI conversation API
 - **Cloudinary** (1.42.2): Image and media storage
 - **Facebook SDK** (3.1.0): Facebook API integration
 - **Authlib** (1.6.1): OAuth integration for social media
 
 ### Email Services
+
 - **fastapi-mail** (1.4.2): Email sending functionality
 - **aiosmtplib** (3.0.2): Async SMTP client
 
 ### Utilities
+
 - **python-dotenv** (1.0.1): Environment variable management
 - **arrow** (1.2.3): Date and time manipulation
 - **beautifulsoup4** (4.12.3): HTML parsing
@@ -115,6 +124,7 @@ The backend serves as the central API layer for:
 - **httpx** (0.28.1): Async HTTP client
 
 ### Development Tools
+
 - **black** (25.1.0): Code formatter
 - **isort** (6.0.0): Import sorter
 - **uvicorn** (0.38.0): ASGI server
@@ -158,7 +168,7 @@ ObitRMS-Backend/
 │   │   ├── email-verification.html
 │   │   ├── new-client-inquiry-mail.html
 │   │   ├── reset-password.html
-│   │   ├── rest-password-instruction.html
+│   │   ├── reset-password-instruction.html
 │   │   └── welcome-new-user-mail.html
 │   └── HtmlEmailBody.py             # Email body generators
 │
@@ -241,9 +251,11 @@ ObitRMS-Backend/
 ### Core Models
 
 #### User Model
+
 The central user model representing employees in the system.
 
 **Key Relationships:**
+
 - `personal_info`: One-to-one with PersonalInfo
 - `employee_info`: One-to-one with EmployeeInfo
 - `organization`: Many-to-one with Organization
@@ -253,6 +265,7 @@ The central user model representing employees in the system.
 - `sessions`: One-to-many with Sessions
 
 **Key Fields:**
+
 - `id`: UUID primary key
 - `password`: Hashed password
 - `account_status`: Boolean for account activation
@@ -262,9 +275,11 @@ The central user model representing employees in the system.
 - `current_address_id` / `permanent_address_id`: Foreign keys to Address
 
 #### Organization Model
+
 Represents a tenant organization in the multi-tenant system.
 
 **Key Relationships:**
+
 - `employees`: One-to-many with User
 - `general_info`: One-to-one with OrganizationGeneralInfo
 - `organization_settings`: One-to-one with OrganizationSettings
@@ -275,14 +290,17 @@ Represents a tenant organization in the multi-tenant system.
 - `leaves_settings`: One-to-many with LeavesSettings
 
 **Key Fields:**
+
 - `id`: UUID primary key
 - `status`: Boolean for organization activation
 - `organization_created`: Boolean flag for setup completion
 
 #### PersonalInfo Model
+
 Stores personal information for users.
 
 **Key Fields:**
+
 - `first_name`, `middle_name`, `last_name`, `full_name`
 - `profile_picture`, `profile_picture_bg`
 - `gender`, `date_of_birth`, `blood_group`
@@ -290,13 +308,16 @@ Stores personal information for users.
 - `user_id`: Foreign key to User
 
 #### EmployeeInfo Model
+
 Stores employment-related information.
 
 **Key Relationships:**
+
 - `user`: Many-to-one with User
 - `reporting_manager`: Many-to-one with User (self-referential)
 
 **Key Fields:**
+
 - `employee_id`: Unique employee identifier
 - `department_id`: Foreign key to Department
 - `designation_id`: Foreign key to Designations
@@ -305,59 +326,74 @@ Stores employment-related information.
 - `role_id`: Foreign key to RolesPermission
 
 #### OrganizationUpdates Model
+
 Represents posts in the organization feed.
 
 **Key Relationships:**
+
 - `organization`: Many-to-one with Organization
 - `publisher`: Many-to-one with User
 - `feed_likes`: One-to-many with FeedLikes
 - `feed_comments`: One-to-many with FeedComments
 
 #### FeedLikes Model
+
 Tracks likes on feed posts.
 
 **Key Relationships:**
+
 - `user`: Many-to-one with User
 - `organization_update`: Many-to-one with OrganizationUpdates
 
 #### FeedComments Model
+
 Stores comments on feed posts.
 
 **Key Relationships:**
+
 - `user`: Many-to-one with User
 - `organization_update`: Many-to-one with OrganizationUpdates
 
 #### AttendanceLeavesModule Model
+
 Manages leave requests and attendance.
 
 **Key Relationships:**
+
 - `user`: Many-to-one with User (applicant)
 - `notify_to_users`: Many-to-many with User (notification recipients)
 
 **Key Fields:**
+
 - `leave_type`: Enum for leave types
 - `start_date`, `end_date`: Leave period
 - `status`: Enum for leave status (pending, approved, rejected)
 - `reason`: Text field for leave reason
 
 #### LeaveBalance Model
+
 Tracks available leave balance for users.
 
 **Key Relationships:**
+
 - `user`: Many-to-one with User
 
 **Key Fields:**
+
 - `leave_type`: Type of leave
 - `balance`: Available balance
 - `total_allotted`: Total allocated leaves
 
 #### SocialMediaAccount Model
+
 Stores connected social media accounts.
 
 **Key Relationships:**
+
 - `organization`: Many-to-one with Organization
 
 **Key Fields:**
+
 - `platform`: Enum (Facebook, Instagram, Twitter, LinkedIn)
 - `account_id`: Platform-specific account identifier
 - `access_token`: Encrypted access token
@@ -365,69 +401,86 @@ Stores connected social media accounts.
 - `is_active`: Boolean for account status
 
 #### SocialMediaPosts Model
+
 Stores social media posts.
 
 **Key Relationships:**
+
 - `organization`: Many-to-one with Organization
 - `social_media_account`: Many-to-one with SocialMediaAccount
 
 #### ClientInquires Model
+
 Stores client inquiry submissions.
 
 **Key Relationships:**
+
 - `organization`: Many-to-one with Organization
 
 **Key Fields:**
+
 - `form_data`: JSON field for dynamic form data
 - `status`: Enum for inquiry status
 
 #### ConfigModule Models
 
 **Department Model:**
+
 - `department_name`: Name of the department
 - `organization_id`: Foreign key to Organization
 
 **Designations Model:**
+
 - `designations_name`: Name of the designation
 - `organization_id`: Foreign key to Organization
 
 **ProjectStatus Model:**
+
 - `status_name`: Name of the project status
 - `organization_id`: Foreign key to Organization
 
 **RolesPermission Model:**
+
 - `role_name`: Name of the role
 - `organization_id`: Foreign key to Organization
 
 **RoleAssociatedPermissionModule Model:**
+
 - Links roles to specific permissions
 - `role_id`: Foreign key to RolesPermission
 - `permission_id`: Foreign key to PermissionModule
 
 #### MaintenanceMode Model
+
 Controls system-wide maintenance mode.
 
 **Key Fields:**
+
 - `is_active`: Boolean for maintenance status
 - `message`: Maintenance message
 - `updated_by`: User who updated the status
 
 #### MaintenanceLog Model
+
 Logs maintenance mode changes.
 
 **Key Fields:**
+
 - `started_at`, `ended_at`: Maintenance window
 - `status`: Enum (scheduled, active, completed)
 - `message`: Maintenance message
 - `started_by`, `ended_by`: User identifiers
 
 #### Admin Model
+
 Super admin accounts for system management.
 
 **Key Relationships:**
+
 - `admin_sessions`: One-to-many with OrbitAdminSessions
 
 **Key Fields:**
+
 - `email`: Admin email
 - `password`: Hashed password
 
@@ -438,6 +491,7 @@ Super admin accounts for system management.
 ### Authentication Routes (`/app/v1/auth`)
 
 #### User Authentication
+
 - `POST /sign-up`: Register a new organization and admin user
 - `POST /sign-in`: User login with email and password
 - `POST /verify-email`: Verify user email address
@@ -450,6 +504,7 @@ Super admin accounts for system management.
 ### Organization Routes (`/app/v1/organizations`)
 
 #### Organization Management
+
 - `GET /`: Get organization details
 - `PUT /`: Update organization information
 - `GET /employees`: Get list of employees
@@ -460,6 +515,7 @@ Super admin accounts for system management.
 ### Employee Routes (`/app/v1/employees`)
 
 #### Employee Management
+
 - `GET /`: Get current user's employee profile
 - `PUT /`: Update employee profile
 - `GET /profile`: Get complete employee profile
@@ -468,6 +524,7 @@ Super admin accounts for system management.
 ### Attendance Routes (`/app/v1/attendance`)
 
 #### Attendance & Leaves
+
 - `POST /leaves`: Apply for leave
 - `GET /leaves`: Get leave requests
 - `PUT /leaves/{id}`: Update leave request
@@ -478,6 +535,7 @@ Super admin accounts for system management.
 ### Feed Routes (`/app/v1/feed`)
 
 #### Organization Feed
+
 - `GET /`: Get organization feed posts
 - `POST /`: Create new feed post
 - `PUT /{id}`: Update feed post
@@ -489,6 +547,7 @@ Super admin accounts for system management.
 ### Organization Settings Routes (`/app/v1/organization-settings`)
 
 #### Settings Management
+
 - `GET /`: Get organization settings
 - `PUT /`: Update organization settings
 - `GET /holidays`: Get organization holidays
@@ -499,6 +558,7 @@ Super admin accounts for system management.
 ### Config Module Routes (`/app/v1/config`)
 
 #### Configuration Management
+
 - `GET /departments`: Get departments
 - `POST /departments`: Add department
 - `PUT /departments/{id}`: Update department
@@ -519,6 +579,7 @@ Super admin accounts for system management.
 ### Client Inquiries Routes (`/app/v1/client-inquiries`)
 
 #### Inquiry Management
+
 - `POST /submit`: Submit client inquiry (public endpoint)
 - `GET /`: Get inquiries (authenticated)
 - `GET /{id}`: Get specific inquiry
@@ -528,6 +589,7 @@ Super admin accounts for system management.
 ### Social Media Routes (`/app/v1/social-media`)
 
 #### Social Media Management
+
 - `GET /accounts`: Get connected social media accounts
 - `POST /accounts`: Connect new social media account
 - `PUT /accounts/{id}`: Update social media account
@@ -538,12 +600,14 @@ Super admin accounts for system management.
 - `DELETE /posts/{id}`: Delete post
 
 #### Social Media Authentication
+
 - `GET /auth/{platform}/authorize`: Initiate OAuth flow
 - `GET /auth/{platform}/callback`: OAuth callback handler
 
 ### OrbitAI Routes (`/app/v1/orbit-ai`)
 
 #### AI Conversation
+
 - `POST /conversation`: Chat with AI (supports image input)
   - Accepts: text input, images, conversation history
   - Returns: AI-generated responses
@@ -551,18 +615,21 @@ Super admin accounts for system management.
 ### Image Upload Routes (`/app/v1/image-upload`)
 
 #### Media Management
+
 - `POST /`: Upload image to Cloudinary
 - `DELETE /`: Delete image from Cloudinary
 
 ### Country Info Routes (`/app/v1/country-info`)
 
 #### Country Data
+
 - `GET /countries`: Get list of all countries
 - `GET /countries/{code}`: Get specific country details
 
 ### API Manager Routes (`/app/v1/api-manager`)
 
 #### API Key Management
+
 - `PUT /client-inquiry/enable-api`: Enable/disable client inquiry API
 - `GET /client-inquiry/api-status`: Get API status
 - `POST /client-inquiry/generate-key`: Generate new API key
@@ -571,10 +638,12 @@ Super admin accounts for system management.
 ### Admin Routes (`/app/v1/admin`)
 
 #### Admin Authentication
+
 - `POST /auth/sign-in`: Admin login
 - `POST /auth/sign-out`: Admin logout
 
 #### Admin Organization Management
+
 - `GET /organizations`: List all organizations
 - `GET /organizations/{id}`: Get organization details
 - `PUT /organizations/{id}`: Update organization
@@ -583,12 +652,14 @@ Super admin accounts for system management.
 - `POST /organizations/{id}/deactivate`: Deactivate organization
 
 #### Admin Employee Management
+
 - `GET /organizations/{org_id}/employees`: List employees
 - `GET /organizations/{org_id}/employees/{id}`: Get employee details
 - `PUT /organizations/{org_id}/employees/{id}`: Update employee
 - `DELETE /organizations/{org_id}/employees/{id}`: Delete employee
 
 #### Maintenance Mode
+
 - `GET /maintenance-mode`: Get maintenance mode status
 - `PUT /maintenance-mode`: Update maintenance mode
 - `GET /maintenance-logs`: Get maintenance logs
@@ -685,6 +756,7 @@ Super admin accounts for system management.
 ### Background Workers
 
 #### BulkLikeFeeder
+
 - **Purpose**: Processes like/unlike actions asynchronously
 - **Queue**: Redis `likes_queue`
 - **Process**:
@@ -694,6 +766,7 @@ Super admin accounts for system management.
   4. Processes continuously in background
 
 #### BulkCommentFeeder
+
 - **Purpose**: Processes comment submissions asynchronously
 - **Queue**: Redis `comments_queue`
 - **Process**: Similar to BulkLikeFeeder for comments
@@ -701,6 +774,7 @@ Super admin accounts for system management.
 ### Scheduled Jobs
 
 #### MaintenanceModeScheduler
+
 - **Frequency**: Runs every 1 minute
 - **Purpose**: Manages scheduled maintenance windows
 - **Process**:
@@ -731,6 +805,7 @@ Client Request → API Endpoint → Redis Queue → Background Worker → Databa
 All configuration is managed through environment variables loaded from `.env` file.
 
 #### Database Configuration
+
 ```env
 DATABASE_CONNECTION_STRING=mysql+aiomysql://user:password@host:port/database
 STAGING_MIGRATION_DB_URL=mysql://...
@@ -738,6 +813,7 @@ DEVELOPMENT_MIGRATION_DB_URL=mysql://...
 ```
 
 #### JWT & Security
+
 ```env
 JWT_SECRET_KEY=your-secret-key
 JWT_ALGORITHM=HS256
@@ -747,6 +823,7 @@ API_RATE_LIMITING=100/minute
 ```
 
 #### Application Config
+
 ```env
 FRONTEND_URL=https://your-frontend.com
 BACKEND_BASE_URL=https://your-backend.com
@@ -756,6 +833,7 @@ GEONAME_API_USERNAME=your-geoname-username
 ```
 
 #### Email Configuration
+
 ```env
 GOOGLE_APP_PASSWORD=your-app-password
 EMAIL_ADDRESS=your-email@gmail.com
@@ -764,6 +842,7 @@ EMAIL_SERVER_ADDRESS=smtp.gmail.com
 ```
 
 #### Cloudinary Configuration
+
 ```env
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
@@ -771,6 +850,7 @@ CLOUDINARY_API_SECRET=your-api-secret
 ```
 
 #### Redis/Valkey Configuration
+
 ```env
 CACHED_DATABASE_HOST=localhost
 CACHED_DATABASE_PORT=6379
@@ -778,6 +858,7 @@ CACHED_DATABASE_PASSWORD=your-redis-password
 ```
 
 #### Social Media Links
+
 ```env
 INSTAGRAM_LINK=https://instagram.com/your-profile
 FACEBOOK_LINK=https://facebook.com/your-profile
@@ -785,6 +866,7 @@ LINKEDIN_LINK=https://linkedin.com/your-profile
 ```
 
 #### Admin Configuration
+
 ```env
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=admin-password
@@ -793,11 +875,13 @@ ORBIT_CONTACT_EMAIL=contact@example.com
 ```
 
 #### OpenAI Configuration
+
 ```env
 OPENAI_API_KEY=your-openai-api-key
 ```
 
 #### Meta/Facebook API
+
 ```env
 META_APP_ID=your-app-id
 META_APP_SECRET=your-app-secret
@@ -806,12 +890,14 @@ META_GRAPH_BASE_URL=https://graph.facebook.com
 ```
 
 #### Twitter API
+
 ```env
 TWITTER_CONSUMER_KEY=your-consumer-key
 TWITTER_CONSUMER_SECRETE=your-consumer-secret
 ```
 
 #### REST API
+
 ```env
 REST_API_URL=https://your-rest-api.com
 ```
@@ -819,6 +905,7 @@ REST_API_URL=https://your-rest-api.com
 ### Configuration Class
 
 All environment variables are accessed through `Config.EnvConfig` class, which:
+
 - Loads variables from `.env` file
 - Provides type-safe access
 - Organizes variables by category
@@ -838,23 +925,27 @@ All environment variables are accessed through `Config.EnvConfig` class, which:
 ### Installation Steps
 
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/VarunPatel-07/OrbitRMS-Backend.git
    cd OrbitRMS-Backend
    ```
 
 2. **Create Virtual Environment**
+
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 
 3. **Install Dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 4. **Set Up Environment Variables**
+
    ```bash
    cp .env.example .env  # If example exists
    # Edit .env with your configuration
@@ -879,12 +970,14 @@ All environment variables are accessed through `Config.EnvConfig` class, which:
 7. **Run the Application**
 
    **Option 1: Using local-run.sh**
+
    ```bash
    chmod +x local-run.sh
    ./local-run.sh
    ```
 
    **Option 2: Manual Start**
+
    ```bash
    uvicorn index:app --reload
    ```
@@ -897,6 +990,7 @@ All environment variables are accessed through `Config.EnvConfig` class, which:
 ### Database Migrations
 
 #### Development Environment
+
 ```bash
 cd migrations/development
 alembic upgrade head
@@ -905,6 +999,7 @@ alembic upgrade head
 ```
 
 #### Staging Environment
+
 ```bash
 cd migrations/staging
 alembic upgrade head
@@ -925,6 +1020,7 @@ isort .
 ### Pre-commit Hooks
 
 If pre-commit is configured:
+
 ```bash
 pre-commit install
 ```
@@ -959,6 +1055,7 @@ The project includes `vercel.json` for Vercel deployment:
 ```
 
 **Deployment Steps:**
+
 1. Install Vercel CLI: `npm i -g vercel`
 2. Login: `vercel login`
 3. Deploy: `vercel --prod`
@@ -968,11 +1065,13 @@ The project includes `vercel.json` for Vercel deployment:
 #### Using Docker Compose
 
 1. **Build and Run**
+
    ```bash
    docker compose up --build -d
    ```
 
 2. **View Logs**
+
    ```bash
    docker compose logs -f
    ```
@@ -1008,6 +1107,7 @@ docker run -p 8000:8000 --env-file .env orbitrms-backend
 ### Health Checks
 
 The application provides health check endpoints:
+
 - `GET /`: Full health check with database status
 - `GET /health`: Simple health status
 
@@ -1274,6 +1374,7 @@ pytest test/test_auth.py
 ### Support
 
 For issues, questions, or contributions:
+
 - **Email**: contact.varunpatel.dev@gmail.com
 - **GitHub**: [VarunPatel-07](https://github.com/VarunPatel-07)
 - **Website**: [https://varunpatel.vercel.app/](https://varunpatel.vercel.app/)
@@ -1289,6 +1390,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Changelog
 
 ### Version 1.0.0
+
 - Initial release
 - Core features implemented
 - Multi-tenant architecture
@@ -1302,6 +1404,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 **Last Updated**: 2024
 **Maintained by**: Varun Patel
-
-
-

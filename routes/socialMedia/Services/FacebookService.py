@@ -127,9 +127,7 @@ class FacebookService:
                         break
 
             if not pages:
-                raise ValueError(
-                    "No pages found. User may not be an admin of any pages or missing permissions."
-                )
+                raise ValueError("No pages found. User may not be an admin of any pages or missing permissions.")
 
             # Enhance page data with Instagram info
             enhanced_pages = []
@@ -183,9 +181,7 @@ class FacebookService:
             post_args = {"message": message, "url": media_urls}
             return graph.put_object(page_id, "photos", **post_args)
         else:
-            return self._post_multiple_images_to_facebook(
-                page_id, access_token, message, media_urls
-            )
+            return self._post_multiple_images_to_facebook(page_id, access_token, message, media_urls)
 
     def _post_multiple_images_to_facebook(
         self, page_id: str, access_token: str, message: str, media_urls: List[str]
@@ -197,9 +193,7 @@ class FacebookService:
 
         for image_url in media_urls:
 
-            response = graph.put_object(
-                parent_object=page_id, connection_name="photos", url=image_url, published=False
-            )
+            response = graph.put_object(parent_object=page_id, connection_name="photos", url=image_url, published=False)
             uploaded_photo_ids.append(response["id"])
 
         attached_media = [{"media_fbid": photo_id} for photo_id in uploaded_photo_ids]
@@ -208,15 +202,11 @@ class FacebookService:
 
         return graph.put_object(page_id, "feed", **post_args)
 
-    def post_to_instagram(
-        self, page_id: str, access_token: str, media_urls: List[str], caption: str
-    ) -> dict:
+    def post_to_instagram(self, page_id: str, access_token: str, media_urls: List[str], caption: str) -> dict:
         try:
             # Now First We Will Check For The Length Of The Image
             if len(media_urls) == 1:
-                return self._post_single_image_to_instagram(
-                    page_id, access_token, media_urls, caption
-                )
+                return self._post_single_image_to_instagram(page_id, access_token, media_urls, caption)
 
             else:
                 return self._post_carousel_to_instagram(page_id, access_token, media_urls, caption)
@@ -233,9 +223,7 @@ class FacebookService:
                     pass
             raise Exception(f"Instagram API error: {error_msg}")
 
-    def _post_single_image_to_instagram(
-        self, page_id: str, access_token: str, media_url: str, caption: str
-    ) -> dict:
+    def _post_single_image_to_instagram(self, page_id: str, access_token: str, media_url: str, caption: str) -> dict:
 
         instagram_base_url = f"{self.base_url}/{page_id}/media"
         params = {"image_url": media_url, "caption": caption, "access_token": access_token}
@@ -245,15 +233,11 @@ class FacebookService:
 
         creation_id = response.json().get("id")
 
-        return self._publish_instagram_media(
-            page_id=page_id, access_token=access_token, creation_id=creation_id
-        )
+        return self._publish_instagram_media(page_id=page_id, access_token=access_token, creation_id=creation_id)
 
         # Now As The Image IS Uploaded We Will Transfer That Image To The Publish Instagram Media
 
-    def _post_carousel_to_instagram(
-        self, page_id: str, access_token: str, media_urls: List[str], caption: str
-    ) -> dict:
+    def _post_carousel_to_instagram(self, page_id: str, access_token: str, media_urls: List[str], caption: str) -> dict:
         uploaded_media_ids = []
 
         instagram_base_url = f"{self.base_url}/{page_id}/media"
@@ -285,9 +269,7 @@ class FacebookService:
         response.raise_for_status()
         carousel_id = response.json().get("id")
 
-        return self._publish_instagram_media(
-            page_id=page_id, access_token=access_token, creation_id=carousel_id
-        )
+        return self._publish_instagram_media(page_id=page_id, access_token=access_token, creation_id=carousel_id)
 
     def _publish_instagram_media(self, page_id: str, access_token: str, creation_id):
 

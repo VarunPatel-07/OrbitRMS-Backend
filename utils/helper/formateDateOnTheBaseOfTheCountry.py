@@ -81,12 +81,7 @@ async def formateDateOnTheBaseOfTheCountry(country_code):
 
         # Replace date format characters with readable words
         date_format = date_format.replace("yyyy", "YYYY").replace("yy", "YY").replace("y", "Y")
-        date_format = (
-            date_format.replace("MMMM", "MMMM")
-            .replace("MMM", "MMM")
-            .replace("MM", "MM")
-            .replace("M", "M")
-        )
+        date_format = date_format.replace("MMMM", "MMMM").replace("MMM", "MMM").replace("MM", "MM").replace("M", "M")
         date_format = date_format.replace("dd", "DD").replace("d", "DD")
 
         return {"success": True, "dateFormat": separator.join(date_format.split())}

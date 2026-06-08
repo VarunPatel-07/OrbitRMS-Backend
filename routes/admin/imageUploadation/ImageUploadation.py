@@ -67,8 +67,7 @@ async def ImageUploadation(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -131,8 +130,7 @@ async def GetCloudUploadSignature(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
