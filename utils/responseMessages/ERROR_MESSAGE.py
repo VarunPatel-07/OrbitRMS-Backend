@@ -1,6 +1,3 @@
-from re import L
-from tkinter import NO
-
 from aiohttp.hdrs import LOCATION
 
 SIGN_IN_ERROR_MESSAGE = "Error accrued while signing in"
@@ -38,9 +35,7 @@ NO_MAINTENANCE_LOGS_FOUND = "No Maintenance Logs Found"
 PASSWORD_RESET_LIMIT_EXCEEDED = "Reset limit exceeded. Please wait."
 PASSWORD_RESET_LINK_INVALID = "This link is no longer valid. Please try again."
 PASSWORD_SAME_AS_OLD = "New password must be different from the old one."
-PASSWORD_RESET_IN_PROGRESS = (
-    "You're currently resetting your password. Complete it before logging in."
-)
+PASSWORD_RESET_IN_PROGRESS = "You're currently resetting your password. Complete it before logging in."
 
 # ==== Email Domain Error Messages ====
 EMAIL_DOMAIN_ALREADY_IN_USE = "The Provided Email Domain Is Already In Use"
@@ -251,7 +246,9 @@ ERROR_DURING_ORBIT_AI_CONVERSION = "An error occurred during The OrbitAi convers
 ERROR_WHILE_APPLYING_LEAVE = "error while Fetching The User Info"
 
 
-NO_LOCATION_CONFIG_ADDED = "No Location Config Added For This Organization Please Add Location Config To Enable Attendance Marking"
+NO_LOCATION_CONFIG_ADDED = (
+    "No Location Config Added For This Organization Please Add Location Config To Enable Attendance Marking"
+)
 
 ERROR_WHILE_FETCHING_LEAVE_BALANCE = "Error while Fetching Leave Balance The User Info"
 POST_WITH_THIS_ID_NOT_FOUND = "Post With This Id Not Found"
@@ -259,9 +256,7 @@ ERROR_WHILE_POSTING_POST = "error while Posting A Post"
 ERROR_WHILE_UPLOADING_IMAGES = "Error Accrued While Uploading Image"
 NO_LEAVE_TYPE_FOUND = "No Leave Type Found"
 
-NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE = (
-    "You are not authorized to manage this employee's leave request."
-)
+NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE = "You are not authorized to manage this employee's leave request."
 PLEASE_PROVIDE_APPROPRIATE_LEAVE_STATUS = "please provide appropriate leave status"
 LEAVE_BALANCE_NOT_FOUND = "Leave Balance Not Found"
 LEAVE_REQUEST_NOT_ALLOWED = "You can't update a leave that is rejected or cancelled"
@@ -277,11 +272,7 @@ OUT_OF_RANGE_ATTENDANCE_PUNCH = "You Are Out Of Range To Punch In/Out From This 
 ERROR_WHILE_FETCHING_ATTENDANCE_STATUS = "Error While Fetching Attendance Status For This User"
 
 NO_ACTIVE_ATTENDANCE_SESSION = "No Active Attendance Session Found For This User"
-CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND = (
-    "Can't Active Break Because Active Break Found For This User"
-)
+CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND = "Can't Active Break Because Active Break Found For This User"
 
 ACTIVE_SESSION_FOR_TODAY = "You have already completed your attendance for today"
-INSUFFICIENT_LEAVE_BALANCE = (
-    "Insufficient leave balance. You cannot apply for more than your available leaves."
-)
+INSUFFICIENT_LEAVE_BALANCE = "Insufficient leave balance. You cannot apply for more than your available leaves."

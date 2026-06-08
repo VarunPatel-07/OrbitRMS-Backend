@@ -1,5 +1,7 @@
+import asyncio
 import json
 
+import cloudinary
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -7,8 +9,10 @@ from fastapi import (
     HTTPException,
     Query,
     Request,
+    UploadFile,
     status,
 )
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
@@ -30,7 +34,105 @@ API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
 FRONTEND_URL = EnvConfig.FRONTEND_URL.strip()
 
+CLOUDINARY_API_SECRET = EnvConfig.CLOUDINARY_API_SECRET
+CLOUDINARY_API_KEY = EnvConfig.CLOUDINARY_API_KEY
+CLOUDINARY_CLOUD_NAME = EnvConfig.CLOUDINARY_CLOUD_NAME
+
 publicInquiryRouter = APIRouter(prefix="/public/v1/inquiries", tags=["clientInquires"])
+
+cloudinary.config(
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET,
+)
+
+
+async def upload_single_file(file: UploadFile):
+    file_bytes = await file.read()
+
+    result = await run_in_threadpool(
+        cloudinary.uploader.upload,
+        file_bytes,
+        resource_type="image",
+    )
+
+    return result["secure_url"]
+
+
+import json
+from fastapi import Request, HTTPException, status
+from starlette.datastructures import UploadFile as StarletteUploadFile
+
+
+async def parse_inquiry_payload(request: Request):
+    content_type = request.headers.get("content-type", "").lower()
+
+    if "application/json" in content_type:
+        try:
+            payload = await request.json()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Invalid JSON payload.",
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        if not isinstance(payload, dict):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "message": "JSON payload must be an object.",
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        return payload
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        payload = {}
+
+        for key, value in form.multi_items():
+            if isinstance(value, StarletteUploadFile):
+                # If same file field comes multiple times, store it as list
+                if key in payload:
+                    if isinstance(payload[key], list):
+                        payload[key].append(value)
+                    else:
+                        payload[key] = [payload[key], value]
+                else:
+                    payload[key] = value
+
+            else:
+                # Convert empty strings to None if you want cleaner validation
+                if value == "":
+                    parsed_value = None
+                else:
+                    try:
+                        parsed_value = json.loads(value)
+                    except Exception:
+                        parsed_value = value
+
+                # If same normal field comes multiple times, store it as list
+                if key in payload:
+                    if isinstance(payload[key], list):
+                        payload[key].append(parsed_value)
+                    else:
+                        payload[key] = [payload[key], parsed_value]
+                else:
+                    payload[key] = parsed_value
+
+        return payload
+
+    raise HTTPException(
+        status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+        detail={
+            "message": "Unsupported content type. Use application/json or multipart/form-data.",
+            "success": SUCCESS.FALSE,
+        },
+    )
 
 
 @publicInquiryRouter.post(path="/submit", status_code=status.HTTP_200_OK)
@@ -39,12 +141,14 @@ async def submit_inquiry(
     request: Request,
     db: db_dependencies,
     background_task: BackgroundTasks,
-    payload: dict,
     api_key: str = Query(..., alias="api_key"),
     api_secret: str = Query(..., alias="api_secret"),
     form_id: str = Query(..., alias="form_id"),
 ):
     try:
+        payload = await parse_inquiry_payload(request)
+
+        print("payload", payload)
 
         client_inquires = db.query(Models.ClientInquires).filter(Models.ClientInquires.api_key == api_key).first()
         if not client_inquires:
@@ -172,9 +276,11 @@ async def submit_inquiry(
             if field.is_required_field
         ]
 
-        missing_fields = [field for field in required_fields if field["field_name"] not in payload]
+        missing_required_fields = [
+            field for field in required_fields if field["field_name"] not in payload
+        ]
 
-        if missing_fields:
+        if missing_required_fields:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={
@@ -219,10 +325,27 @@ async def submit_inquiry(
                 },
             )
 
+        inquiry_data = {}
+        for field in required_fields:
+            field_name = field["field_name"]
+            field_type = field["type"]
+
+            value = payload.get(field_name)
+
+            if field_type == "file":
+                print("file", value)
+                files_value = value if isinstance(value, list) else [value]
+                uploaded_files = await asyncio.gather(
+                    *(upload_single_file(file) for file in files_value)
+                )
+                inquiry_data[field_name] = uploaded_files
+            else:
+                inquiry_data[field_name] = value
+
         client_inquiry_data = Models.ClientInquiresData(
             form_id=form_schema.form_id,
             form_name=form_schema.form_name,
-            data=payload,
+            data=inquiry_data,
             client_inquire_id=client_inquires.id,
         )
 

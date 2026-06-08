@@ -72,7 +72,7 @@ app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
 
 app.add_middleware(CustomCorsModule)
-
+ 
 
 # Create database tables (consider using migrations instead)
 BaseModel.metadata.create_all(bind=DATABASE_ENGINE)

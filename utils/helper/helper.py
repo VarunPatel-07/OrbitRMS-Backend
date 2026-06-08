@@ -4,6 +4,7 @@ import json
 import math
 import os
 import random
+import re
 import secrets
 import string
 from datetime import date, datetime, timezone
@@ -16,6 +17,7 @@ from fastapi import HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
@@ -23,6 +25,45 @@ from database.Database import db_dependencies
 load_dotenv(override=True)
 
 ENCRYPTION_KEY = EnvConfig.ENCRYPTION_KEY.encode()
+
+
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
+ALLOWED_FILE_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".odt",
+    ".ods",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".rtf",
+    ".txt",
+}
+
+
+ALLOWED_FILE_TYPES = {
+    "application/pdf",
+    # Word
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    # OpenDocument
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    # PowerPoint
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    # Excel
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # RTF / TXT
+    "application/rtf",
+    "text/rtf",
+    "text/plain",
+}
+
+
+MAX_FILE_SIZE = 2 * 1024 * 1024
 
 
 def generate_full_name(first_name: str, last_name: str, middle_name: str = None) -> str:
@@ -254,7 +295,76 @@ def generate_api_secrets_api_key():
     return api_key, api_secret
 
 
+def is_valid_email(value):
+    if not isinstance(value, str):
+        return False
+
+    value = value.strip()
+
+    if not value:
+        return False
+
+    return bool(EMAIL_REGEX.match(value))
+
+
+def get_file_extension(filename: str):
+    return os.path.splitext(filename.lower())[1]
+
+
+def get_upload_file_size(file: StarletteUploadFile):
+    file.file.seek(0, os.SEEK_END)
+    size = file.file.tell()
+    file.file.seek(0)
+    return size
+
+
+def is_valid_file(value):
+    def validate_single_file(file):
+        if isinstance(file, StarletteUploadFile):
+            if not file.filename:
+                return False
+
+            file_extension = get_file_extension(file.filename)
+
+            if file_extension not in ALLOWED_FILE_EXTENSIONS:
+                return False
+
+            if file.content_type and file.content_type not in ALLOWED_FILE_TYPES:
+                return False
+
+            file_size = get_upload_file_size(file)
+
+            if file_size > MAX_FILE_SIZE:
+                return False
+            return True
+
+        if isinstance(file, dict):
+            filename = file.get("original_filename") or file.get("filename")
+            content_type = file.get("content_type")
+
+            if not filename:
+                return False
+
+            file_extension = get_file_extension(filename)
+
+            if file_extension not in ALLOWED_FILE_EXTENSIONS:
+                return False
+
+            if content_type and content_type not in ALLOWED_FILE_TYPES:
+                return False
+
+            return True
+
+        return False
+
+    if isinstance(value, list):
+        return len(value) > 0 and all(validate_single_file(file) for file in value)
+
+    return validate_single_file(value)
+
+
 def is_valid_type(value, field_type):
+    print(value, field_type)
     try:
         if field_type == "string":
             return isinstance(value, str)
@@ -270,6 +380,10 @@ def is_valid_type(value, field_type):
             return isinstance(value, list) and all(isinstance(item, str) for item in value)
         elif field_type == "array of object":
             return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+        elif field_type == "email":
+            return is_valid_email(value)
+        elif field_type == "file":
+            return is_valid_file(value)
 
         return False
     except:

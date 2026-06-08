@@ -115,6 +115,7 @@ async def Fetch_Client_Inquires(
                     "id": _data.id,
                     "form_id": _data.form_id,
                     "form_name": _data.form_name,
+                    "created_at": _data.created_at,
                 }
                 for _data in query_data
             ],
