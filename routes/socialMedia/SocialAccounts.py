@@ -16,19 +16,20 @@ from fastapi import (
 )
 from sqlalchemy import and_, asc, desc
 from sqlalchemy.inspection import inspect
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
 from jobs.backgroundTasks.socialMedia.SocialMediaModuleBackground import (
     HandelDeletingPostFromSocialMediaAccount,
     HandelPostingToSocialMediaAccount,
 )
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.pydantic.SocialMediaModule.SocialMediaModule import (
     SocialMediaPostBackgroundTaskData,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.helper import model_to_filtered_dict
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
@@ -46,11 +47,7 @@ async def Fetch_All_The_Linked_Account(
     request: Request, db: db_dependencies, user: dict = Depends(UserAuthenticatorMiddleware)
 ):
     try:
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -114,9 +111,7 @@ async def Post_Content_To_Social_Media(
         db.add(post_data)
         db.commit()
 
-        background_task_data = SocialMediaPostBackgroundTaskData(
-            caption=caption, uploaded_file_url=images
-        )
+        background_task_data = SocialMediaPostBackgroundTaskData(caption=caption, uploaded_file_url=images)
 
         background_task.add_task(
             HandelPostingToSocialMediaAccount,
@@ -165,11 +160,7 @@ async def Fetch_All_Created_Scheduled_Posts(
                 },
             )
 
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -222,11 +213,7 @@ async def Post_Content_To_Social_Media(
     id: str = Query(..., alias="id"),
 ):
     try:
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -291,9 +278,7 @@ async def handel_disconnecting_social_media_account(
     user: dict = Depends(UserAuthenticatorMiddleware),
     account_id: str = Query(..., alias="id"),
 ):
-    organization = (
-        db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
-    )
+    organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
     if not organization:
         raise HTTPException(
@@ -344,9 +329,7 @@ async def handel_disconnecting_social_media_account(
     user: dict = Depends(UserAuthenticatorMiddleware),
     account_id: str = Query(..., alias="id"),
 ):
-    organization = (
-        db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
-    )
+    organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
     if not organization:
         raise HTTPException(

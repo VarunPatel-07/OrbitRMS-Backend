@@ -169,9 +169,7 @@ def project_status_initial_data_seeder(db, organization_id: str):
 
                 try:
                     project_status_data = ProjectStatus(**each_data)
-                    project_status_data_seeder_helper_function(
-                        db, organization_id, project_status_data
-                    )
+                    project_status_data_seeder_helper_function(db, organization_id, project_status_data)
 
                 except HTTPException as http_exception:
                     raise http_exception

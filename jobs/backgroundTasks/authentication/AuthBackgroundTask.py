@@ -31,9 +31,7 @@ def HandelUserSignUpInBackGround(
 ):
     db: Session = SessionLocal()
 
-    find_organization = (
-        db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
-    )
+    find_organization = db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
 
     if find_organization:
 

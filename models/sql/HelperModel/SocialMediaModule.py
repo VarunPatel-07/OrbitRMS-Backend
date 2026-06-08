@@ -37,13 +37,9 @@ class SocialMediaPosts(BaseModel):
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     caption = Column(Text, nullable=False)
     media_urls = Column(Text, nullable=True)
-    type = Column(
-        Enum("default", "scheduled", name="post_type_enum"), nullable=False, default="default"
-    )
+    type = Column(Enum("default", "scheduled", name="post_type_enum"), nullable=False, default="default")
 
-    status = Column(
-        Enum("queued", "scheduled", "posted", "cancelled", name="post_status_enum"), nullable=False
-    )
+    status = Column(Enum("queued", "scheduled", "posted", "cancelled", name="post_status_enum"), nullable=False)
     post_logs = Column(Text, nullable=True, default=None)
 
     selected_platforms = Column(Text, nullable=True)

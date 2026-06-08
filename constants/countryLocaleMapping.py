@@ -172,19 +172,13 @@ country_locale_mapping = {
 
 
 dependent_date_format = [
-    {
-        "GS": {"follows": "UK", "date_format": "DD/MM/YYYY"}
-    },  # South Georgia and the South Sandwich Islands
+    {"GS": {"follows": "UK", "date_format": "DD/MM/YYYY"}},  # South Georgia and the South Sandwich Islands
     {"PR": {"follows": "US", "date_format": "MM/DD/YYYY"}},  # Puerto Rico
     {"VI": {"follows": "US", "date_format": "MM/DD/YYYY"}},  # US Virgin Islands
     {"GU": {"follows": "US", "date_format": "MM/DD/YYYY"}},  # Guam
     {"MP": {"follows": "US", "date_format": "MM/DD/YYYY"}},  # Northern Mariana Islands
-    {
-        "HK": {"follows": "China (historical UK influence)", "date_format": "DD/MM/YYYY"}
-    },  # Hong Kong
-    {
-        "MO": {"follows": "China (historical Portuguese influence)", "date_format": "DD/MM/YYYY"}
-    },  # Macau
+    {"HK": {"follows": "China (historical UK influence)", "date_format": "DD/MM/YYYY"}},  # Hong Kong
+    {"MO": {"follows": "China (historical Portuguese influence)", "date_format": "DD/MM/YYYY"}},  # Macau
     {"RE": {"follows": "France", "date_format": "DD/MM/YYYY"}},  # Réunion
     {"PF": {"follows": "France", "date_format": "DD/MM/YYYY"}},  # French Polynesia
     {"NC": {"follows": "France", "date_format": "DD/MM/YYYY"}},  # New Caledonia
@@ -206,9 +200,7 @@ dependent_date_format = [
     {"GG": {"follows": "UK", "date_format": "DD/MM/YYYY"}},  # Guernsey
     {"IM": {"follows": "UK", "date_format": "DD/MM/YYYY"}},  # Isle of Man
     {"JE": {"follows": "UK", "date_format": "DD/MM/YYYY"}},  # Jersey
-    {
-        "SH": {"follows": "UK", "date_format": "DD/MM/YYYY"}
-    },  # Saint Helena, Ascension and Tristan da Cunha
+    {"SH": {"follows": "UK", "date_format": "DD/MM/YYYY"}},  # Saint Helena, Ascension and Tristan da Cunha
     {"FK": {"follows": "UK", "date_format": "DD/MM/YYYY"}},  # Falkland Islands
     {"IO": {"follows": "UK", "date_format": "DD/MM/YYYY"}},  # British Indian Ocean Territory
     {"VG": {"follows": "UK", "date_format": "DD/MM/YYYY"}},  # British Virgin Islands

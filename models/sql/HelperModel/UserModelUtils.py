@@ -59,9 +59,7 @@ class EmployeeInfo(BaseModel):
     department = Column(String(255), nullable=False)
     designation = Column(String(255), nullable=False)
     joining_date = Column(DateTime)
-    employee_role_id = Column(
-        CHAR(36), ForeignKey("config_role_module.id"), nullable=True, default=None
-    )
+    employee_role_id = Column(CHAR(36), ForeignKey("config_role_module.id"), nullable=True, default=None)
     employee_role = relationship(
         "ConfigRoleModule",
         back_populates="associated_employees",
@@ -73,9 +71,7 @@ class EmployeeInfo(BaseModel):
 
     reporting_to_id = Column(CHAR(36), ForeignKey("users.id"), nullable=True, default=None)
 
-    reporting_manager = relationship(
-        "User", back_populates="reporting_employees", foreign_keys=[reporting_to_id]
-    )
+    reporting_manager = relationship("User", back_populates="reporting_employees", foreign_keys=[reporting_to_id])
 
 
 class EmergencyContact(BaseModel):
@@ -208,9 +204,7 @@ class AttendanceLeavesModule(BaseModel):
     __tablename__ = "attendance_leave_module"
 
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    leave_type_id = Column(
-        CHAR(36), ForeignKey("organization_leaves_settings.id"), nullable=False, index=True
-    )
+    leave_type_id = Column(CHAR(36), ForeignKey("organization_leaves_settings.id"), nullable=False, index=True)
     leave_type = relationship("LeavesSettings", back_populates="leaves", uselist=False)
     start_date = Column(String(255), nullable=False)
     start_half = Column(Enum("first_half", "second_half", name="half_day_enum"), nullable=False)
@@ -218,7 +212,7 @@ class AttendanceLeavesModule(BaseModel):
     is_planned = Column(Boolean, nullable=False, default=True)
 
     status = Column(
-        Enum("pending", "approved", "cancelled", name="leave_status_enum"),
+        Enum("pending", "approved", "rejected", "cancelled", name="leave_status_enum"),
         nullable=False,
         default="pending",
     )
@@ -240,9 +234,7 @@ class AttendanceLeavesModule(BaseModel):
     )
     user = relationship("User", foreign_keys=[user_id], back_populates="applied_leaves")
 
-    notify_to_users = relationship(
-        "User", secondary="attendance_leave_notify", back_populates="notifying_users"
-    )
+    notify_to_users = relationship("User", secondary="attendance_leave_notify", back_populates="notifying_users")
 
     # created At UpdatedAt Field
     created_by = Column(JSON, nullable=True)
@@ -253,4 +245,81 @@ class AttendanceLeavesModule(BaseModel):
         default=None,
         onupdate=lambda: datetime.now(ZoneInfo("UTC")),
         nullable=True,
+    )
+
+
+class AttendancePunchInOutModule(BaseModel):
+    __tablename__ = "attendance_punch_in_out_module"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    user_id = Column(
+        CHAR(36),
+        ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
+    user = relationship("User", back_populates="attendance")
+
+    punch_in_time = Column(DateTime, nullable=False)
+    punch_out_time = Column(DateTime, nullable=True, default=None)
+
+    status = Column(
+        Enum(
+            "active",
+            "completed",
+            "system_ended",
+            name="attendance_punch_in_out_module_status_enum",
+        ),
+        default="active",
+    )
+
+    punch_in_coordinates = Column(Text, nullable=False)
+    punch_out_coordinates = Column(Text, nullable=True, default=None)
+    is_mislinious = Column(Boolean, nullable=False, default=False)
+
+    total_effective_minutes = Column(Integer, default=0)
+    total_break_minutes = Column(Integer, default=0)
+    total_gross_minutes = Column(Integer, default=0)
+
+    is_work_from_home = Column(Boolean, nullable=False, default=False)
+
+    attendance_breaks = relationship(
+        "AttendanceBreakModel", back_populates="session", cascade="all, delete", uselist=True
+    )
+    is_regularize_required = Column(Boolean, nullable=False, default=False)
+    session_completed = Column(Boolean, nullable=False, default=False)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=None,
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
+
+
+class AttendanceBreakModel(BaseModel):
+    __tablename__ = "attendance_break_model"
+
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    session_id = Column(
+        CHAR(36),
+        ForeignKey("attendance_punch_in_out_module.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session = relationship("AttendancePunchInOutModule", back_populates="attendance_breaks")
+
+    break_start_time = Column(DateTime, nullable=False)
+    break_end_time = Column(DateTime, nullable=True, default=None)
+
+    total_break_minutes = Column(Float, default=0)
+
+    punch_in_coordinates = Column(Text, nullable=True, default=None)
+    punch_out_coordinates = Column(Text, nullable=True, default=None)
+    is_mislinious = Column(Boolean, nullable=False, default=False)
+
+    status = Column(
+        Enum("active", "completed", "system_ended", name="break_status_enum"),
+        default="active",
     )

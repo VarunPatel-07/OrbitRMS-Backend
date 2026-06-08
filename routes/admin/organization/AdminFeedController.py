@@ -15,21 +15,20 @@ from fastapi import (
 )
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import joinedload
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.Database import db_dependencies
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.helper import filter_fields, model_to_filtered_dict
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
-adminFeedControl = APIRouter(
-    prefix="/app/v1/admin/organization-updates", tags=["organization-updates"]
-)
+adminFeedControl = APIRouter(prefix="/app/v1/admin/organization-updates", tags=["organization-updates"])
 
 API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 
@@ -81,8 +80,7 @@ async def AddEditFeedPostController(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -130,9 +128,7 @@ async def AddEditFeedPostController(
                 )
 
             existing_post = (
-                db.query(Models.AdminOrganizationUpdates)
-                .filter(Models.AdminOrganizationUpdates.id == id)
-                .first()
+                db.query(Models.AdminOrganizationUpdates).filter(Models.AdminOrganizationUpdates.id == id).first()
             )
 
             if not existing_post:
@@ -187,9 +183,7 @@ async def FetchTheOrganizationPost(
     request: Request,
     db: db_dependencies,
     order: Optional[str] = Query(None, description="This Is An Optional Field", alias="order"),
-    field_name: Optional[str] = Query(
-        None, description="This Is An Optional Field", alias="field_name"
-    ),
+    field_name: Optional[str] = Query(None, description="This Is An Optional Field", alias="field_name"),
     token: str = Depends(verify_token),
 ):
     try:
@@ -217,8 +211,7 @@ async def FetchTheOrganizationPost(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -328,19 +321,14 @@ async def HandelDeletePostFunction(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": ERROR_MESSAGE.INVALID_SESSION, "success": SUCCESS.FALSE},
             )
 
-        post = (
-            db.query(Models.AdminOrganizationUpdates)
-            .filter(Models.AdminOrganizationUpdates.id == id)
-            .first()
-        )
+        post = db.query(Models.AdminOrganizationUpdates).filter(Models.AdminOrganizationUpdates.id == id).first()
 
         if not post:
             raise HTTPException(

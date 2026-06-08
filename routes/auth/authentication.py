@@ -18,9 +18,9 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, func, or_
 from user_agents import parse as parse_user_agent
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
-from constants.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS
+from constants.constant import MAX_RESET_ATTEMPTS, RESET_TTL_SECONDS, SUCCESS
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
 from jobs.backgroundTasks.authentication.AuthBackgroundTask import (
@@ -31,6 +31,7 @@ from mailer.HtmlEmailBody import (
     ResetPasswordInstructionHtmlBody,
     VerifyEmailHtmlBody,
 )
+from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
 from models.pydantic.authentication.AuthenticationModels import (
@@ -46,7 +47,6 @@ from models.pydantic.HelperPydanticModel import (
     VerifyEmailPydanticBody,
 )
 from models.sql import Models
-from middleware.RateLimiting import limiter
 from utils.helper.createModelInstance import cerate_model_instance
 from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
@@ -124,16 +124,12 @@ async def create_organization(
 
         db.add(create_org)
         db.commit()
-        background_task.add_task(
-            HandelUserSignUpInBackGround, create_org.id, organization_info, background_task
-        )
+        background_task.add_task(HandelUserSignUpInBackGround, create_org.id, organization_info, background_task)
 
         return {
             "success": SUCCESS.TRUE,
             "title": SUCCESS_MESSAGE.ORGANIZATION_CREATED,
-            "message": SUCCESS_MESSAGE.ORGANIZATION_CREATED_DETAIL.format(
-                email=organization_info.primary_email
-            ),
+            "message": SUCCESS_MESSAGE.ORGANIZATION_CREATED_DETAIL.format(email=organization_info.primary_email),
         }
     except HTTPException as http_exception:
         raise http_exception
@@ -166,11 +162,7 @@ async def create_password(
 
         user = db.query(Models.User).filter(Models.User.id == decrypted_user_id).first()
 
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not user:
             raise HTTPException(
@@ -214,15 +206,11 @@ async def create_password(
                 },
             )
 
-        compare_token = verify_password(
-            plain_password=decrypted_token, hashed_password=reset_password_token
-        )
+        compare_token = verify_password(plain_password=decrypted_token, hashed_password=reset_password_token)
 
         if compare_token:
 
-            check_password = verify_password(
-                plain_password=password.password, hashed_password=user.password
-            )
+            check_password = verify_password(plain_password=password.password, hashed_password=user.password)
 
             if check_password:
                 raise HTTPException(
@@ -286,8 +274,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
                 "message": ERROR_MESSAGE.PASSWORD_RESET_LIMIT_EXCEEDED,
                 "success": SUCCESS.FALSE,
                 "data": {
-                    "expiry_time": datetime.now(ZoneInfo("UTC"))
-                    + timedelta(seconds=RESET_TTL_SECONDS),
+                    "expiry_time": datetime.now(ZoneInfo("UTC")) + timedelta(seconds=RESET_TTL_SECONDS),
                 },
             }
 
@@ -307,9 +294,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
                 detail={"message": ERROR_MESSAGE.USER_NOT_FOUND, "success": SUCCESS.FALSE},
             )
 
-        check_password = verify_password(
-            plain_password=user_info.password, hashed_password=user.password
-        )
+        check_password = verify_password(plain_password=user_info.password, hashed_password=user.password)
 
         if not check_password:
             raise HTTPException(
@@ -322,11 +307,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
         await cache_database.delete(cache_key)
 
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
 
         if not organization:
             raise HTTPException(
@@ -408,9 +389,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
                 "is_bot": user_agent.is_bot,
                 "fingerprint": hash_device_fingerprint,
             }
-            user_sessions = cerate_model_instance(
-                data=device_info, model=Models.Sessions, fields=["-user_id"]
-            )
+            user_sessions = cerate_model_instance(data=device_info, model=Models.Sessions, fields=["-user_id"])
             user_sessions.user_id = user.id
             user_sessions.user_location_info = json.dumps(user_info.user_position)
             db.add(user_sessions)
@@ -490,9 +469,7 @@ async def fetch_sessions(request: Request, db: db_dependencies, token: str = Dep
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": (
-                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE
-                        if user.account_status
-                        else ERROR_MESSAGE.USER_NOT_FOUND
+                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE if user.account_status else ERROR_MESSAGE.USER_NOT_FOUND
                     ),
                     "success": SUCCESS.FALSE,
                 },
@@ -589,9 +566,7 @@ async def fetch_sessions(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": (
-                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE
-                        if user.account_status
-                        else ERROR_MESSAGE.USER_NOT_FOUND
+                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE if user.account_status else ERROR_MESSAGE.USER_NOT_FOUND
                     ),
                     "success": SUCCESS.FALSE,
                 },
@@ -686,9 +661,7 @@ def build_sub_modules(sub_modules):
                 }
                 for perm in sub_module.permissions
             ],
-            "sub_modules": (
-                build_sub_modules(sub_module.sub_modules) if sub_module.sub_modules else []
-            ),
+            "sub_modules": (build_sub_modules(sub_module.sub_modules) if sub_module.sub_modules else []),
         }
         sub_modules_data.append(sub_dict)
 
@@ -739,9 +712,7 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
                 .joinedload(Models.RoleAssociatedPermissionModule.sub_modules)
                 .joinedload(Models.RoleAssociatedPermissionModule.permissions),
                 joinedload(Models.User.organization).joinedload(Models.Organization.general_info),
-                joinedload(Models.User.organization).joinedload(
-                    Models.Organization.organization_settings
-                ),
+                joinedload(Models.User.organization).joinedload(Models.Organization.organization_settings),
             )
             .filter(Models.User.id == user_id)
             .first()
@@ -802,9 +773,7 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
 
         permissions_data = []
         if user.employee_info and user.employee_info.employee_role:
-            permissions_data = build_permission_tree(
-                user.employee_info.employee_role.associated_permissions
-            )
+            permissions_data = build_permission_tree(user.employee_info.employee_role.associated_permissions)
 
         return {
             "message": SUCCESS_MESSAGE.USER_VERIFIED_SUCCESSFULLY,
@@ -812,16 +781,12 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
             "data": {
                 "user": {
                     "employee_info": model_to_filtered_dict(user.employee_info),
-                    "personal_info": (
-                        model_to_filtered_dict(user.personal_info) if user.personal_info else None
-                    ),
+                    "personal_info": (model_to_filtered_dict(user.personal_info) if user.personal_info else None),
                 },
                 "organization": {
                     "id": organization.id,
                     "general_info": (
-                        model_to_filtered_dict(organization.general_info)
-                        if organization.general_info
-                        else None
+                        model_to_filtered_dict(organization.general_info) if organization.general_info else None
                     ),
                     "organization_settings": (
                         model_to_filtered_dict(organization.organization_settings)
@@ -944,9 +909,7 @@ async def HandelLogoutApi(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": (
-                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE
-                        if user.account_status
-                        else ERROR_MESSAGE.USER_NOT_FOUND
+                        ERROR_MESSAGE.SIGN_IN_ACCOUNT_INACTIVE if user.account_status else ERROR_MESSAGE.USER_NOT_FOUND
                     ),
                     "success": SUCCESS.FALSE,
                 },
@@ -1018,19 +981,14 @@ async def HandelPasswordReset(
                 "message": ERROR_MESSAGE.PASSWORD_RESET_LIMIT_EXCEEDED,
                 "success": SUCCESS.FALSE,
                 "data": {
-                    "expiry_time": datetime.now(ZoneInfo("UTC"))
-                    + timedelta(seconds=RESET_TTL_SECONDS),
+                    "expiry_time": datetime.now(ZoneInfo("UTC")) + timedelta(seconds=RESET_TTL_SECONDS),
                 },
             }
 
         if count == 1:
             await cache_database.expire(cache_key, RESET_TTL_SECONDS)
 
-        employee_info = (
-            db.query(Models.EmployeeInfo)
-            .filter(Models.EmployeeInfo.employee_email == data.email)
-            .first()
-        )
+        employee_info = db.query(Models.EmployeeInfo).filter(Models.EmployeeInfo.employee_email == data.email).first()
         if not employee_info:
 
             count = count + 1
@@ -1096,9 +1054,7 @@ async def HandelPasswordReset(
 
 @authRoutes.get("/maintenance/check-maintenance-mode")
 @limiter.limit(API_RATE_LIMITING)
-async def Check_For_The_Maintenance_Mode(
-    request: Request, db: db_dependencies, token: str = Depends(verify_token)
-):
+async def Check_For_The_Maintenance_Mode(request: Request, db: db_dependencies, token: str = Depends(verify_token)):
     try:
         if not token:
             raise HTTPException(
@@ -1167,11 +1123,7 @@ async def Check_For_The_Maintenance_Mode(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        organization = (
-            db.query(Models.Organization)
-            .filter(Models.Organization.id == user.organization_id)
-            .first()
-        )
+        organization = db.query(Models.Organization).filter(Models.Organization.id == user.organization_id).first()
         if not organization or not organization.status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

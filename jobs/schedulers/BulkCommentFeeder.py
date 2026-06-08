@@ -30,11 +30,7 @@ async def BulkCommentFeeder(db: db_dependencies):
             if cached_data:
                 await cache_database.delete(cache_data_key)
 
-            post = (
-                db.query(Models.OrganizationUpdates)
-                .filter(Models.OrganizationUpdates.id == post_id)
-                .first()
-            )
+            post = db.query(Models.OrganizationUpdates).filter(Models.OrganizationUpdates.id == post_id).first()
             if post:
 
                 db.add(

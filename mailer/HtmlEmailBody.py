@@ -75,7 +75,7 @@ def ResetPasswordHtmlBody(url: str):
 def ResetPasswordInstructionHtmlBody(data: NewClientInquiryMailPydanticBody):
 
     base_url = os.path.dirname(__file__)
-    path = os.path.join(base_url, "html", "rest-password-instruction.html")
+    path = os.path.join(base_url, "html", "reset-password-instruction.html")
     with open(path, "r") as file:
         html_content = file.read()
     html_content = (
@@ -251,9 +251,7 @@ def format_client_details(client_details: dict) -> str:
     return html
 
 
-def NewClientInquiryAccruedMail(
-    url: str, organization_name: str, organization_logo: str, client_details: dict
-):
+def NewClientInquiryAccruedMail(url: str, organization_name: str, organization_logo: str, client_details: dict):
 
     base_url = os.path.dirname(__file__)
     path = os.path.join(base_url, "html", "new-client-inquiry-mail.html")

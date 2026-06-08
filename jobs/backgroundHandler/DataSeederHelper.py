@@ -60,11 +60,7 @@ def recursive_creation_helper(
 
 def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPermission):
 
-    config_module = (
-        db.query(Models.ConfigModule)
-        .filter(Models.ConfigModule.organization_id == organization_id)
-        .first()
-    )
+    config_module = db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == organization_id).first()
     if not config_module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -83,9 +79,7 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
     db.flush()
 
     for module in data.permission_modules:
-        permission_module = recursive_creation_helper(
-            module, db, role_module_id=config_role_module.id
-        )
+        permission_module = recursive_creation_helper(module, db, role_module_id=config_role_module.id)
 
         config_role_module.associated_permissions.append(permission_module)
 
@@ -96,11 +90,7 @@ def roles_permission_data_seeder_helper(db, organization_id: str, data: RolesPer
 
 def designation_data_seeder_helper_function(db, organization_id: str, data: Designations):
 
-    config_module = (
-        db.query(Models.ConfigModule)
-        .filter(Models.ConfigModule.organization_id == organization_id)
-        .first()
-    )
+    config_module = db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == organization_id).first()
 
     if not config_module:
         raise HTTPException(
@@ -123,11 +113,7 @@ def designation_data_seeder_helper_function(db, organization_id: str, data: Desi
 
 def project_status_data_seeder_helper_function(db, organization_id: str, data: ProjectStatus):
 
-    config_module = (
-        db.query(Models.ConfigModule)
-        .filter(Models.ConfigModule.organization_id == organization_id)
-        .first()
-    )
+    config_module = db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == organization_id).first()
 
     if not config_module:
         raise HTTPException(
@@ -151,11 +137,7 @@ def project_status_data_seeder_helper_function(db, organization_id: str, data: P
 
 def department_data_seeder_helper_function(db, organization_id: str, data: Department):
 
-    config_module = (
-        db.query(Models.ConfigModule)
-        .filter(Models.ConfigModule.organization_id == organization_id)
-        .first()
-    )
+    config_module = db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == organization_id).first()
 
     if not config_module:
         raise HTTPException(
@@ -182,11 +164,7 @@ def client_form_filed_data_seeder_helper_function(
     form_schema_data: InquiryFormSchemaSchemaModel,
     form_fields_arr: List[ClientFormSchemaModel],
 ):
-    config_module = (
-        db.query(Models.ConfigModule)
-        .filter(Models.ConfigModule.organization_id == organization_id)
-        .first()
-    )
+    config_module = db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == organization_id).first()
 
     if not config_module:
         raise HTTPException(

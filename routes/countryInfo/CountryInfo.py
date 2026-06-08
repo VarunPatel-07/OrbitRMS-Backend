@@ -7,14 +7,15 @@ import httpx
 import requests
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, Request, status
-from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
-from constants.constant import SUCCESS
+
 from config.EnvConfig import EnvConfig
+from constants.constant import SUCCESS
 from database.CacheDatabase import cache_database
 from middleware.RateLimiting import limiter
 from utils.helper.formateDateOnTheBaseOfTheCountry import (
     formateDateOnTheBaseOfTheCountry,
 )
+from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
 load_dotenv(override=True)
 
@@ -58,9 +59,7 @@ async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="
 
         if cached_data:
             cached_Data = json.loads(cached_data)
-            cached_sorted_data = sorted(
-                cached_Data, key=lambda x: x["country_name"], reverse=(order.lower() == "desc")
-            )
+            cached_sorted_data = sorted(cached_Data, key=lambda x: x["country_name"], reverse=(order.lower() == "desc"))
             return {
                 "message": SUCCESS_MESSAGE.COUNTRY_INFO_FETCHED_SUCCESSFULLY,
                 "success": SUCCESS.TRUE,
@@ -92,9 +91,7 @@ async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="
                 }
                 countryArray.append(refinedObj)
 
-            sortedData = sorted(
-                countryArray, key=lambda x: x["country_name"], reverse=(order.lower() == "desc")
-            )
+            sortedData = sorted(countryArray, key=lambda x: x["country_name"], reverse=(order.lower() == "desc"))
 
             await cache_database.set(cache_data_key, json.dumps(sortedData), ex=30 * 24 * 3600)
             return {
@@ -154,9 +151,7 @@ async def GetCountryInfo(
         states_data = await fetch_data(country_url)
 
         if "geonames" not in states_data or not states_data["geonames"]:
-            new_country_url = (
-                f"http://api.geonames.org/searchJSON?country={country}&username={username}"
-            )
+            new_country_url = f"http://api.geonames.org/searchJSON?country={country}&username={username}"
             states_data = await fetch_data(new_country_url)
 
             if "geonames" not in states_data or not states_data["geonames"]:
@@ -176,10 +171,7 @@ async def GetCountryInfo(
 
             if any(ord(char) > 127 for char in state_name):
                 formatted_state_name = (
-                    unicodedata.normalize("NFD", state_name)
-                    .encode("ascii", "ignore")
-                    .decode("utf-8")
-                    .lower()
+                    unicodedata.normalize("NFD", state_name).encode("ascii", "ignore").decode("utf-8").lower()
                 )
             else:
                 formatted_state_name = state_name.lower()
@@ -253,10 +245,7 @@ async def GetStateInfo(
 
             if any(ord(char) > 127 for char in city_name):
                 formatted_city_name = (
-                    unicodedata.normalize("NFD", city_name)
-                    .encode("ascii", "ignore")
-                    .decode("utf-8")
-                    .lower()
+                    unicodedata.normalize("NFD", city_name).encode("ascii", "ignore").decode("utf-8").lower()
                 )
             else:
                 formatted_city_name = city_name.lower()
@@ -361,7 +350,11 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
         cache_data = await cache_database.get(cache_data_key)
         if cache_data:
             sorted_cached_data = json.loads(cache_data)
-            return {"message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY, "success": SUCCESS.TRUE, "data": sorted_cached_data}
+            return {
+                "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
+                "success": SUCCESS.TRUE,
+                "data": sorted_cached_data,
+            }
 
         response = await fetch_data(url=REST_API_URL)
 
@@ -398,7 +391,11 @@ async def fetchAllTheCountryData(request: Request, order: str = Query("asc", ali
         data.sort(key=lambda x: x["country_name"], reverse=reverse)
 
         await cache_database.set(cache_data_key, json.dumps(data), ex=30 * 24 * 3600)
-        return {"message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY, "success": SUCCESS.TRUE, "data": data}
+        return {
+            "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": data,
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

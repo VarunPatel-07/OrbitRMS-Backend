@@ -27,9 +27,7 @@ def MaintenanceModeQueryFilter(query, filters):
         if field_name == "status":
             if operator == "equals" or operator == "is":
 
-                normalized_db_name = func.replace(
-                    func.trim(Models.MaintenanceLog.status), "  ", " "
-                )
+                normalized_db_name = func.replace(func.trim(Models.MaintenanceLog.status), "  ", " ")
 
                 parsed_value = []
 
