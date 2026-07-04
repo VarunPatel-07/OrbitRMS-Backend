@@ -8,8 +8,8 @@ Create Date: 2026-06-08 17:08:31.866632
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "f3b436ce94de"
@@ -31,13 +31,15 @@ def upgrade() -> None:
     )
 
     # Fill old rows with valid datetime
-    op.execute("""
+    op.execute(
+        """
     UPDATE client_inquires_data
     SET 
         created_at = NOW(),
         updated_at = NOW()
     WHERE created_at IS NULL OR updated_at IS NULL
-""")
+"""
+    )
 
     # Now make created_at NOT NULL
     op.alter_column(

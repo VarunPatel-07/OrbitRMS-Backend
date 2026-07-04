@@ -120,3 +120,9 @@ USER_FRIENDLY_ERRORS = {
         "action": "Retry",
     },
 }
+
+
+class EMAIL_QUEUEING:
+    EMAIL_QUEUE_KEY = "orbitrms:email:queue"
+    EMAIL_RETRY_QUEUE_KEY = "orbitrms:email:retry_queue"
+    EMAIL_FAILED_KEY = "orbitrms:email:failed"

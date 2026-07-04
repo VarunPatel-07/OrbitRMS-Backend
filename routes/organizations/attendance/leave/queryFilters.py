@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+from models.sql import Models
 from utils.helper.helper import parse_to_utc_date
 
 
@@ -95,3 +96,57 @@ def attendance_self_leave_quey_filter(leave, filter):
                     return False
 
         return True
+
+
+def apply_team_leave_sql_filters(leave_query, filter_data: dict):
+    status_filter = filter_data.get("status")
+    leave_type_id = filter_data.get("leave_type_id")
+    employee_id = filter_data.get("employee_id")
+    from_date = filter_data.get("from_date")
+    to_date = filter_data.get("to_date")
+
+    if status_filter:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.status == status_filter)
+
+    if leave_type_id:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.leave_type_id == leave_type_id)
+
+    if employee_id:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.user_id == employee_id)
+
+    if from_date:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.start_date >= from_date)
+
+    if to_date:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.end_date <= to_date)
+
+    return leave_query
+
+
+def apply_organization_leave_sql_filters(leave_query, filter_data: dict):
+    status_filter = filter_data.get("status")
+    leave_type_id = filter_data.get("leave_type_id")
+    employee_id = filter_data.get("employee_id")
+    from_date = filter_data.get("from_date")
+    to_date = filter_data.get("to_date")
+    is_planned = filter_data.get("is_planned")
+
+    if status_filter:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.status == status_filter)
+
+    if leave_type_id:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.leave_type_id == leave_type_id)
+
+    if employee_id:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.user_id == employee_id)
+
+    if from_date:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.start_date >= from_date)
+
+    if to_date:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.end_date <= to_date)
+
+    if is_planned is not None:
+        leave_query = leave_query.filter(Models.AttendanceLeavesModule.is_planned == is_planned)
+
+    return leave_query

@@ -1,3 +1,5 @@
+from typing import Any, List, Literal
+
 from pydantic import BaseModel
 
 
@@ -45,3 +47,22 @@ class CrudeFunctionReturnType(BaseModel):
     status_code: int
     message: str
     success: bool
+
+
+class CommonCrudeFunctionReturnType(BaseModel):
+    status_code: int
+    message: str
+    success: bool
+    data: Any
+
+
+class CreateCloudflareTurnStileWithManualModePydanticModel(BaseModel):
+    turnstile_mode: Literal["non-interactive", "invisible", "managed"]
+    allowed_domains: List[str]
+    # turnstile_setup_mode: Literal["automated", "manual"]
+    turnstile_secret_key: str
+    turnstile_site_key: str
+
+
+class VerifyTurnstileSetUpPydanticModal(BaseModel):
+    turnstile_token: str

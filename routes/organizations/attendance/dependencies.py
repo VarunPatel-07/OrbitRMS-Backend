@@ -1,11 +1,12 @@
 from typing import List, Optional
 
-from fastapi import Form
-from yarl import Query
+from fastapi import Form, Query
 
 from models.pydantic.Organizations.AttendancePydanticModal import (
     ApplyLeavePydanticModel,
     fetchAppliedLeavesQueryPydanticModel,
+    fetchAppliedOrganizationLeave,
+    updateLeavesQueryPydanticModel,
 )
 
 
@@ -37,3 +38,24 @@ def get_fetch_leaves_dependencies(
     filter: Optional[str] = Query(None, alias="filter"),
 ):
     return fetchAppliedLeavesQueryPydanticModel(page=page, limit=limit, filter=filter)
+
+
+def update_leave_request_dependencies(
+    leave_status: str = Query(..., alias="status"),
+    leave_id: str = Query(..., alias="id"),
+):
+    return updateLeavesQueryPydanticModel(leave_status=leave_status, leave_id=leave_id)
+
+
+def get_organization_fetch_leaves_dependencies(
+    org_id: str = Query(..., alias="org-id"),
+    date: str = Query(..., alias="date"),
+    page: int = Query(..., alias="page"),
+    limit: int = Query(..., alias="limit"),
+):
+    return fetchAppliedOrganizationLeave(
+        org_id=org_id,
+        date=date,
+        page=page,
+        limit=limit,
+    )
