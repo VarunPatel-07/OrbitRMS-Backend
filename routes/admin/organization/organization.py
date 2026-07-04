@@ -20,6 +20,8 @@ from config.EnvConfig import EnvConfig
 from constants.constant import SUCCESS
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import CreatePasswordHtmlBody, VerifyEmailHtmlBody
+from mailer.emailService.email_models import EmailSchema
+from mailer.emailService.email_queue_service import email_sender_function
 from middleware.RateLimiting import limiter
 from middleware.verifyToken import verify_token
 from models.pydantic.Admin.AdminAuthenticationModel import ResendVerificationMail
@@ -28,12 +30,11 @@ from models.pydantic.HelperPydanticModel import (
     VerifyEmailPydanticBody,
 )
 from models.sql import Models
-from utils.helper.emailSender import EmailSchema, email_sender_function
+from utils.helper.encryption_helper import urlsafe_data_encoding_service
 from utils.helper.helper import (
     filter_fields,
     generatePasswordResetToken,
     model_to_filtered_dict,
-    urlsafe_data_encoding_function,
 )
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 
@@ -483,10 +484,10 @@ async def Resend_Email_Verification_Link(
 
         db.commit()
 
-        encrypted_org_id = urlsafe_data_encoding_function(organization.id)
+        encrypted_org_id = urlsafe_data_encoding_service(organization.id)
 
         email_data = {
-            "recever_email": data.email,
+            "recipients_email": data.email,
             "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
             "body": VerifyEmailHtmlBody(
                 VerifyEmailPydanticBody(
@@ -498,7 +499,7 @@ async def Resend_Email_Verification_Link(
 
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance, background_task)
+        email_sender_function(email_instance)
 
         return {
             "success": SUCCESS.TRUE,
@@ -602,16 +603,16 @@ async def Resend_Onboarding_Instruction(
                 },
             )
 
-        encrypted_user_id = urlsafe_data_encoding_function(employee.id)
+        encrypted_user_id = urlsafe_data_encoding_service(employee.id)
 
         reset_password_token = generatePasswordResetToken()
 
         employee.reset_password_token = reset_password_token
 
-        encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+        encrypted_token = urlsafe_data_encoding_service(reset_password_token)
 
         email_data = {
-            "recever_email": data.email,
+            "recipients_email": data.email,
             "subject": "Complete Your Account Setup – Create Your Password",
             "body": CreatePasswordHtmlBody(
                 CreatePasswordPydanticBody(
@@ -624,7 +625,7 @@ async def Resend_Onboarding_Instruction(
 
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance, background_task)
+        email_sender_function(email_instance)
 
         db.commit()
 

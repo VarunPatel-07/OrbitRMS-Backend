@@ -26,6 +26,8 @@ from constants.constant import (
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import NewAdminLoginGeneratedOtp
+from mailer.emailService.email_models import EmailSchema
+from mailer.emailService.email_queue_service import email_sender_function
 from middleware.RateLimiting import limiter
 from middleware.verifyToken import verify_token
 from models.pydantic.Admin.AdminAuthenticationModel import (
@@ -34,14 +36,12 @@ from models.pydantic.Admin.AdminAuthenticationModel import (
 )
 from models.sql import Models
 from utils.helper.createModelInstance import cerate_model_instance
-from utils.helper.emailSender import EmailSchema, email_sender_function
+from utils.helper.encryption_helper import urlsafe_data_decoding_service, urlsafe_data_encoding_service
 from utils.helper.helper import (
     generateAdminAccessCode,
     generateAdminSignature,
     get_client_ip,
     hash_fingerprint,
-    urlsafe_data_decoding_function,
-    urlsafe_data_encoding_function,
 )
 from utils.helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
@@ -103,7 +103,6 @@ async def Admin_Panel_Sign_In_Function(
     request: Request,
     db: db_dependencies,
     data: AdminSignInPayload,
-    background_task: BackgroundTasks,
 ):
     try:
         cache_key = f"sign_in_attempt_{data.email}"
@@ -149,9 +148,7 @@ async def Admin_Panel_Sign_In_Function(
                 },
             )
 
-        check_password = verify_password(
-            plain_password=data.password, hashed_password=admin.password
-        )
+        check_password = verify_password(plain_password=data.password, hashed_password=admin.password)
 
         if not check_password:
             raise HTTPException(
@@ -171,19 +168,19 @@ async def Admin_Panel_Sign_In_Function(
 
         cache_database_key = f"admin_otp_{admin.id}_{admin_signature}"
 
-        await cache_database.set(cache_database_key, hashed_otp_code, ex=600)
+        await cache_database.set(cache_database_key, hashed_otp_code, ex=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME)
 
-        encrypted_admin_id = urlsafe_data_encoding_function(admin.id)
+        encrypted_admin_id = urlsafe_data_encoding_service(admin.id)
 
         email_data = {
-            "recever_email": ORBITRMS_OWNER_EMAIL,
+            "recipients_email": ORBITRMS_OWNER_EMAIL,
             "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
             "body": NewAdminLoginGeneratedOtp(otp_code),
         }
 
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance, background_task)
+        email_sender_function(email_instance)
 
         otp_expiry_key = f"{admin_signature}_otp_expiry"
         otp_resend_available_at = await cache_database.get(otp_expiry_key)
@@ -191,9 +188,7 @@ async def Admin_Panel_Sign_In_Function(
 
         if not otp_resend_available_at:
 
-            otp_expiry_time = datetime.now(ZoneInfo("UTC")) + timedelta(
-                seconds=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME
-            )
+            otp_expiry_time = datetime.now(ZoneInfo("UTC")) + timedelta(seconds=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME)
             await cache_database.set(
                 otp_expiry_key, otp_expiry_time.isoformat(), ex=RESEND_OTP_AVAILABLE_AT_DEFAULT_TIME
             )
@@ -238,7 +233,7 @@ async def Admin_Panel_Verify_OTP_Function(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"message": ERROR_MESSAGE.INSUFFICIENT_DATA, "success": SUCCESS.FALSE},
             )
-        decrypted_admin_id = urlsafe_data_decoding_function(id)
+        decrypted_admin_id = urlsafe_data_decoding_service(id)
 
         admin = db.query(Models.Admin).filter(Models.Admin.id == decrypted_admin_id).first()
 
@@ -387,8 +382,7 @@ async def Admin_Panel_Verify_User_Function(
             )
 
         if not any(
-            session.id == session_id and session.admin_signature == admin_signature
-            for session in admin.admin_sessions
+            session.id == session_id and session.admin_signature == admin_signature for session in admin.admin_sessions
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -426,7 +420,7 @@ async def Re_Send_Admin_Panel_Access_Otp(
     signature: str = Query(..., alias="signature"),
 ):
     try:
-        url_decoded_admin_id = urlsafe_data_decoding_function(id)
+        url_decoded_admin_id = urlsafe_data_decoding_service(id)
 
         admin = db.query(Models.Admin).filter(Models.Admin.id == url_decoded_admin_id).first()
 
@@ -443,9 +437,7 @@ async def Re_Send_Admin_Panel_Access_Otp(
         if otp_resend_available_at:
             otp_expiry_time_left = datetime.fromisoformat(otp_resend_available_at)
 
-            time_left = math.floor(
-                (otp_expiry_time_left - datetime.now(timezone.utc)).total_seconds()
-            )
+            time_left = math.floor((otp_expiry_time_left - datetime.now(timezone.utc)).total_seconds())
 
             if time_left > 60:
                 time_left = math.ceil(time_left / 60)
@@ -469,14 +461,14 @@ async def Re_Send_Admin_Panel_Access_Otp(
             await cache_database.set(cache_database_key, hashed_otp_code, ex=600)
 
             email_data = {
-                "recever_email": ORBITRMS_OWNER_EMAIL,
+                "recipients_email": ORBITRMS_OWNER_EMAIL,
                 "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
                 "body": NewAdminLoginGeneratedOtp(otp_code),
             }
 
             email_instance = EmailSchema(**email_data)
 
-            email_sender_function(email_instance, background_task)
+            email_sender_function(email_instance)
 
             otp_expiry_time: datetime
 

@@ -490,6 +490,7 @@ def serialize_comment(comment):
     return {
         "id": comment.id,
         "user_id": comment.user_id,
+        "comment": comment.comment,
         **comment_personal_info,
         **comment_employee_info,
     }
@@ -626,6 +627,7 @@ async def FetchLikesAndComment(
             end = start + limit
 
             for parent in parent_comments:
+
                 parent_data = serialize_comment(parent)
                 parent_replies_array = get_replies(parent.id, comment_replies)
                 parent_data["replies"] = parent_replies_array[start:end]

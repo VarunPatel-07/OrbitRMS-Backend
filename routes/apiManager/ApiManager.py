@@ -50,7 +50,7 @@ async def Enable_Api(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": ERROR_MESSAGE.CLIENT_INQUIRE_NOT_FOUND,
+                    "message": ERROR_MESSAGE.SUBMIT_INQUIRY.CLIENT_INQUIRE_NOT_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -112,15 +112,6 @@ async def Fetch_Status_OF_Api(
             .filter(Models.ClientInquires.organization_id == user.organization_id)
             .first()
         )
-        config_module = (
-            db.query(Models.ConfigModule).filter(Models.ConfigModule.organization_id == user.organization_id).first()
-        )
-
-        inquiry_form_schemas = (
-            db.query(Models.InquiryFormSchema)
-            .filter(Models.InquiryFormSchema.config_module_id == config_module.id)
-            .all()
-        )
 
         return {
             "message": SUCCESS_MESSAGE.INQUIRY_SCHEMA_FETCHED_SUCCESSFULLY,
@@ -130,20 +121,6 @@ async def Fetch_Status_OF_Api(
                     **model_to_filtered_dict(
                         client_inquire,
                     ),
-                    "inquiry_form_schemas": [
-                        model_to_filtered_dict(
-                            data,
-                            fields=[
-                                "form_id",
-                                "id",
-                                "form_name",
-                                "status",
-                                "email_notification",
-                                "authorized_recipient_emails",
-                            ],
-                        )
-                        for data in inquiry_form_schemas
-                    ],
                 }
                 if client_inquire
                 else None

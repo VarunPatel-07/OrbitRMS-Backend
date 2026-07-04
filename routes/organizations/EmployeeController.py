@@ -26,6 +26,8 @@ from constants.constant import SUCCESS
 from database.CacheDatabase import cache_database
 from database.Database import db_dependencies
 from mailer.HtmlEmailBody import WelcomeMailForNewlyAddedEmployee
+from mailer.emailService.email_models import EmailSchema
+from mailer.emailService.email_queue_service import email_sender_function
 from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
@@ -35,12 +37,10 @@ from models.pydantic.Organizations.AddEditEmployeePydanticModal import (
 )
 from models.sql import Models
 from utils.helper.createModelInstance import cerate_model_instance
-from utils.helper.emailSender import EmailSchema, email_sender_function
+from utils.helper.encryption_helper import urlsafe_data_encoding_service
 from utils.helper.helper import (
     filter_fields,
     generatePasswordResetToken,
-    model_to_filtered_dict,
-    urlsafe_data_encoding_function,
 )
 from utils.helper.jwtHelper import hash_passwords
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
@@ -84,7 +84,6 @@ async def handel_add_user_function(
     request: Request,
     db: db_dependencies,
     data: AddEditUserProfileModel,
-    background_task: BackgroundTasks,
     organization_id: str = Query(..., alias="organization-id"),
     user: dict = Depends(UserAuthenticatorMiddleware),
 ):
@@ -309,8 +308,8 @@ async def handel_add_user_function(
 
         new_user.reset_password_token = reset_password_token
 
-        encrypted_user_id = urlsafe_data_encoding_function(new_user.id)
-        encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+        encrypted_user_id = urlsafe_data_encoding_service(new_user.id)
+        encrypted_token = urlsafe_data_encoding_service(reset_password_token)
         db.commit()
         db.refresh(new_user)
 
@@ -321,14 +320,14 @@ async def handel_add_user_function(
         }
 
         email_data = {
-            "recever_email": data.employee_info.employee_email,
+            "recipients_email": data.employee_info.employee_email,
             "subject": f"Welcome {data.personal_info.full_name} to {organization_info.general_info.organization_name} – We're excited to have you onboard!",
             "body": WelcomeMailForNewlyAddedEmployee(WelcomeEmployeeMailModel(**emil_body_data)),
         }
 
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance, background_task)
+        email_sender_function(email_instance)
 
         return {
             "message": SUCCESS_MESSAGE.EMPLOYEE_CREATED_SUCCESSFULLY,
@@ -649,6 +648,7 @@ async def edit_employee_profile(
             .filter(
                 Models.EmployeeInfo.employee_code == data.employee_info.employee_code,
                 Models.User.organization_id == employee.organization_id,
+                Models.User.id != employee_id,
             )
             .first()
         )
@@ -708,7 +708,7 @@ async def edit_employee_profile(
             db.query(Models.PersonalContactInfo).filter_by(user_id=employee.id).update(personal_contact_info_data)
 
             contact_info_id = employee.personal_contact_info.id
-            print("in the if")
+            # # print("in the if")
 
         else:
             new_personal_contact_info = Models.PersonalContactInfo(user_id=employee.id, **personal_contact_info_data)

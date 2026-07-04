@@ -215,6 +215,19 @@ class InquiryFormSchema(BaseModel):
 
     authorized_recipient_emails = Column(Text, nullable=True, default=None)
 
+    turnstile_enabled = Column(Boolean, nullable=True, default=False)
+    turnstile_site_key = Column(String(255), nullable=True, default=None)
+    turnstile_secret_key = Column(String(255), nullable=True, default=None)
+    turnstile_mode = Column(
+        Enum("non-interactive", "invisible", "managed", name="turnstile_mode_enum"), nullable=False, default="invisible"
+    )
+    allowed_domains = Column(Text, nullable=True, default=None)
+    turnstile_verification_status = Column(
+        Enum("pending_verification", "verified", "failed", name="turnstile_verification_status_enum"),
+        nullable=False,
+        default="pending_verification",
+    )
+
     created_by = Column(JSON, nullable=True)
     updated_by = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)

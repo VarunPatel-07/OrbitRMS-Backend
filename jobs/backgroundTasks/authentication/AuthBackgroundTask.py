@@ -8,6 +8,8 @@ from database.Database import SessionLocal
 from mailer.HtmlEmailBody import (
     VerifyEmailHtmlBody,
 )
+from mailer.emailService.email_models import EmailSchema
+from mailer.emailService.email_queue_service import email_sender_function
 from models.pydantic.authentication.AuthenticationModels import (
     RegisterOrganizationInfo,
 )
@@ -16,10 +18,7 @@ from models.pydantic.HelperPydanticModel import (
 )
 from models.sql import Models
 from utils.helper.createModelInstance import cerate_model_instance
-from utils.helper.emailSender import EmailSchema, email_sender_function
-from utils.helper.helper import (
-    urlsafe_data_encoding_function,
-)
+from utils.helper.encryption_helper import urlsafe_data_encoding_service
 
 FRONTEND_URL = EnvConfig.FRONTEND_URL
 
@@ -27,7 +26,6 @@ FRONTEND_URL = EnvConfig.FRONTEND_URL
 def HandelUserSignUpInBackGround(
     organization_id: str,
     organization_info: RegisterOrganizationInfo,
-    background_task: BackgroundTasks,
 ):
     db: Session = SessionLocal()
 
@@ -70,10 +68,10 @@ def HandelUserSignUpInBackGround(
         db.add(organization)
         db.commit()
 
-        encrypted_org_id = urlsafe_data_encoding_function(organization_id)
+        encrypted_org_id = urlsafe_data_encoding_service(organization_id)
 
         email_data = {
-            "recever_email": organization_info.primary_email,
+            "recipients_email": organization_info.primary_email,
             "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
             "body": VerifyEmailHtmlBody(
                 VerifyEmailPydanticBody(
@@ -85,4 +83,4 @@ def HandelUserSignUpInBackGround(
 
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance, background_task)
+        email_sender_function(email_instance)

@@ -1,21 +1,18 @@
 #!/bin/bash
+set -euo pipefail
 
 
-set -e
+PRODUCTION_LOGS_STORE_DIR="/home/varun/OrbitRMS/OrbitRMS-Backend/logs"
 
-# Load environment variables
-if [ -f .env ]; then
-  source .env
-else
-  echo ".env file not found"
-  exit 1
-fi
 
 # Validate required variable
 if [ -z "$PRODUCTION_LOGS_STORE_DIR" ]; then
-  echo "PRODUCTION_LOGS_STORE_DIR not found"
+  echo "$(date): PRODUCTION_LOGS_STORE_DIR not found"
   exit 1
 fi
+
+LOGS_DIR="$PRODUCTION_LOGS_STORE_DIR"
+ARCHIVE_LOGS_DIR="$PRODUCTION_LOGS_STORE_DIR/archive"
 RUNTIME_LOGS="$LOGS_DIR/runtime"
 FAILURES_LOGS="$LOGS_DIR/failures"
 ARCHIVE_RUNTIME_LOGS="$ARCHIVE_LOGS_DIR/runtime"
