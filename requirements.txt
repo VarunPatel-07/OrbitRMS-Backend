@@ -7,6 +7,7 @@ alembic==1.14.0
 annotated-types==0.7.0
 anyio==4.8.0
 APScheduler==3.11.0
+arq==0.28.0
 arrow==1.2.3
 attrs==25.4.0
 Authlib==1.6.1
@@ -20,6 +21,7 @@ cffi==1.17.1
 cfgv==3.4.0
 charset-normalizer==3.4.1
 click==8.1.8
+cloudflare==5.2.0
 cloudinary==1.42.2
 cryptography==44.0.0
 databases==0.9.0
@@ -38,6 +40,7 @@ git-filter-repo==2.47.0
 gitlint-core==0.19.1
 gunicorn==23.0.0
 h11==0.14.0
+hiredis==3.4.0
 httpcore==1.0.7
 httptools==0.6.4
 httpx==0.28.1
@@ -100,7 +103,7 @@ SQLAlchemy==2.0.36
 starlette==0.41.3
 tqdm==4.67.1
 typer==0.15.1
-typing_extensions==4.12.2
+typing_extensions==4.15.0
 tzlocal==5.3.1
 ua-parser==1.0.1
 ua-parser-builtins==0.18.0.post1

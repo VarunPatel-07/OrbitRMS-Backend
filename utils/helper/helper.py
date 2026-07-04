@@ -11,9 +11,8 @@ from datetime import date, datetime, timezone
 from typing import Dict, List, Optional, Union
 from zoneinfo import ZoneInfo
 
-from Crypto.Cipher import AES
 from dotenv import load_dotenv
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
@@ -166,69 +165,6 @@ def model_to_filtered_dict(data, fields: Optional[List[str]] = []) -> Dict[str, 
 # function to encode string | num  | dict into url-safe encoding
 
 
-def urlsafe_data_encoding_function(data: dict | str) -> str:
-    if not data:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"message": "The Data is required", "success": False},
-        )
-
-    # Convert dict to JSON string if necessary
-    if isinstance(data, dict):
-        data = json.dumps(data)
-
-    cipher = AES.new(ENCRYPTION_KEY, AES.MODE_EAX)
-    nonce = cipher.nonce
-    ciphertext, tag = cipher.encrypt_and_digest(data.encode())
-    return base64.urlsafe_b64encode(nonce + tag + ciphertext).decode()
-
-
-# to decode url-safe encoded value
-
-
-def urlsafe_data_decoding_function(encrypted_data: str) -> str:
-    if not encrypted_data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": "The Data is required", "success": False},
-        )
-
-    try:
-        row_data = base64.urlsafe_b64decode(encrypted_data)
-        nonce = row_data[:16]  # First 16 bytes: Nonce
-        tag = row_data[16:32]  # Next 16 bytes: Authentication tag
-        ciphertext = row_data[32:]
-
-        # Initialize AES cipher in EAX mode
-        cipher = AES.new(ENCRYPTION_KEY, AES.MODE_EAX, nonce=nonce)
-        decrypted_data = cipher.decrypt(ciphertext)
-        cipher.verify(tag)  # Verify the integrity of the data
-
-        # If decrypted data is already in bytes, directly decode it
-        if isinstance(decrypted_data, bytes):
-            return decrypted_data.decode()  # Assuming the original data is a string
-        else:
-            raise ValueError("Decrypted data is not in bytes format.")
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Decryption failed: Data may have been altered or corrupted!",
-                "success": False,
-                "error": str(e),
-            },
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": f"Unexpected error during decryption: {str(e)}",
-                "success": False,
-            },
-        )
-
-
 # this is the function to update the sql model data
 def update_model_data(
     db: db_dependencies,
@@ -364,7 +300,7 @@ def is_valid_file(value):
 
 
 def is_valid_type(value, field_type):
-    print(value, field_type)
+
     try:
         if field_type == "string":
             return isinstance(value, str)

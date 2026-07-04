@@ -1,3 +1,5 @@
+from xml.dom import INVALID_ACCESS_ERR
+
 from aiohttp.hdrs import LOCATION
 
 SIGN_IN_ERROR_MESSAGE = "Error accrued while signing in"
@@ -30,6 +32,7 @@ ORGANIZATION_NOT_FOUND = "Organization Not Found"
 NO_ORGANIZATIONS_FOUND = "No organizations found"
 NO_SUCH_ORGANIZATION_FOUND = "No Such Organization Found"
 NO_MAINTENANCE_LOGS_FOUND = "No Maintenance Logs Found"
+EMAIL_ALREADY_VERIFIED = "Email Already Verified"
 
 # ==== Password Reset Error Messages ====
 PASSWORD_RESET_LIMIT_EXCEEDED = "Reset limit exceeded. Please wait."
@@ -109,15 +112,9 @@ ERROR_WHILE_FETCHING_COUNTRY = "Error Accrued While Fetching The Country Contact
 NO_STATE_FOUND = "No states found for this country"
 
 # ==== Client Inquiry Additional Error Messages ====
-CLIENT_INQUIRE_NOT_FOUND = "Client Inquire Not Found"
-INVALID_API_SECRET = "Invalid Api Secrete"
-API_IS_DISABLED = "Api Is Disabled"
 CONFIG_MODULE_NOT_FOUND = "Config Module Not Found"
-FORM_ID_NOT_FOUND = "FormId Not Found"
-MISSING_FIELDS_IN_PAYLOAD = "Missing fields in payload"
-UNEXPECTED_FIELDS_IN_PAYLOAD = "Unexpected fields in payload"
+
 MISSING_REQUIRED_FIELDS = "Missing required fields"
-REQUIRED_FIELD_CANT_BE_NULL = "Required Field Can't Be Null"
 NO_CITY_FOUND = "No city found for this state"
 ERROR_WHILE_FETCHING_STATE_DATA = "error while fetching the state date of the country"
 ERROR_FETCHING_DATA = "Error Fetching Data"
@@ -231,8 +228,6 @@ UNABLE_TO_FETCH_LOCATION_CONFIG = "Unable To Fetch Location Config Right Now"
 UNABLE_TO_ADD_LOCATION_CONFIG = "Unable To ADD Location Config Right Now"
 LOCATION_CONFIG_NOT_FOUND = "Location Config Not Found"
 UNABLE_TO_EDIT_LOCATION_CONFIG = "Unable To Edit Location Config Right Now"
-UNABLE_TO_ENABLE_API_RIGHT_NOW = "Unable To Enable Api Right Now"
-INVALID_QUERY_ARGUMENT = "Invalid Query Argument"
 UNABLE_TO_UPDATE_RECIPIENT_EMAIL = "Unable To Update Recipient Email Right Now"
 ORGANIZATION_ALREADY_EXISTS = "The Provided Organization Name Is Already In Use"
 FETCHING_EMPLOYEE = "error while fetching employee"
@@ -243,7 +238,6 @@ ERROR_WHILE_FETCHING_SOCIAL_ACCOUNTS = "An error occurred during Fetch Social Ac
 NO_POST_FOUND = "No Post Found"
 UNABLE_TO_FIND_SOCIAL_MEDIA_ACCOUNT = "Unable To Find SocialMedia Account"
 ERROR_DURING_ORBIT_AI_CONVERSION = "An error occurred during The OrbitAi conversations"
-ERROR_WHILE_APPLYING_LEAVE = "error while Fetching The User Info"
 
 
 NO_LOCATION_CONFIG_ADDED = (
@@ -257,9 +251,6 @@ ERROR_WHILE_UPLOADING_IMAGES = "Error Accrued While Uploading Image"
 NO_LEAVE_TYPE_FOUND = "No Leave Type Found"
 
 NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE = "You are not authorized to manage this employee's leave request."
-PLEASE_PROVIDE_APPROPRIATE_LEAVE_STATUS = "please provide appropriate leave status"
-LEAVE_BALANCE_NOT_FOUND = "Leave Balance Not Found"
-LEAVE_REQUEST_NOT_ALLOWED = "You can't update a leave that is rejected or cancelled"
 
 
 LEAVE_REQUEST_ALREADY_APPLIED = "You already applied leave for this day."
@@ -276,3 +267,62 @@ CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND = "Can't Active Break Because Active Brea
 
 ACTIVE_SESSION_FOR_TODAY = "You have already completed your attendance for today"
 INSUFFICIENT_LEAVE_BALANCE = "Insufficient leave balance. You cannot apply for more than your available leaves."
+
+
+# Error Message for the submit inquiry routes
+class SUBMIT_INQUIRY:
+    INVALID_JSON = "Invalid JSON payload. Please send a valid JSON request body."
+    OBJECT_JSON_PAYLOAD = "JSON payload must be an object."
+    UNSUPPORTED_CONTENT_TYPE = "Unsupported content type. Use application/json or multipart/form-data."
+    ERROR_WHILE_SUBMITTING_INQUIRY = "Unable to submit inquiry right now. Please try again later."
+    CLIENT_INQUIRE_NOT_FOUND = "Client Inquire Not Found"
+    INVALID_API_SECRET = "Invalid Api Secrete"
+    API_IS_DISABLED = "Api Is Disabled"
+    FORM_NOT_FOUND = "Unabale To Find the form"
+    MISSING_FIELDS_IN_PAYLOAD = "Missing fields in payload"
+    UNEXPECTED_FIELDS_IN_PAYLOAD = "Unexpected fields in payload"
+    REQUIRED_FIELD_CANT_BE_NULL = "Required Field Can't Be Null"
+
+
+#  Api Manager Error
+
+
+class API_MANAGER:
+    UNABLE_TO_ENABLE_CLIENT_INQUIRY_API_RIGHT_NOW = "Unable To Enable Api Right Now"
+    INVALID_QUERY_ARGUMENT = "Invalid Query Argument"
+    INQUIRE_FORM_NOT_FOUND = "Inquire Not Found"
+    INVALID_SETUP_MODE_TYPE = "Only automated or manual setup mode is allowed"
+    TURNSTILE_SITE_KEY_SECRET_KEY_REQUIRED = "Turnstile site key and secret key are required."
+    TURNSTILE_SITE_KEY_FORMATE = "Invalid Turnstile site key format."
+
+
+class ATTENDANCE_MODULE:
+    ERROR_WHILE_APPLYING_LEAVE = "error while Fetching The User Info"
+    ERROR_WHILE_FETCHING_EMP_LEAVE = "Error occurred while fetching the employee leaves"
+    ERROR_WHILE_FETCHING_ORGANIZATION_LEAVES = "Error occurred while fetching the organization leaves"
+    ERROR_WHILE_FETCHING_LEAVES_BALANCE = "Error occurred while fetching the leaves balance"
+    ERROR_WHILE_FETCHING_LEAVE_BALANCE = "Error while Fetching Leave Balance The User Info"
+    ERROR_WHILE_FETCHING_TEAM_MEMBER_LEAVES = "Error occurred while fetching the team member leaves"
+    ERROR_WHILE_FETCHING_ORGANIZATION_EMPLOYEE_LEAVES = "Error occurred while fetching the team member leaves"
+    ERROR_WHILE_UPDATING_LEAVES = "Error occurred while fetching the team member leaves"
+    ERROR_WHILE_FETCHING_LEAVE_TYPES = "Error occurred while fetching the leave types"
+    ERROR_WHILE_PUNCHING_IN = "Error occurred while punching in"
+    ERROR_WHILE_PUNCHING_OUT = "Error occurred while punching out"
+    ERROR_WHILE_FETCHING_ATTENDANCE_STATUS = "Error While Fetching Attendance Status For This User"
+    LEAVE_REQUEST_ALREADY_APPLIED = "You already applied leave for this day."
+    EMPLOYEE_NOT_FOUND = "Employee Not Found"
+    NO_LEAVE_TYPE_FOUND = "No Leave Type Found"
+    INVALID_LEAVE_HALF_SELECTION_FOR_SAME_DAY = "Invalid leave half selection for same day"
+    INSUFFICIENT_LEAVE_BALANCE = "Insufficient leave balance. You cannot apply for more than your available leaves."
+    LEAVE_BALANCE_NOT_FOUND = "Leave Balance Not Found"
+    NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE = "You are not authorized to manage this employee's leave request."
+    PLEASE_PROVIDE_APPROPRIATE_LEAVE_STATUS = "please provide appropriate leave status"
+    LEAVE_REQUEST_NOT_ALLOWED = "You can't update a leave that is rejected or cancelled"
+    ACTIVE_ATTENDANCE_SESSION_FOUND = "Attendance Session Already Active For This User"
+    ACTIVE_SESSION_FOR_TODAY = "You have already completed your attendance for today"
+    NO_LOCATION_CONFIG_ADDED = (
+        "No Location Config Added For This Organization Please Add Location Config To Enable Attendance Marking"
+    )
+    OUT_OF_RANGE_ATTENDANCE_PUNCH = "You Are Out Of Range To Punch In/Out From This Location"
+    NO_ACTIVE_ATTENDANCE_SESSION = "No Active Attendance Session Found For This User"
+    CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND = "Can't Active Break Because Active Break Found For This User"

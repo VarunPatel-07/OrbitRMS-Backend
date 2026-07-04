@@ -26,12 +26,8 @@ from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
 from models.sql import Models
-from utils.helper.emailSender import EmailSchema, email_sender_function
 from utils.helper.helper import (
     filter_fields,
-    is_valid_type,
-    model_to_filtered_dict,
-    validate_field,
 )
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
 

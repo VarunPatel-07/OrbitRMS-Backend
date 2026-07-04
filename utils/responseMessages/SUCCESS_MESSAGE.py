@@ -1,6 +1,8 @@
 # ==== Authentication Success Messages ====
 from dns.rdatatype import LOC
 
+EXECUTION_SUCCESS_MESSAGE = "Execution Completed Successfully"
+
 SIGN_IN_SUCCESS_MESSAGE = "User Sign In Successfully"
 ADMIN_SIGN_IN_SUCCESS_MESSAGE = "Admin Sign In Successfully"
 ADMIN_OTP_VERIFY_SUCCESS_MESSAGE = "Admin OTP Verify Successfully"
@@ -135,11 +137,9 @@ HOLIDAY_EDITED_SUCCESSFULLY = "Holiday Updated Successfully"
 HOLIDAYS_FETCHED_SUCCESSFULLY = "Holiday Fetched Successfully"
 HOLIDAY_DELETED_SUCCESSFULLY = "Holiday Deleted Successfully"
 LEAVES_TYPE_FETCHED_SUCCESSFULLY = "Leaves Type Fetched Successfully"
-API_ENABLED_SUCCESSFULLY = "API Enabled Successfully"
-API_DISABLED_SUCCESSFULLY = "API Disabled Successfully"
+
 INQUIRY_SCHEMA_FETCHED_SUCCESSFULLY = "Inquiry Schema Fetched Successfully"
-EMAIL_NOTIFICATION_STATUS_UPDATED_SUCCESSFULLY = "Email Notification Status Updated Successfully"
-EMAIL_NOTIFICATION_DISABLED_SUCCESSFULLY = "Email Notification Disabled Successfully"
+
 AUTHORIZED_RECIPIENT_EMAIL_UPDATED_SUCCESSFULLY = "Authorized Recipient Email Updated Successfully"
 EMPLOYEE_FETCHED_SUCCESSFULLY = "Employee Fetched Successfully"
 USER_ACCOUNT_STATUS_UPDATED_SUCCESSFULLY = "User's Account Status Updated Successfully"
@@ -170,3 +170,15 @@ BREAK_ENDED_SUCCESSFULLY = "Break Ended Successfully"
 
 ATTENDANCE_SESSION_ACTIVE = "Active Attendance Session Found For This User"
 NO_ACTIVE_ATTENDANCE_SESSION = "No Active Attendance Session Found For This User"
+
+
+class API_MANAGER:
+    API_ENABLED_SUCCESSFULLY = "API Enabled Successfully"
+    API_DISABLED_SUCCESSFULLY = "API Disabled Successfully"
+
+    EMAIL_NOTIFICATION_STATUS_UPDATED_SUCCESSFULLY = "Email Notification Status Updated Successfully"
+    EMAIL_NOTIFICATION_DISABLED_SUCCESSFULLY = "Email Notification Disabled Successfully"
+
+    INQUIRY_FORM_FETCHED_SUCCESSFULLY = "Inquiry Forms Fetched Successfully"
+
+    TURNSTILE_WIDGET_CREATED_SUCCESSFULLY = "Turnstile widget create successfully"
