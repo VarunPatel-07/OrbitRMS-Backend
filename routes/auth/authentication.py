@@ -160,11 +160,11 @@ async def create_password(
     try:
         decrypted_user_id = urlsafe_data_decoding_service(user_id)
 
-        if len(password.password) > 12 or len(password.password) < 5:
+        if len(password.password) > 26 or len(password.password) < 5:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Password must be between 5 and 12 characters long.",
+                    "message": "Password must be between 5 and 26 characters long.",
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -272,11 +272,11 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
     try:
 
-        if len(user_info.password) > 12 or len(user_info.password) < 5:
+        if len(user_info.password) > 26 or len(user_info.password) < 5:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Password must be between 5 and 12 characters long.",
+                    "message": "Password must be between 5 and 26 characters long.",
                     "success": SUCCESS.FALSE,
                 },
             )
