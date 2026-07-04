@@ -68,9 +68,7 @@ def upload_leave_documents_function(upload_file: UploadFile):
 
     public_id = result["public_id"]
 
-    media_asset_url = (
-        f"{EnvConfig.ORBITRMS_MEDIA_SERVICE_BASE_URL}/{folder}/{unique_public_id}/{file_name}"
-    )
+    media_asset_url = f"{EnvConfig.ORBITRMS_MEDIA_SERVICE_BASE_URL}/{folder}/{unique_public_id}/{file_name}"
 
     return {
         "asset_id": result["asset_id"],
@@ -126,7 +124,7 @@ async def handel_apply_leave(
                     raise HTTPException(
                         status_code=400,
                         detail={
-                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "message": ERROR_MESSAGE.ATTENDANCE_MODULE.LEAVE_REQUEST_ALREADY_APPLIED,
                             "success": SUCCESS.FALSE,
                         },
                     )
@@ -134,18 +132,15 @@ async def handel_apply_leave(
                     raise HTTPException(
                         status_code=400,
                         detail={
-                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "message": ERROR_MESSAGE.ATTENDANCE_MODULE.LEAVE_REQUEST_ALREADY_APPLIED,
                             "success": SUCCESS.FALSE,
                         },
                     )
-                if (
-                    applied_leave.start_half == "first_half"
-                    and applied_leave.end_half == "second_half"
-                ):
+                if applied_leave.start_half == "first_half" and applied_leave.end_half == "second_half":
                     raise HTTPException(
                         status_code=400,
                         detail={
-                            "message": ERROR_MESSAGE.LEAVE_REQUEST_ALREADY_APPLIED,
+                            "message": ERROR_MESSAGE.ATTENDANCE_MODULE.LEAVE_REQUEST_ALREADY_APPLIED,
                             "success": SUCCESS.FALSE,
                         },
                     )
@@ -156,7 +151,7 @@ async def handel_apply_leave(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": ERROR_MESSAGE.EMPLOYEE_NOT_FOUND,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.EMPLOYEE_NOT_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -175,14 +170,12 @@ async def handel_apply_leave(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_LEAVE_TYPE_FOUND,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_LEAVE_TYPE_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
 
-        updated_created_by_user = model_to_filtered_dict(
-            user.personal_info, ["user_id", "first_name", "last_name"]
-        )
+        updated_created_by_user = model_to_filtered_dict(user.personal_info, ["user_id", "first_name", "last_name"])
 
         difference_btw_date = (start_date_utc - current_date_utc).days
         is_planned = difference_btw_date > 5
@@ -197,7 +190,7 @@ async def handel_apply_leave(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": "Invalid leave half selection for same day",
+                        "message": ERROR_MESSAGE.ATTENDANCE_MODULE.INVALID_LEAVE_HALF_SELECTION_FOR_SAME_DAY,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -224,7 +217,7 @@ async def handel_apply_leave(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_LEAVE_TYPE_FOUND,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_LEAVE_TYPE_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -233,7 +226,7 @@ async def handel_apply_leave(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Insufficient leave balance. You cannot apply for more than your available leaves.",
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.INSUFFICIENT_LEAVE_BALANCE,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -241,9 +234,7 @@ async def handel_apply_leave(
         uploaded_documents = []
 
         if documents:
-            uploaded_documents = [
-                await run_in_threadpool(upload_leave_documents_function, doc) for doc in documents
-            ]
+            uploaded_documents = [await run_in_threadpool(upload_leave_documents_function, doc) for doc in documents]
 
         notify_to_users_array = []
 
@@ -289,7 +280,7 @@ async def handel_apply_leave(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_APPLYING_LEAVE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -411,8 +402,7 @@ async def fetch_users_leave(
                                 else {}
                             ),
                         }
-                        if employee_data.employee_info
-                        and employee_data.employee_info.reporting_manager
+                        if employee_data.employee_info and employee_data.employee_info.reporting_manager
                         else {}
                     ),
                 }
@@ -436,7 +426,7 @@ async def fetch_users_leave(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_EMP_LEAVE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -475,7 +465,7 @@ async def fetch_leaves(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_ORGANIZATION_LEAVES,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -492,26 +482,16 @@ async def fetch_all_leave_balance(
 ):
     try:
         query_id = employee_id if employee_id else user.id
-        query_data = (
-            db.query(Models.LeaveBalance).filter(Models.LeaveBalance.user_id == query_id).all()
-        )
+        query_data = db.query(Models.LeaveBalance).filter(Models.LeaveBalance.user_id == query_id).all()
 
         data = []
 
         for _data in query_data:
-            available_gender = (
-                json.loads(_data.leave_type.gender) if _data.leave_type.gender else []
-            )
+            available_gender = json.loads(_data.leave_type.gender) if _data.leave_type.gender else []
             available_emp_status = (
-                json.loads(_data.leave_type.employee_status)
-                if _data.leave_type.employee_status
-                else []
+                json.loads(_data.leave_type.employee_status) if _data.leave_type.employee_status else []
             )
-            marital_status = (
-                json.loads(_data.leave_type.marital_status)
-                if _data.leave_type.marital_status
-                else []
-            )
+            marital_status = json.loads(_data.leave_type.marital_status) if _data.leave_type.marital_status else []
 
             if (
                 user.personal_info.gender in available_gender
@@ -549,7 +529,7 @@ async def fetch_all_leave_balance(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_LEAVE_BALANCE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_LEAVE_BALANCE,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -579,9 +559,7 @@ async def fetch_users_leave(
             db.query(Models.User)
             .options(
                 joinedload(Models.User.personal_info),
-                joinedload(Models.User.applied_leaves).joinedload(
-                    Models.AttendanceLeavesModule.leave_type
-                ),
+                joinedload(Models.User.applied_leaves).joinedload(Models.AttendanceLeavesModule.leave_type),
                 joinedload(Models.User.employee_info)
                 .joinedload(Models.EmployeeInfo.reporting_manager)
                 .joinedload(Models.User.personal_info),
@@ -602,9 +580,7 @@ async def fetch_users_leave(
 
                 employee_id = employee.id
                 if filter_data:
-                    if not attendance_leave_team_organization_query_filter(
-                        leave, employee_id, filter=filter_data
-                    ):
+                    if not attendance_leave_team_organization_query_filter(leave, employee_id, filter=filter_data):
                         continue
 
                 start_date_utc = parse_to_utc_date(leave.start_date)
@@ -756,7 +732,7 @@ async def fetch_users_leave(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_TEAM_MEMBER_LEAVES,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -785,9 +761,7 @@ async def fetch_users_leave(
             db.query(Models.User)
             .options(
                 joinedload(Models.User.personal_info),
-                joinedload(Models.User.applied_leaves).joinedload(
-                    Models.AttendanceLeavesModule.leave_type
-                ),
+                joinedload(Models.User.applied_leaves).joinedload(Models.AttendanceLeavesModule.leave_type),
                 joinedload(Models.User.employee_info)
                 .joinedload(Models.EmployeeInfo.reporting_manager)
                 .joinedload(Models.User.personal_info),
@@ -808,9 +782,7 @@ async def fetch_users_leave(
 
                 employee_id = employee.id
                 if filter_data:
-                    if not attendance_leave_team_organization_query_filter(
-                        leave, employee_id, filter=filter_data
-                    ):
+                    if not attendance_leave_team_organization_query_filter(leave, employee_id, filter=filter_data):
                         continue
 
                 start_date_utc = parse_to_utc_date(leave.start_date)
@@ -962,7 +934,7 @@ async def fetch_users_leave(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_ORGANIZATION_EMPLOYEE_LEAVES,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -991,7 +963,7 @@ async def update_leave_request(
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
                 detail={
-                    "message": ERROR_MESSAGE.LEAVE_REQUEST_NOT_ALLOWED,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.LEAVE_REQUEST_NOT_ALLOWED,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1000,7 +972,7 @@ async def update_leave_request(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
-                    "message": ERROR_MESSAGE.NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NOT_AUTHORIZED_TO_MANAGE_LEAVE_UPDATE,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1009,14 +981,12 @@ async def update_leave_request(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "message": ERROR_MESSAGE.PLEASE_PROVIDE_APPROPRIATE_LEAVE_STATUS,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.PLEASE_PROVIDE_APPROPRIATE_LEAVE_STATUS,
                     "success": SUCCESS.FALSE,
                 },
             )
 
-        updated_created_by_user = model_to_filtered_dict(
-            user.personal_info, ["user_id", "first_name", "last_name"]
-        )
+        updated_created_by_user = model_to_filtered_dict(user.personal_info, ["user_id", "first_name", "last_name"])
 
         query_data.status = leave_status
         query_data.updated_by = json.dumps(updated_created_by_user)
@@ -1035,7 +1005,7 @@ async def update_leave_request(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail={
-                        "message": ERROR_MESSAGE.LEAVE_BALANCE_NOT_FOUND,
+                        "message": ERROR_MESSAGE.ATTENDANCE_MODULE.LEAVE_BALANCE_NOT_FOUND,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -1055,7 +1025,7 @@ async def update_leave_request(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_UPDATING_LEAVES,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -1071,9 +1041,7 @@ async def fetch_all_leave_type(
 ):
     try:
         query_data = (
-            db.query(Models.LeavesSettings)
-            .filter(Models.LeavesSettings.organization_id == user.organization_id)
-            .all()
+            db.query(Models.LeavesSettings).filter(Models.LeavesSettings.organization_id == user.organization_id).all()
         )
 
         _data = []
@@ -1092,7 +1060,7 @@ async def fetch_all_leave_type(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_LEAVE_TYPES,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -1124,7 +1092,7 @@ async def AttendancePunchIn(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.ACTIVE_ATTENDANCE_SESSION_FOUND,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ACTIVE_ATTENDANCE_SESSION_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1143,7 +1111,7 @@ async def AttendancePunchIn(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.ACTIVE_SESSION_FOR_TODAY,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ACTIVE_SESSION_FOR_TODAY,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1158,7 +1126,7 @@ async def AttendancePunchIn(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_LOCATION_CONFIG_ADDED,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_LOCATION_CONFIG_ADDED,
                     "error": str(e),
                     "success": SUCCESS.FALSE,
                 },
@@ -1183,9 +1151,7 @@ async def AttendancePunchIn(
                 org_location_coordinates = json.loads(location_config.location_coordinates)
 
                 allowed_radius_meters = (
-                    location_config.allowed_radius_meters
-                    if location_config.allowed_radius_meters
-                    else 500
+                    location_config.allowed_radius_meters if location_config.allowed_radius_meters else 500
                 )
 
                 distance = calculateDistanceWithHaversine(
@@ -1229,7 +1195,7 @@ async def AttendancePunchIn(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": ERROR_MESSAGE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
+                        "message": ERROR_MESSAGE.ATTENDANCE_MODULE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -1259,7 +1225,7 @@ async def AttendancePunchIn(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_PUNCHING_IN,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -1370,7 +1336,7 @@ async def punch_in_out_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -1417,8 +1383,7 @@ async def punch_in_out_status(
                 {
                     **model_to_filtered_dict(session, ["-attendance_breaks"]),
                     "breaks": [
-                        {**model_to_filtered_dict(attendance_break)}
-                        for attendance_break in session.attendance_breaks
+                        {**model_to_filtered_dict(attendance_break)} for attendance_break in session.attendance_breaks
                     ],
                 }
                 for session in monthly_data
@@ -1432,7 +1397,7 @@ async def punch_in_out_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -1461,7 +1426,7 @@ async def startBreak(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_ACTIVE_ATTENDANCE_SESSION,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_ACTIVE_ATTENDANCE_SESSION,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1479,7 +1444,7 @@ async def startBreak(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.CANT_ACTIVE_BECAUSE_ACTIVE_BREAK_FOUND,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1494,7 +1459,7 @@ async def startBreak(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_LOCATION_CONFIG_ADDED,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_LOCATION_CONFIG_ADDED,
                     "error": str(e),
                     "success": SUCCESS.FALSE,
                 },
@@ -1520,9 +1485,7 @@ async def startBreak(
             org_location_coordinates = json.loads(location_config.location_coordinates)
 
             allowed_radius_meters = (
-                location_config.allowed_radius_meters
-                if location_config.allowed_radius_meters
-                else 500
+                location_config.allowed_radius_meters if location_config.allowed_radius_meters else 500
             )
 
             distance = calculateDistanceWithHaversine(
@@ -1565,7 +1528,7 @@ async def startBreak(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1576,7 +1539,7 @@ async def startBreak(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -1605,7 +1568,7 @@ async def endBreak(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_ACTIVE_ATTENDANCE_SESSION,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_ACTIVE_ATTENDANCE_SESSION,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1620,7 +1583,7 @@ async def endBreak(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_LOCATION_CONFIG_ADDED,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_LOCATION_CONFIG_ADDED,
                     "error": str(e),
                     "success": SUCCESS.FALSE,
                 },
@@ -1646,9 +1609,7 @@ async def endBreak(
             org_location_coordinates = json.loads(location_config.location_coordinates)
 
             allowed_radius_meters = (
-                location_config.allowed_radius_meters
-                if location_config.allowed_radius_meters
-                else 500
+                location_config.allowed_radius_meters if location_config.allowed_radius_meters else 500
             )
 
             distance = calculateDistanceWithHaversine(
@@ -1679,11 +1640,7 @@ async def endBreak(
                 .first()
             )
 
-            punch_in_coords = (
-                json.loads(break_data.punch_in_coordinates)
-                if break_data.punch_in_coordinates
-                else None
-            )
+            punch_in_coords = json.loads(break_data.punch_in_coordinates) if break_data.punch_in_coordinates else None
 
             is_mislinious: bool = False
 
@@ -1712,9 +1669,7 @@ async def endBreak(
                 break_start_time = datetime.fromisoformat(break_data.break_start_time)
 
             break_data.break_end_time = datetime.utcnow()
-            break_data.break_duration = (
-                break_data.break_end_time - break_start_time
-            ).total_seconds() / 60
+            break_data.total_break_minutes = (break_data.break_end_time - break_start_time).total_seconds() / 60
             break_data.punch_out_coordinates = json.dumps(data.location_coordinates.model_dump())
             break_data.is_mislinious = is_mislinious
             break_data.status = "completed"
@@ -1729,7 +1684,7 @@ async def endBreak(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1740,7 +1695,7 @@ async def endBreak(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_FETCHING_ATTENDANCE_STATUS,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },
@@ -1769,7 +1724,7 @@ async def AttendancePunchOut(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_ACTIVE_ATTENDANCE_SESSION,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_ACTIVE_ATTENDANCE_SESSION,
                     "success": SUCCESS.FALSE,
                 },
             )
@@ -1783,7 +1738,7 @@ async def AttendancePunchOut(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": ERROR_MESSAGE.NO_LOCATION_CONFIG_ADDED,
+                    "message": ERROR_MESSAGE.ATTENDANCE_MODULE.NO_LOCATION_CONFIG_ADDED,
                     "error": str(e),
                     "success": SUCCESS.FALSE,
                 },
@@ -1807,9 +1762,7 @@ async def AttendancePunchOut(
 
             break_data.break_end_time = datetime.utcnow()
 
-            break_data.total_break_minutes = (
-                break_data.break_end_time - break_start_time
-            ).total_seconds() / 60
+            break_data.total_break_minutes = (break_data.break_end_time - break_start_time).total_seconds() / 60
 
             break_data.punch_out_coordinates = json.dumps(data.location_coordinates.model_dump())
             break_data.is_mislinious = False
@@ -1860,9 +1813,7 @@ async def AttendancePunchOut(
                 org_location_coordinates = json.loads(location_config.location_coordinates)
 
                 allowed_radius_meters = (
-                    location_config.allowed_radius_meters
-                    if location_config.allowed_radius_meters
-                    else 500
+                    location_config.allowed_radius_meters if location_config.allowed_radius_meters else 500
                 )
 
                 distance = calculateDistanceWithHaversine(
@@ -1885,9 +1836,7 @@ async def AttendancePunchOut(
             if is_with_in_range:
 
                 punch_in_coords = (
-                    json.loads(active_session.punch_in_coordinates)
-                    if active_session.punch_in_coordinates
-                    else None
+                    json.loads(active_session.punch_in_coordinates) if active_session.punch_in_coordinates else None
                 )
 
                 is_mislinious: bool = False
@@ -1916,7 +1865,7 @@ async def AttendancePunchOut(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={
-                        "message": ERROR_MESSAGE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
+                        "message": ERROR_MESSAGE.ATTENDANCE_MODULE.OUT_OF_RANGE_ATTENDANCE_PUNCH,
                         "success": SUCCESS.FALSE,
                     },
                 )
@@ -1937,7 +1886,7 @@ async def AttendancePunchOut(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_APPLYING_LEAVE,
+                "message": ERROR_MESSAGE.ATTENDANCE_MODULE.ERROR_WHILE_PUNCHING_OUT,
                 "error": str(e),
                 "success": SUCCESS.FALSE,
             },

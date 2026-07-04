@@ -31,6 +31,8 @@ from mailer.HtmlEmailBody import (
     ResetPasswordInstructionHtmlBody,
     VerifyEmailHtmlBody,
 )
+from mailer.emailService.email_models import EmailSchema
+from mailer.emailService.email_queue_service import email_sender_function
 from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from middleware.verifyToken import verify_token
@@ -48,15 +50,13 @@ from models.pydantic.HelperPydanticModel import (
 )
 from models.sql import Models
 from utils.helper.createModelInstance import cerate_model_instance
-from utils.helper.emailSender import EmailSchema, email_sender_function
+from utils.helper.encryption_helper import urlsafe_data_decoding_service, urlsafe_data_encoding_service
 from utils.helper.helper import (
     filter_fields,
     generatePasswordResetToken,
     get_client_ip,
     hash_fingerprint,
     model_to_filtered_dict,
-    urlsafe_data_decoding_function,
-    urlsafe_data_encoding_function,
 )
 from utils.helper.jwtHelper import create_jwt_token, hash_passwords, verify_password
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
@@ -158,7 +158,16 @@ async def create_password(
     type: str = Query(..., alias="type"),
 ):
     try:
-        decrypted_user_id = urlsafe_data_decoding_function(user_id)
+        decrypted_user_id = urlsafe_data_decoding_service(user_id)
+
+        if len(password.password) > 12 or len(password.password) < 5:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Password must be between 5 and 12 characters long.",
+                    "success": SUCCESS.FALSE,
+                },
+            )
 
         user = db.query(Models.User).filter(Models.User.id == decrypted_user_id).first()
 
@@ -192,7 +201,7 @@ async def create_password(
                 },
             )
 
-        decrypted_token = urlsafe_data_decoding_function(token)
+        decrypted_token = urlsafe_data_decoding_service(token)
 
         password_cache_key = f"set_reset_password_token_{user.id}"
         reset_password_token = await cache_database.get(password_cache_key)
@@ -262,6 +271,16 @@ async def create_password(
 async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
     try:
+
+        if len(user_info.password) > 12 or len(user_info.password) < 5:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Password must be between 5 and 12 characters long.",
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
         cache_key = f"sign_in_attempt_{user_info.email}"
         count = await cache_database.incr(cache_key) or 0
         count = int(count)
@@ -285,7 +304,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
             .first()
         )
 
-        print(user)
+        # print(user)
 
         if not user:
 
@@ -400,7 +419,7 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
 
         token = create_jwt_token(data=sub, expires_date=timedelta(days=15))
 
-        encrypted_org_id = urlsafe_data_encoding_function(organization.id)
+        encrypted_org_id = urlsafe_data_encoding_service(organization.id)
 
         return {
             "message": SUCCESS_MESSAGE.SIGN_IN_SUCCESS_MESSAGE,
@@ -769,7 +788,7 @@ async def verify_user(request: Request, db: db_dependencies, token: str = Depend
 
         organization = user.organization
 
-        encrypted_org_id = urlsafe_data_encoding_function(organization.id)
+        encrypted_org_id = urlsafe_data_encoding_service(organization.id)
 
         permissions_data = []
         if user.employee_info and user.employee_info.employee_role:
@@ -1006,7 +1025,7 @@ async def HandelPasswordReset(
             )
 
         await cache_database.delete(cache_key)
-        encrypted_user_id = urlsafe_data_encoding_function(user.id)
+        encrypted_user_id = urlsafe_data_encoding_service(user.id)
 
         reset_password_token = generatePasswordResetToken()
 
@@ -1015,7 +1034,7 @@ async def HandelPasswordReset(
         password_cache_key = f"set_reset_password_token_{user.id}"
         await cache_database.set(password_cache_key, hash_token, ex=600)
 
-        encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+        encrypted_token = urlsafe_data_encoding_service(reset_password_token)
 
         hash_token = hash_passwords(reset_password_token)
 
@@ -1023,7 +1042,7 @@ async def HandelPasswordReset(
         db.refresh(user)
 
         email_data = {
-            "recever_email": data.email,
+            "recipients_email": data.email,
             "subject": "Reset Your Password for Your OrbitRMS Account",
             "body": ResetPasswordHtmlBody(
                 f"{FRONTEND_URL}/auth/reset-password?user-id={encrypted_user_id}&token={encrypted_token}"
@@ -1032,7 +1051,7 @@ async def HandelPasswordReset(
 
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance, background_task)
+        email_sender_function(email_instance)
 
         return {
             "message": SUCCESS_MESSAGE.MAIL_SENT_SUCCESSFULLY,
@@ -1182,10 +1201,19 @@ async def create_organization(
                 },
             )
 
-        encrypted_org_id = urlsafe_data_encoding_function(organization_info.organization_id)
+        if organization_info.email_verified:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.EMAIL_ALREADY_VERIFIED,
+                    "success": SUCCESS.FALSE,
+                },
+            )
+
+        encrypted_org_id = urlsafe_data_encoding_service(organization_info.organization_id)
 
         email_data = {
-            "recever_email": organization_info.primary_email,
+            "recipients_email": organization_info.primary_email,
             "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
             "body": VerifyEmailHtmlBody(
                 VerifyEmailPydanticBody(
@@ -1197,7 +1225,7 @@ async def create_organization(
 
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance, background_task)
+        await email_sender_function(email_instance)
 
         return {"success": SUCCESS.TRUE, "message": SUCCESS_MESSAGE.EMAIL_SENT_SUCCESSFULLY}
     except HTTPException as http_exception:
@@ -1256,13 +1284,13 @@ async def reset_password_instructions(
                 },
             )
 
-        encrypted_user_id = urlsafe_data_encoding_function(employee.id)
+        encrypted_user_id = urlsafe_data_encoding_service(employee.id)
 
         reset_password_token = generatePasswordResetToken()
 
         employee.reset_password_token = reset_password_token
 
-        encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+        encrypted_token = urlsafe_data_encoding_service(reset_password_token)
 
         db.query(Models.Sessions).filter(Models.Sessions.user_id == employee.id).delete()
 
@@ -1270,7 +1298,7 @@ async def reset_password_instructions(
         db.refresh(employee)
 
         email_data = {
-            "recever_email": data.email,
+            "recipients_email": data.email,
             "subject": "Reset Your Password for Your OrbitRMS Account",
             "body": ResetPasswordInstructionHtmlBody(
                 ResetPasswordInstructionPydanticBody(
@@ -1283,7 +1311,7 @@ async def reset_password_instructions(
 
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance, background_task)
+        email_sender_function(email_instance)
 
         return {
             "message": SUCCESS_MESSAGE.RESET_PASSWORD_LINK_SENT_SUCCESSFULLY,

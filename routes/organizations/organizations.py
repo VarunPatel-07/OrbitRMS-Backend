@@ -28,6 +28,8 @@ from jobs.backgroundTasks.emailDispatcher.Background_Mail_Initiator import (
     OnboardingCompletedMailSending,
 )
 from mailer.HtmlEmailBody import CreatePasswordHtmlBody
+from mailer.emailService.email_models import EmailSchema
+from mailer.emailService.email_queue_service import email_sender_function
 from middleware.RateLimiting import limiter
 from middleware.UserAuthenticator import UserAuthenticatorMiddleware
 from models.pydantic.HelperPydanticModel import (
@@ -38,14 +40,12 @@ from models.pydantic.Organizations.organizations import (
 )
 from models.sql import Models
 from utils.helper.createModelInstance import cerate_model_instance
-from utils.helper.emailSender import EmailSchema, email_sender_function
+from utils.helper.encryption_helper import urlsafe_data_decoding_service, urlsafe_data_encoding_service
 from utils.helper.helper import (
     filter_fields,
     generate_api_secrets_api_key,
     generatePasswordResetToken,
     update_model_data,
-    urlsafe_data_decoding_function,
-    urlsafe_data_encoding_function,
 )
 from utils.helper.jwtHelper import hash_passwords
 from utils.responseMessages import ERROR_MESSAGE, SUCCESS_MESSAGE
@@ -76,7 +76,7 @@ async def verify_organization(
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
-        decrypted_org_id = urlsafe_data_decoding_function(organization_id)
+        decrypted_org_id = urlsafe_data_decoding_service(organization_id)
 
         organization = (
             db.query(Models.OrganizationGeneralInfo)
@@ -106,7 +106,7 @@ async def verify_organization(
                     },
                 )
 
-            encrypted_user_id = urlsafe_data_encoding_function(user.id)
+            encrypted_user_id = urlsafe_data_encoding_service(user.id)
 
             reset_password_token = generatePasswordResetToken()
 
@@ -115,10 +115,10 @@ async def verify_organization(
             password_cache_key = f"set_reset_password_token_{user.id}"
             await cache_database.set(password_cache_key, hash_token, ex=600)
 
-            encrypted_token = urlsafe_data_encoding_function(reset_password_token)
+            encrypted_token = urlsafe_data_encoding_service(reset_password_token)
 
             email_data = {
-                "recever_email": organization.primary_email,
+                "recipients_email": organization.primary_email,
                 "subject": "Complete Your Account Setup – Create Your Password",
                 "body": CreatePasswordHtmlBody(
                     CreatePasswordPydanticBody(
@@ -131,7 +131,7 @@ async def verify_organization(
 
             email_instance = EmailSchema(**email_data)
 
-            email_sender_function(email_instance, background_task)
+            await email_sender_function(email_instance)
 
             config_module = Models.ConfigModule()
             config_module.organization_id = decrypted_org_id
@@ -167,7 +167,7 @@ async def verify_organization(
                 .first()
             )
 
-            encrypted_user_id = urlsafe_data_encoding_function(user_info.user_id)
+            encrypted_user_id = urlsafe_data_encoding_service(user_info.user_id)
 
             return {
                 "message": ERROR_MESSAGE.ALREADY_VERIFIED,
@@ -269,7 +269,7 @@ async def onboard_organization(
     organization_id: str = Query(..., alias="organization-id"),
 ):
     try:
-        organization_id = urlsafe_data_decoding_function(organization_id)
+        organization_id = urlsafe_data_decoding_service(organization_id)
         organization = db.query(Models.Organization).filter(Models.Organization.id == organization_id).first()
         if not organization:
             raise HTTPException(
@@ -391,7 +391,7 @@ async def fetch_organization_info(
 ):
     try:
 
-        organization_id = urlsafe_data_decoding_function(organization_id)
+        organization_id = urlsafe_data_decoding_service(organization_id)
 
         organization = (
             db.query(Models.Organization)

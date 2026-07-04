@@ -27,16 +27,20 @@ from routes.admin.maintenance.MaintenanceModeManager import MaintenanceMode
 from routes.admin.organization.AdminFeedController import adminFeedControl
 from routes.admin.organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.admin.organization.organization import adminOrgRoute
-from routes.apiManager.ApiManager import ApiManager
+from routes.apiManager.index import ApiManager
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
 from routes.clientInquires.ClientInquires import clientInquires
-from routes.clientInquires.SubmitClientInquiry import publicInquiryRouter
+from routes.clientInquires.submitInquiry.routes import inquiryPublicRouter
+from routes.clientInquires.submitInquiry.turnstile_client import (
+    close_turnstile_http_client,
+    init_turnstile_http_client,
+)
 from routes.configModule.ConfigModule import configRoute
 from routes.countryInfo.CountryInfo import countryApiRouter
 from routes.orbitAi.OrbitAi import OrbitAiRoute
-from routes.organizations.Attendance import attendanceRoute
+from routes.organizations.attendance.routes import attendanceRoute
 from routes.organizations.EmployeeController import employee_router
 from routes.organizations.FeedController import feedControl
 from routes.organizations.organizations import orgRouter
@@ -78,7 +82,7 @@ app.add_middleware(CustomCorsModule)
 BaseModel.metadata.create_all(bind=DATABASE_ENGINE)
 
 
-app.include_router(publicInquiryRouter)
+app.include_router(inquiryPublicRouter)
 # Include application routes
 app.include_router(authRoutes)
 app.include_router(orgRouter)
@@ -134,6 +138,7 @@ async def startup_event():
     """
     On app startup, launch the background worker task
     """
+    await init_turnstile_http_client()
     asyncio.create_task(worker_task())
 
 
@@ -149,6 +154,7 @@ async def worker_task():
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    await close_turnstile_http_client()
     scheduler.shutdown()
     print("[Scheduler Stopped]")
 

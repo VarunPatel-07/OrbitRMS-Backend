@@ -4,18 +4,19 @@ import json
 import math
 import os
 import random
+import re
 import secrets
 import string
 from datetime import date, datetime, timezone
 from typing import Dict, List, Optional, Union
 from zoneinfo import ZoneInfo
 
-from Crypto.Cipher import AES
 from dotenv import load_dotenv
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import class_mapper
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from config.EnvConfig import EnvConfig
 from database.Database import db_dependencies
@@ -23,6 +24,45 @@ from database.Database import db_dependencies
 load_dotenv(override=True)
 
 ENCRYPTION_KEY = EnvConfig.ENCRYPTION_KEY.encode()
+
+
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
+ALLOWED_FILE_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".odt",
+    ".ods",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".rtf",
+    ".txt",
+}
+
+
+ALLOWED_FILE_TYPES = {
+    "application/pdf",
+    # Word
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    # OpenDocument
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    # PowerPoint
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    # Excel
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # RTF / TXT
+    "application/rtf",
+    "text/rtf",
+    "text/plain",
+}
+
+
+MAX_FILE_SIZE = 2 * 1024 * 1024
 
 
 def generate_full_name(first_name: str, last_name: str, middle_name: str = None) -> str:
@@ -125,69 +165,6 @@ def model_to_filtered_dict(data, fields: Optional[List[str]] = []) -> Dict[str, 
 # function to encode string | num  | dict into url-safe encoding
 
 
-def urlsafe_data_encoding_function(data: dict | str) -> str:
-    if not data:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"message": "The Data is required", "success": False},
-        )
-
-    # Convert dict to JSON string if necessary
-    if isinstance(data, dict):
-        data = json.dumps(data)
-
-    cipher = AES.new(ENCRYPTION_KEY, AES.MODE_EAX)
-    nonce = cipher.nonce
-    ciphertext, tag = cipher.encrypt_and_digest(data.encode())
-    return base64.urlsafe_b64encode(nonce + tag + ciphertext).decode()
-
-
-# to decode url-safe encoded value
-
-
-def urlsafe_data_decoding_function(encrypted_data: str) -> str:
-    if not encrypted_data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": "The Data is required", "success": False},
-        )
-
-    try:
-        row_data = base64.urlsafe_b64decode(encrypted_data)
-        nonce = row_data[:16]  # First 16 bytes: Nonce
-        tag = row_data[16:32]  # Next 16 bytes: Authentication tag
-        ciphertext = row_data[32:]
-
-        # Initialize AES cipher in EAX mode
-        cipher = AES.new(ENCRYPTION_KEY, AES.MODE_EAX, nonce=nonce)
-        decrypted_data = cipher.decrypt(ciphertext)
-        cipher.verify(tag)  # Verify the integrity of the data
-
-        # If decrypted data is already in bytes, directly decode it
-        if isinstance(decrypted_data, bytes):
-            return decrypted_data.decode()  # Assuming the original data is a string
-        else:
-            raise ValueError("Decrypted data is not in bytes format.")
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Decryption failed: Data may have been altered or corrupted!",
-                "success": False,
-                "error": str(e),
-            },
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": f"Unexpected error during decryption: {str(e)}",
-                "success": False,
-            },
-        )
-
-
 # this is the function to update the sql model data
 def update_model_data(
     db: db_dependencies,
@@ -254,7 +231,76 @@ def generate_api_secrets_api_key():
     return api_key, api_secret
 
 
+def is_valid_email(value):
+    if not isinstance(value, str):
+        return False
+
+    value = value.strip()
+
+    if not value:
+        return False
+
+    return bool(EMAIL_REGEX.match(value))
+
+
+def get_file_extension(filename: str):
+    return os.path.splitext(filename.lower())[1]
+
+
+def get_upload_file_size(file: StarletteUploadFile):
+    file.file.seek(0, os.SEEK_END)
+    size = file.file.tell()
+    file.file.seek(0)
+    return size
+
+
+def is_valid_file(value):
+    def validate_single_file(file):
+        if isinstance(file, StarletteUploadFile):
+            if not file.filename:
+                return False
+
+            file_extension = get_file_extension(file.filename)
+
+            if file_extension not in ALLOWED_FILE_EXTENSIONS:
+                return False
+
+            if file.content_type and file.content_type not in ALLOWED_FILE_TYPES:
+                return False
+
+            file_size = get_upload_file_size(file)
+
+            if file_size > MAX_FILE_SIZE:
+                return False
+            return True
+
+        if isinstance(file, dict):
+            filename = file.get("original_filename") or file.get("filename")
+            content_type = file.get("content_type")
+
+            if not filename:
+                return False
+
+            file_extension = get_file_extension(filename)
+
+            if file_extension not in ALLOWED_FILE_EXTENSIONS:
+                return False
+
+            if content_type and content_type not in ALLOWED_FILE_TYPES:
+                return False
+
+            return True
+
+        return False
+
+    if isinstance(value, list):
+        return len(value) > 0 and all(validate_single_file(file) for file in value)
+
+    return validate_single_file(value)
+
+
 def is_valid_type(value, field_type):
+
     try:
         if field_type == "string":
             return isinstance(value, str)
@@ -270,6 +316,10 @@ def is_valid_type(value, field_type):
             return isinstance(value, list) and all(isinstance(item, str) for item in value)
         elif field_type == "array of object":
             return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+        elif field_type == "email":
+            return is_valid_email(value)
+        elif field_type == "file":
+            return is_valid_file(value)
 
         return False
     except:

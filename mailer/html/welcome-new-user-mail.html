@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
-    <!-- <title>New Client Inquiry on {organization_name} via OrbitRMS!</title> -->
+    <!-- <title>Welcome to OrbitRMS</title> -->
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
@@ -99,13 +99,13 @@
   </head>
 
   <body
-    style="background-color: #f4f7fa; margin: 0; padding: 0; -webkit-text-size-adjust: none; text-size-adjust: none">
+    style="background-color: #ffffff; margin: 0; padding: 0; -webkit-text-size-adjust: none; text-size-adjust: none">
     <table
       border="0"
       cellpadding="0"
       cellspacing="0"
       role="presentation"
-      style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f4f7fa"
+      style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff"
       width="100%">
       <tbody>
         <tr>
@@ -199,13 +199,13 @@
                             style="
                               margin: 0;
                               color: #1a1a1a;
-                              font-family: 'Inter', Arial, sans-serif;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 24px;
                               font-weight: 700;
                               line-height: 1.3;
                               text-align: left;
                             ">
-                            📩 New Client Inquiry Received
+                            Hi {user_name}, 👋
                           </h2>
                         </td>
                       </tr>
@@ -218,13 +218,13 @@
                             style="
                               margin: 0;
                               color: #1aa19c;
-                              font-family: 'Inter', Arial, sans-serif;
-                              font-size: 16px;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
+                              font-size: 20px;
                               font-weight: 600;
                               line-height: 1.3;
                               text-align: left;
                             ">
-                            You’ve received a new inquiry on {organization_name} via OrbitRMS!
+                            Welcome to the team!
                           </h1>
                         </td>
                       </tr>
@@ -237,27 +237,60 @@
                             style="
                               margin: 0 0 16px 0;
                               color: #555555;
-                              font-family: 'Inter', Arial, sans-serif;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 15px;
                               line-height: 1.6;
                               text-align: left;
                             ">
-                            This could be a valuable opportunity, and we wanted to notify you right away. The client has
-                            shared their interest and is awaiting your response. Reviewing and responding promptly can
-                            help you make the most of this inquiry.
+                            We're thrilled to welcome you to
+                            <strong style="color: #1a1a1a">{organization_name}</strong>. You're now part of OrbitRMS, a
+                            powerful platform designed to help you build, manage, and collaborate more effectively.
                           </p>
                           <p
                             class="body-text"
                             style="
                               margin: 0;
                               color: #555555;
-                              font-family: 'Inter', Arial, sans-serif;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 15px;
                               line-height: 1.6;
                               text-align: left;
                             ">
                             To get started, click the button below to create your password and activate your account:
                           </p>
+                        </td>
+                      </tr>
+
+                      <!-- CTA Button -->
+                      <tr>
+                        <td class="button-cell" style="padding-bottom: 32px">
+                          <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
+                            <tr>
+                              <td align="center">
+                                <a
+                                  href="{create_password_link}"
+                                  style="
+                                    background-color: #1aa19c;
+                                    border-radius: 8px;
+                                    color: #ffffff;
+                                    display: inline-block;
+                                    font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                    font-size: 16px;
+                                    font-weight: 600;
+                                    line-height: 1;
+                                    padding: 16px 48px;
+                                    text-align: center;
+                                    text-decoration: none;
+                                    transition: background-color 0.3s;
+                                    -webkit-text-size-adjust: none;
+                                    mso-padding-alt: 16px 48px;
+                                  "
+                                  target="_blank">
+                                  <span style="color: #ffffff; text-decoration: none">Activate My Account</span>
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
                         </td>
                       </tr>
 
@@ -270,9 +303,155 @@
                             cellspacing="0"
                             role="presentation"
                             width="100%"
-                            style="color: black">
+                            style="background-color: #f8f9fb; border-radius: 12px; border-left: 4px solid #1aa19c">
                             <tr>
-                              <td>{client_details}</td>
+                              <td style="padding: 24px">
+                                <h3
+                                  style="
+                                    margin: 0 0 16px 0;
+                                    color: #1a1a1a;
+                                    font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                    font-size: 16px;
+                                    font-weight: 600;
+                                    line-height: 1.3;
+                                  ">
+                                  What's Next?
+                                </h3>
+                                <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
+                                  <tr>
+                                    <td style="padding-bottom: 12px">
+                                      <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                                        <tr>
+                                          <td style="padding-right: 12px; vertical-align: top; width: 24px">
+                                            <div
+                                              style="
+                                                width: 24px;
+                                                height: 24px;
+                                                border-radius: 50%;
+                                                background-color: #e6f7f6;
+                                              ">
+                                              <center>
+                                                <span
+                                                  style="
+                                                    color: #1aa19c;
+                                                    font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                                    font-size: 14px;
+                                                    font-weight: 600;
+                                                    line-height: 24px;
+
+                                                    display: block;
+                                                  "
+                                                  >1</span
+                                                >
+                                              </center>
+                                            </div>
+                                          </td>
+                                          <td style="vertical-align: top">
+                                            <p
+                                              style="
+                                                margin: 0;
+                                                color: #555555;
+                                                font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                                font-size: 14px;
+                                                line-height: 1.5;
+                                              ">
+                                              <strong style="color: #1a1a1a">Create your password</strong> and log in
+                                            </p>
+                                          </td>
+                                        </tr>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td style="padding-bottom: 12px">
+                                      <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                                        <tr>
+                                          <td style="padding-right: 12px; vertical-align: top; width: 24px">
+                                            <div
+                                              style="
+                                                width: 24px;
+                                                height: 24px;
+                                                border-radius: 50%;
+                                                background-color: #e6f7f6;
+                                              ">
+                                              <center>
+                                                <span
+                                                  style="
+                                                    color: #1aa19c;
+                                                    font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                                    font-size: 14px;
+                                                    font-weight: 600;
+                                                    line-height: 24px;
+                                                    display: block;
+                                                  "
+                                                  >2</span
+                                                >
+                                              </center>
+                                            </div>
+                                          </td>
+                                          <td style="vertical-align: top">
+                                            <p
+                                              style="
+                                                margin: 0;
+                                                color: #555555;
+                                                font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                                font-size: 14px;
+                                                line-height: 1.5;
+                                              ">
+                                              <strong style="color: #1a1a1a">Explore your dashboard</strong> and
+                                              familiarize yourself with the platform
+                                            </p>
+                                          </td>
+                                        </tr>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td>
+                                      <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                                        <tr>
+                                          <td style="padding-right: 12px; vertical-align: top; width: 24px">
+                                            <div
+                                              style="
+                                                width: 24px;
+                                                height: 24px;
+                                                border-radius: 50%;
+                                                background-color: #e6f7f6;
+                                              ">
+                                              <center>
+                                                <span
+                                                  style="
+                                                    color: #1aa19c;
+                                                    font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                                    font-size: 14px;
+                                                    font-weight: 600;
+                                                    line-height: 24px;
+                                                    display: block;
+                                                  "
+                                                  >3</span
+                                                >
+                                              </center>
+                                            </div>
+                                          </td>
+                                          <td style="vertical-align: top">
+                                            <p
+                                              style="
+                                                margin: 0;
+                                                color: #555555;
+                                                font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                                font-size: 14px;
+                                                line-height: 1.5;
+                                              ">
+                                              <strong style="color: #1a1a1a">Start managing</strong> your resources and
+                                              workflows
+                                            </p>
+                                          </td>
+                                        </tr>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
                             </tr>
                           </table>
                         </td>
@@ -294,7 +473,7 @@
                                   style="
                                     margin: 0 0 4px 0;
                                     color: #1a1a1a;
-                                    font-family: 'Inter', Arial, sans-serif;
+                                    font-family: &quot;Inter&quot;, Arial, sans-serif;
                                     font-size: 14px;
                                     line-height: 1.5;
                                     font-weight: 600;
@@ -305,7 +484,7 @@
                                   style="
                                     margin: 0;
                                     color: #666666;
-                                    font-family: 'Inter', Arial, sans-serif;
+                                    font-family: &quot;Inter&quot;, Arial, sans-serif;
                                     font-size: 13px;
                                     line-height: 1.5;
                                   ">
@@ -329,18 +508,18 @@
                             style="
                               margin: 0 0 8px 0;
                               color: #555555;
-                              font-family: 'Inter', Arial, sans-serif;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 14px;
                               line-height: 1.6;
                               text-align: left;
                             ">
-                            A new client is waiting to hear from you — don’t miss the chance to connect!
+                            We're excited to have you on board!
                           </p>
                           <p
                             style="
                               margin: 0;
                               color: #1a1a1a;
-                              font-family: 'Inter', Arial, sans-serif;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 14px;
                               line-height: 1.6;
                               text-align: left;
@@ -419,7 +598,7 @@
                             style="
                               margin: 0 0 12px 0;
                               color: #999999;
-                              font-family: 'Inter', Arial, sans-serif;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 12px;
                               line-height: 1.6;
                               text-align: center;
@@ -430,7 +609,7 @@
                             style="
                               margin: 0 0 12px 0;
                               color: #999999;
-                              font-family: 'Inter', Arial, sans-serif;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 12px;
                               line-height: 1.6;
                               text-align: center;
@@ -450,7 +629,7 @@
                             style="
                               margin: 16px 0 0 0;
                               color: #666666;
-                              font-family: 'Inter', Arial, sans-serif;
+                              font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 11px;
                               line-height: 1.4;
                               text-align: center;

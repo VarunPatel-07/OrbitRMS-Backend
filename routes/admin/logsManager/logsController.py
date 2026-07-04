@@ -22,6 +22,7 @@ logsController = APIRouter(prefix="/app/v1/admin/monitoring")
 
 
 API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
+LOGS_API_LIMITING = "100/minute"
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 LOG_FILE_PATH = BASE_DIR / "logs" / "runtime" / "runtime.log"
@@ -69,7 +70,7 @@ def listAllFilesFromFolder(folder_path: Path, folder_name: str):
 
 
 @logsController.get("/logs/runtime", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(LOGS_API_LIMITING)
 async def FetchAllLogs(
     request: Request,
     db: db_dependencies,
@@ -152,7 +153,7 @@ async def FetchAllLogs(
 
 
 @logsController.get("/logs/failures", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
+@limiter.limit(LOGS_API_LIMITING)
 async def FetchAllLogs(
     request: Request,
     db: db_dependencies,

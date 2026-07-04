@@ -35,13 +35,13 @@
       }
     </style>
   </head>
-  <body style="background-color: #f4f7fa; margin: 0; padding: 0; -webkit-text-size-adjust: none">
+  <body style="background-color: #ffffff; margin: 0; padding: 0; -webkit-text-size-adjust: none">
     <table
       border="0"
       cellpadding="0"
       cellspacing="0"
       role="presentation"
-      style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f4f7fa"
+      style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff"
       width="100%">
       <tbody>
         <tr>
@@ -84,7 +84,7 @@
 
                 <!-- STATUS BADGE STRIP -->
                 <tr>
-                  <td style="background-color: #f59e0b; padding: 14px 40px; text-align: center">
+                  <td style="background-color: #ef4444; padding: 14px 40px; text-align: center">
                     <p
                       style="
                         margin: 0;
@@ -95,7 +95,7 @@
                         letter-spacing: 1px;
                         text-transform: uppercase;
                       ">
-                      ⊘ Leave Cancelled
+                      ✕ Leave Rejected
                     </p>
                   </td>
                 </tr>
@@ -107,7 +107,7 @@
                     class="mobile_padding">
                     <img
                       src="https://res.cloudinary.com/ditphgtvl/image/upload/v1762599553/229384126_11060550_sa2icn.jpg"
-                      alt="Leave Cancelled"
+                      alt="Leave Rejected"
                       style="
                         display: block;
                         height: auto;
@@ -148,14 +148,14 @@
                           <h1
                             style="
                               margin: 0;
-                              color: #f59e0b;
+                              color: #ef4444;
                               font-family: &quot;Inter&quot;, Arial, sans-serif;
                               font-size: 20px;
                               font-weight: 600;
                               line-height: 1.3;
                               text-align: left;
                             ">
-                            Your Leave has been Cancelled
+                            Your Leave Request has been Rejected
                           </h1>
                         </td>
                       </tr>
@@ -169,9 +169,10 @@
                               font-size: 15px;
                               line-height: 1.6;
                             ">
-                            Your leave application submitted on
+                            We regret to inform you that your leave request submitted on
                             <strong style="color: #1a1a1a">{applied_date}</strong> has been
-                            <strong style="color: #f59e0b">cancelled</strong> on OrbitRMS.
+                            <strong style="color: #ef4444">rejected</strong> by your reporting manager
+                            <strong style="color: #1a1a1a">{manager_name}</strong>.
                           </p>
                           <p
                             style="
@@ -181,13 +182,13 @@
                               font-size: 15px;
                               line-height: 1.6;
                             ">
-                            Your leave balance has been <strong style="color: #16a34a">fully restored</strong> — all
-                            applied days have been credited back to your account.
+                            Your leave balance remains <strong style="color: #16a34a">unchanged</strong> — no days have
+                            been deducted.
                           </p>
                         </td>
                       </tr>
 
-                      <!-- CANCELLED DETAILS CARD -->
+                      <!-- REJECTED DETAILS CARD -->
                       <tr>
                         <td style="padding-bottom: 16px">
                           <table
@@ -197,24 +198,24 @@
                             role="presentation"
                             width="100%"
                             style="
-                              background-color: #fffbeb;
+                              background-color: #fff5f5;
                               border-radius: 12px;
-                              border: 1px solid #fde68a;
-                              border-left: 4px solid #f59e0b;
+                              border: 1px solid #fca5a5;
+                              border-left: 4px solid #ef4444;
                             ">
                             <tr>
                               <td style="padding: 20px 24px">
                                 <p
                                   style="
                                     margin: 0 0 16px 0;
-                                    color: #d97706;
+                                    color: #ef4444;
                                     font-family: &quot;Inter&quot;, Arial, sans-serif;
                                     font-size: 11px;
                                     font-weight: 700;
                                     letter-spacing: 2px;
                                     text-transform: uppercase;
                                   ">
-                                  Cancelled Leave Summary
+                                  Rejected Leave Summary
                                 </p>
                                 <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
                                   <tr>
@@ -350,7 +351,7 @@
                                       <p
                                         style="
                                           margin: 4px 0 0;
-                                          color: #f59e0b;
+                                          color: #ef4444;
                                           font-family: &quot;Inter&quot;, Arial, sans-serif;
                                           font-size: 14px;
                                           font-weight: 700;
@@ -363,7 +364,7 @@
                                 <div style="margin-top: 16px">
                                   <span
                                     style="
-                                      background-color: #f59e0b;
+                                      background-color: #ef4444;
                                       color: #ffffff;
                                       font-family: &quot;Inter&quot;, Arial, sans-serif;
                                       font-size: 11px;
@@ -373,7 +374,7 @@
                                       letter-spacing: 1px;
                                       text-transform: uppercase;
                                     "
-                                    >⊘ CANCELLED</span
+                                    >✕ REJECTED</span
                                   >
                                   <span
                                     style="
@@ -382,7 +383,7 @@
                                       font-size: 12px;
                                       margin-left: 10px;
                                     "
-                                    >on {cancelled_date}</span
+                                    >by {manager_name} · {rejected_date}</span
                                   >
                                 </div>
                               </td>
@@ -391,7 +392,7 @@
                         </td>
                       </tr>
 
-                      <!-- CANCELLATION REASON -->
+                      <!-- REJECTION REASON -->
                       <tr>
                         <td style="padding-bottom: 24px">
                           <p
@@ -404,7 +405,7 @@
                               letter-spacing: 2px;
                               text-transform: uppercase;
                             ">
-                            Cancellation Note
+                            Reason for Rejection
                           </p>
                           <table
                             border="0"
@@ -412,19 +413,19 @@
                             cellspacing="0"
                             role="presentation"
                             width="100%"
-                            style="background-color: #fffbf0; border-radius: 8px; border: 1px solid #ffd966">
+                            style="background-color: #fff5f5; border-radius: 8px; border: 1px solid #fca5a5">
                             <tr>
                               <td style="padding: 16px 20px">
                                 <p
                                   style="
                                     margin: 0 0 8px 0;
-                                    color: #555555;
+                                    color: #7f1d1d;
                                     font-family: &quot;Inter&quot;, Arial, sans-serif;
                                     font-size: 14px;
                                     line-height: 1.7;
                                     font-style: italic;
                                   ">
-                                  "{cancellation_reason}"
+                                  "{rejection_reason}"
                                 </p>
                                 <p
                                   style="
@@ -433,7 +434,7 @@
                                     font-family: &quot;Inter&quot;, Arial, sans-serif;
                                     font-size: 12px;
                                   ">
-                                  — <strong style="color: #1a1a1a">{cancelled_by}</strong>
+                                  — <strong style="color: #1a1a1a">{manager_name}</strong>, {manager_designation}
                                 </p>
                               </td>
                             </tr>
@@ -441,7 +442,7 @@
                         </td>
                       </tr>
 
-                      <!-- RESTORED BALANCE -->
+                      <!-- WHAT YOU CAN DO (styled as get started steps) -->
                       <tr>
                         <td style="padding-bottom: 28px">
                           <table
@@ -462,7 +463,7 @@
                                     font-weight: 600;
                                     line-height: 1.3;
                                   ">
-                                  Get Started in 2 Easy Steps
+                                  What You Can Do Next
                                 </h3>
                                 <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
                                   <tr>
@@ -501,8 +502,8 @@
                                                 font-size: 14px;
                                                 line-height: 1.5;
                                               ">
-                                              <strong style="color: #1a1a1a">Check your restored leave balance</strong>
-                                              in OrbitRMS dashboard
+                                              <strong style="color: #1a1a1a">Re-apply for a different date</strong>
+                                              after discussing with your manager
                                             </p>
                                           </td>
                                         </tr>
@@ -545,8 +546,8 @@
                                                 font-size: 14px;
                                                 line-height: 1.5;
                                               ">
-                                              <strong style="color: #1a1a1a">Re-apply for leave</strong> whenever you
-                                              are ready via OrbitRMS
+                                              <strong style="color: #1a1a1a">Contact HR</strong> if you feel this needs
+                                              to be escalated
                                             </p>
                                           </td>
                                         </tr>
@@ -560,29 +561,55 @@
                         </td>
                       </tr>
 
-                      <!-- CTA -->
+                      <!-- CTA BUTTONS -->
                       <tr>
                         <td style="padding-bottom: 32px">
                           <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
                             <tr>
                               <td align="center">
-                                <a
-                                  href="{orbitrms_link}"
-                                  style="
-                                    background-color: #1aa19c;
-                                    border-radius: 8px;
-                                    color: #ffffff;
-                                    display: inline-block;
-                                    font-family: &quot;Inter&quot;, Arial, sans-serif;
-                                    font-size: 16px;
-                                    font-weight: 600;
-                                    line-height: 1;
-                                    padding: 16px 48px;
-                                    text-align: center;
-                                    text-decoration: none;
-                                  "
-                                  >View in OrbitRMS</a
-                                >
+                                <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                                  <tr>
+                                    <td style="padding-right: 12px">
+                                      <a
+                                        href="{reapply_link}"
+                                        style="
+                                          background-color: #1aa19c;
+                                          border-radius: 8px;
+                                          color: #ffffff;
+                                          display: inline-block;
+                                          font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                          font-size: 15px;
+                                          font-weight: 600;
+                                          line-height: 1;
+                                          padding: 14px 32px;
+                                          text-align: center;
+                                          text-decoration: none;
+                                        "
+                                        >Re-Apply for Leave</a
+                                      >
+                                    </td>
+                                    <td>
+                                      <a
+                                        href="{orbitrms_link}"
+                                        style="
+                                          background-color: #ffffff;
+                                          border-radius: 8px;
+                                          color: #555555;
+                                          display: inline-block;
+                                          font-family: &quot;Inter&quot;, Arial, sans-serif;
+                                          font-size: 15px;
+                                          font-weight: 600;
+                                          line-height: 1;
+                                          padding: 14px 32px;
+                                          text-align: center;
+                                          text-decoration: none;
+                                          border: 1px solid #e0e0e0;
+                                        "
+                                        >View in OrbitRMS</a
+                                      >
+                                    </td>
+                                  </tr>
+                                </table>
                               </td>
                             </tr>
                           </table>
@@ -609,7 +636,7 @@
                                     font-size: 14px;
                                     font-weight: 600;
                                   ">
-                                  💡 Have questions about this cancellation?
+                                  💡 Need to escalate?
                                 </p>
                                 <p
                                   style="
@@ -643,7 +670,7 @@
                               font-size: 14px;
                               line-height: 1.6;
                             ">
-                            We hope to see your next leave application soon. Plan ahead and apply via OrbitRMS!
+                            We understand this may be inconvenient and apologize for any disruption to your plans.
                           </p>
                           <p
                             style="
