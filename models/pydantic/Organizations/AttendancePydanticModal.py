@@ -1,6 +1,9 @@
 from typing import List, Optional
 
+from PIL.ImageChops import darker
 from pydantic import BaseModel
+
+from datetime import date
 
 
 class LocationCoordinatesPydanticModel(BaseModel):
@@ -37,3 +40,15 @@ class fetchAppliedLeavesQueryPydanticModel(BaseModel):
     page: int
     limit: int
     filter: Optional[str]
+
+
+class updateLeavesQueryPydanticModel(BaseModel):
+    leave_status: str
+    leave_id: str
+
+
+class fetchAppliedOrganizationLeave(BaseModel):
+    org_id: str
+    date: date
+    page: int
+    limit: int

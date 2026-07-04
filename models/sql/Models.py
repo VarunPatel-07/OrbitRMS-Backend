@@ -331,6 +331,14 @@ class ClientInquiresData(BaseModel):
 
     client_inquire = relationship("ClientInquires", back_populates="client_inquires_data")
 
+    created_at = Column(DateTime, default=lambda: datetime.now(ZoneInfo("UTC")), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(ZoneInfo("UTC")),
+        onupdate=lambda: datetime.now(ZoneInfo("UTC")),
+        nullable=True,
+    )
+
 
 class OrganizationUpdates(BaseModel):
     __tablename__ = "organization_updates"

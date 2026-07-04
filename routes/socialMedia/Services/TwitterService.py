@@ -66,7 +66,7 @@ class TwitterService:
         return token
 
     def refresh_access_token(self, refresh_token: str) -> dict:
-        print(refresh_token)
+        # print(refresh_token)
 
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -120,7 +120,7 @@ class TwitterService:
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 401:
                 new_tokens = self.refresh_access_token(refresh_token)
-                print(new_tokens)
+                # print(new_tokens)
                 new_access_token = new_tokens.get("access_token")
                 headers = {
                     "Authorization": f"Bearer {new_access_token}",
@@ -177,7 +177,7 @@ class TwitterService:
                 data = {"media_category": "tweet_image"}
                 response = requests.post(self.upload_media_url, headers=headers, files=files)
 
-                print(response)
+                # print(response)
                 response.raise_for_status()
 
                 return response.json().get("media_id_string")

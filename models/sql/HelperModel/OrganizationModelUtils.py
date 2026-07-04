@@ -87,7 +87,7 @@ class OrganizationAboutInfo(BaseModel):
     __tablename__ = "organization_about_info"
     id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    about = Column(String(255), nullable=True, default=None)
+    about = Column(Text, nullable=True, default=None)
     established_science = Column(DateTime, nullable=True)
     registration_number = Column(String(255), nullable=True, default=None)
 
