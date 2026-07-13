@@ -15,7 +15,7 @@ from fastapi import (
     status,
 )
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import and_
+from sqlalchemy import and_, asc, desc
 from sqlalchemy.orm import joinedload
 
 from config.EnvConfig import EnvConfig
@@ -53,6 +53,8 @@ async def Fetch_Client_Inquires(
     limit: int = Query(..., alias="limit"),
     filter: Optional[str] = Query(None),
     form_id: str = Query(..., alias="form_id"),
+    order: str = Query("desc", alias="order"),
+    sort_by: str = Query("created_at", alias="sort_by"),
     user: dict = Depends(UserAuthenticatorMiddleware),
 ):
     try:
@@ -90,16 +92,29 @@ async def Fetch_Client_Inquires(
 
         start = (page - 1) * limit
         end = start + limit
+        sort_order = order.lower()
+        sortable_fields = {
+            "created_at": Models.ClientInquiresData.created_at,
+            "id": Models.ClientInquiresData.id,
+        }
+
+        if sort_order not in ["asc", "desc"] or sort_by not in sortable_fields:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": ERROR_MESSAGE.INVALID_SORTING_ARGUMENT,
+                    "success": SUCCESS.FALSE,
+                },
+            )
 
         if filter_data:
             query_data = apply_client_inquiry_query_filter(query_data, filter_data)
-            total_data = query_data.count()
-            query_data = query_data.offset(start).limit(end)
 
-        else:
-            total_data = query_data.count()
+        sort_func = asc if sort_order == "asc" else desc
+        query_data = query_data.order_by(sort_func(sortable_fields[sort_by]))
 
-            query_data = query_data.offset(start).limit(end)
+        total_data = query_data.count()
+        query_data = query_data.offset(start).limit(end)
 
         return {
             "message": SUCCESS_MESSAGE.CLIENT_INQUIRY_FETCHED_SUCCESSFULLY,

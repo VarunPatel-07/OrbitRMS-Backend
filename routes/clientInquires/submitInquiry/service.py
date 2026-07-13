@@ -132,12 +132,16 @@ async def submit_inquiry_service_function(request, db, background_task, api_key,
         field_name = field["field_name"]
         field_type = field["type"]
 
+        print(f"Processing field '{field_name}' of type '{field_type}'")
+
         value = query_payload.get(field_name)
 
         if field_type == "file":
 
             files_value = value if isinstance(value, list) else [value]
             uploaded_files = await asyncio.gather(*(upload_single_file(file) for file in files_value))
+
+            print(f"Uploaded files for field '{field_name}': {uploaded_files}")
 
             inquiry_data[field_name] = uploaded_files
 
