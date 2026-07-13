@@ -17,6 +17,7 @@ from routes.clientInquires.submitInquiry.utils import (
     validate_request_origin,
 )
 from utils.helper.encryption_helper import decrypt_data_service
+from utils.logging import runtimeLogger
 from utils.responseMessages import ERROR_MESSAGE
 
 cloudinary.config(
@@ -132,7 +133,7 @@ async def submit_inquiry_service_function(request, db, background_task, api_key,
         field_name = field["field_name"]
         field_type = field["type"]
 
-        print(f"Processing field '{field_name}' of type '{field_type}'")
+        runtimeLogger.info(f"Processing field '{field_name}' of type '{field_type}'")
 
         value = query_payload.get(field_name)
 
@@ -141,7 +142,7 @@ async def submit_inquiry_service_function(request, db, background_task, api_key,
             files_value = value if isinstance(value, list) else [value]
             uploaded_files = await asyncio.gather(*(upload_single_file(file) for file in files_value))
 
-            print(f"Uploaded files for field '{field_name}': {uploaded_files}")
+            runtimeLogger.info(f"Uploaded files for field '{field_name}': {uploaded_files}")
 
             inquiry_data[field_name] = uploaded_files
 
