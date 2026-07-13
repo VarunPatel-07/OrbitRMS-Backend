@@ -17,7 +17,7 @@ from routes.clientInquires.submitInquiry.utils import (
     validate_request_origin,
 )
 from utils.helper.encryption_helper import decrypt_data_service
-from utils.logging import runtimeLogger
+from utils.logging.runtimeLogger import runtimeLogger
 from utils.responseMessages import ERROR_MESSAGE
 
 cloudinary.config(
