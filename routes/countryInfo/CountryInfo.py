@@ -4,7 +4,6 @@ import time
 import unicodedata
 
 import httpx
-import requests
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
@@ -21,7 +20,10 @@ load_dotenv(override=True)
 
 API_RATE_LIMITING = EnvConfig.API_RATE_LIMITING
 GEONAME_API_USERNAME = EnvConfig.GEONAME_API_USERNAME
-REST_API_URL = EnvConfig.REST_API_URL
+
+COUNTRY_DATA_FILE = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "country_data", "country_data.json")
+)
 
 
 async def fetch_data(url, retries=3, timeout=20):
@@ -66,47 +68,20 @@ async def FetchAllTheCountry(request: Request, order: str = Query("asc", alias="
                 "data": cached_sorted_data,
             }
 
-        response = requests.get(REST_API_URL)
+        with open(COUNTRY_DATA_FILE, "r", encoding="utf-8") as country_file:
+            countryArray = json.load(country_file)
 
-        if response.status_code == 200:
-            countryData = response.json()
+        if not isinstance(countryArray, list):
+            raise ValueError("Country data file must contain a list")
 
-            countryArray = []
+        sortedData = sorted(countryArray, key=lambda x: x["country_name"], reverse=(order.lower() == "desc"))
 
-            for country in countryData:
-                global country_number_code
-                if country.get("idd"):
-                    root = country.get("idd").get("root", "")
-                    suffixes = country.get("idd").get("suffixes", [])
-                    if suffixes:
-                        country_number_code = root + suffixes[0]
-                    else:
-                        country_number_code = root
-
-                refinedObj = {
-                    "country_name": country.get("name", {}).get("common", "N/A"),
-                    "country_flag": country.get("flag", "N/A"),
-                    "country_code": country.get("cca2"),
-                    "country_number_code": country_number_code,
-                }
-                countryArray.append(refinedObj)
-
-            sortedData = sorted(countryArray, key=lambda x: x["country_name"], reverse=(order.lower() == "desc"))
-
-            await cache_database.set(cache_data_key, json.dumps(sortedData), ex=30 * 24 * 3600)
-            return {
-                "message": SUCCESS_MESSAGE.COUNTRY_INFO_FETCHED_SUCCESSFULLY,
-                "success": SUCCESS.TRUE,
-                "data": sortedData,
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_COUNTRY,
-                    "success": SUCCESS.FALSE,
-                },
-            )
+        await cache_database.set(cache_data_key, json.dumps(sortedData), ex=30 * 24 * 3600)
+        return {
+            "message": SUCCESS_MESSAGE.COUNTRY_INFO_FETCHED_SUCCESSFULLY,
+            "success": SUCCESS.TRUE,
+            "data": sortedData,
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

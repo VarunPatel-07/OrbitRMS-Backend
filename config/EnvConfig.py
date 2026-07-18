@@ -139,9 +139,6 @@ class EnvConfig:
 
     # & ----------- Starting Of The All The EnvSecrets Related To REST API ---------
 
-    # REST API base URL
-    REST_API_URL = os.getenv("REST_API_URL")
-
     # & ----------- Ending Of The All The EnvSecrets Related To REST API ---------
 
     # ! ------- STARTING OF ALL THE SOCIAL MEDIA MODULE RELATED API KEY ---------
