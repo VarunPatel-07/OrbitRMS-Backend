@@ -6,9 +6,7 @@ from models.pydantic.HelperPydanticModel import DistanceCalculatorLatLong
 def calculateDistanceWithHaversine(
     userLocation: DistanceCalculatorLatLong, orgLocation: DistanceCalculatorLatLong
 ) -> float:
-    print("Calculating distance using Haversine formula...")
-    print("User Location:", userLocation)
-    print("Organization Location:", orgLocation)
+
     earthRadius = 6371000
 
     user_lat_rad = math.radians(userLocation.get("latitude"))

@@ -140,7 +140,7 @@ def validate_request_origin(request: Request, allowed_domains: list[str]) -> Non
     origin_host = extract_hostname(origin)
     referer_host = extract_hostname(referer)
 
-    print(origin, referer)
+    
 
     is_allowed = is_domain_allowed(origin_host, allowed_domains) or is_domain_allowed(referer_host, allowed_domains)
 

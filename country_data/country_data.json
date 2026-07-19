@@ -1,1523 +1,2539 @@
 [
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Abkhazia",
         "country_flag": "",
         "country_code": "",
         "country_number_code": "7"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Afghanistan",
         "country_flag": "🇦🇫",
         "country_code": "AF",
         "country_number_code": "93"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Albania",
         "country_flag": "🇦🇱",
         "country_code": "AL",
         "country_number_code": "355"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Algeria",
         "country_flag": "🇩🇿",
         "country_code": "DZ",
         "country_number_code": "213"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "American Samoa",
         "country_flag": "🇦🇸",
         "country_code": "AS",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "AD###",
+            "regex": "^(?:AD)*(\\d{3})$"
+        },
         "country_name": "Andorra",
         "country_flag": "🇦🇩",
         "country_code": "AD",
         "country_number_code": "376"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Angola",
         "country_flag": "🇦🇴",
         "country_code": "AO",
         "country_number_code": "244"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Anguilla",
         "country_flag": "🇦🇮",
         "country_code": "AI",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Antarctica",
         "country_flag": "🇦🇶",
         "country_code": "AQ",
         "country_number_code": "672"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Antigua and Barbuda",
         "country_flag": "🇦🇬",
         "country_code": "AG",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "@####@@@",
+            "regex": "^([A-Z]\\d{4}[A-Z]{3})$"
+        },
         "country_name": "Argentina",
         "country_flag": "🇦🇷",
         "country_code": "AR",
         "country_number_code": "54"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Armenia",
         "country_flag": "🇦🇲",
         "country_code": "AM",
         "country_number_code": "374"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Aruba",
         "country_flag": "🇦🇼",
         "country_code": "AW",
         "country_number_code": "297"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Australia",
         "country_flag": "🇦🇺",
         "country_code": "AU",
         "country_number_code": "61"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Austria",
         "country_flag": "🇦🇹",
         "country_code": "AT",
         "country_number_code": "43"
     },
     {
+        "postal_code": {
+            "format": "AZ ####",
+            "regex": "^(?:AZ)*(\\d{4})$"
+        },
         "country_name": "Azerbaijan",
         "country_flag": "🇦🇿",
         "country_code": "AZ",
         "country_number_code": "994"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Bahamas",
         "country_flag": "🇧🇸",
         "country_code": "BS",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "####|###",
+            "regex": "^(\\d{3}\\d?)$"
+        },
         "country_name": "Bahrain",
         "country_flag": "🇧🇭",
         "country_code": "BH",
         "country_number_code": "973"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Bangladesh",
         "country_flag": "🇧🇩",
         "country_code": "BD",
         "country_number_code": "880"
     },
     {
+        "postal_code": {
+            "format": "BB#####",
+            "regex": "^(?:BB)*(\\d{5})$"
+        },
         "country_name": "Barbados",
         "country_flag": "🇧🇧",
         "country_code": "BB",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Belarus",
         "country_flag": "🇧🇾",
         "country_code": "BY",
         "country_number_code": "375"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Belgium",
         "country_flag": "🇧🇪",
         "country_code": "BE",
         "country_number_code": "32"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Belize",
         "country_flag": "🇧🇿",
         "country_code": "BZ",
         "country_number_code": "501"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Benin",
         "country_flag": "🇧🇯",
         "country_code": "BJ",
         "country_number_code": "229"
     },
     {
+        "postal_code": {
+            "format": "@@ ##",
+            "regex": "^([A-Z]{2}\\d{2})$"
+        },
         "country_name": "Bermuda",
         "country_flag": "🇧🇲",
         "country_code": "BM",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Bhutan",
         "country_flag": "🇧🇹",
         "country_code": "BT",
         "country_number_code": "975"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Bolivia",
         "country_flag": "🇧🇴",
         "country_code": "BO",
         "country_number_code": "591"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Bosnia and Herzegovina",
         "country_flag": "🇧🇦",
         "country_code": "BA",
         "country_number_code": "387"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Botswana",
         "country_flag": "🇧🇼",
         "country_code": "BW",
         "country_number_code": "267"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Bouvet Island",
         "country_flag": "🇧🇻",
         "country_code": "BV",
         "country_number_code": "47"
     },
     {
+        "postal_code": {
+            "format": "#####-###",
+            "regex": "^(\\d{8})$"
+        },
         "country_name": "Brazil",
         "country_flag": "🇧🇷",
         "country_code": "BR",
         "country_number_code": "55"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "British Indian Ocean Territory",
         "country_flag": "🇮🇴",
         "country_code": "IO",
         "country_number_code": "246"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "British Virgin Islands",
         "country_flag": "🇻🇬",
         "country_code": "VG",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "@@####",
+            "regex": "^([A-Z]{2}\\d{4})$"
+        },
         "country_name": "Brunei",
         "country_flag": "🇧🇳",
         "country_code": "BN",
         "country_number_code": "673"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Bulgaria",
         "country_flag": "🇧🇬",
         "country_code": "BG",
         "country_number_code": "359"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Burkina Faso",
         "country_flag": "🇧🇫",
         "country_code": "BF",
         "country_number_code": "226"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Burundi",
         "country_flag": "🇧🇮",
         "country_code": "BI",
         "country_number_code": "257"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Cabo Verde",
         "country_flag": "🇨🇻",
         "country_code": "CV",
         "country_number_code": "238"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Cambodia",
         "country_flag": "🇰🇭",
         "country_code": "KH",
         "country_number_code": "855"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Cameroon",
         "country_flag": "🇨🇲",
         "country_code": "CM",
         "country_number_code": "237"
     },
     {
+        "postal_code": {
+            "format": "@#@ #@#",
+            "regex": "^([ABCEGHJKLMNPRSTVXY]\\d[ABCEGHJKLMNPRSTVWXYZ]) ?(\\d[ABCEGHJKLMNPRSTVWXYZ]\\d)$"
+        },
         "country_name": "Canada",
         "country_flag": "🇨🇦",
         "country_code": "CA",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Caribbean Netherlands",
         "country_flag": "🇧🇶",
         "country_code": "BQ",
         "country_number_code": "599"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Cayman Islands",
         "country_flag": "🇰🇾",
         "country_code": "KY",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Central African Republic",
         "country_flag": "🇨🇫",
         "country_code": "CF",
         "country_number_code": "236"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Chad",
         "country_flag": "🇹🇩",
         "country_code": "TD",
         "country_number_code": "235"
     },
     {
+        "postal_code": {
+            "format": "#######",
+            "regex": "^(\\d{7})$"
+        },
         "country_name": "Chile",
         "country_flag": "🇨🇱",
         "country_code": "CL",
         "country_number_code": "56"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "China",
         "country_flag": "🇨🇳",
         "country_code": "CN",
         "country_number_code": "86"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Christmas Island",
         "country_flag": "🇨🇽",
         "country_code": "CX",
         "country_number_code": "61"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Cocos (Keeling) Islands",
         "country_flag": "🇨🇨",
         "country_code": "CC",
         "country_number_code": "61"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Colombia",
         "country_flag": "🇨🇴",
         "country_code": "CO",
         "country_number_code": "57"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Comoros",
         "country_flag": "🇰🇲",
         "country_code": "KM",
         "country_number_code": "269"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Congo",
         "country_flag": "🇨🇬",
         "country_code": "CG",
         "country_number_code": "242"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Cook Islands",
         "country_flag": "🇨🇰",
         "country_code": "CK",
         "country_number_code": "682"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Costa Rica",
         "country_flag": "🇨🇷",
         "country_code": "CR",
         "country_number_code": "506"
     },
     {
+        "postal_code": {
+            "format": "HR-#####",
+            "regex": "^(?:HR)*(\\d{5})$"
+        },
         "country_name": "Croatia",
         "country_flag": "🇭🇷",
         "country_code": "HR",
         "country_number_code": "385"
     },
     {
+        "postal_code": {
+            "format": "CP #####",
+            "regex": "^(?:CP)*(\\d{5})$"
+        },
         "country_name": "Cuba",
         "country_flag": "🇨🇺",
         "country_code": "CU",
         "country_number_code": "53"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Curaçao",
         "country_flag": "🇨🇼",
         "country_code": "CW",
         "country_number_code": "599"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Cyprus",
         "country_flag": "🇨🇾",
         "country_code": "CY",
         "country_number_code": "357"
     },
     {
+        "postal_code": {
+            "format": "### ##",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Czechia",
         "country_flag": "🇨🇿",
         "country_code": "CZ",
         "country_number_code": "420"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "DRC",
         "country_flag": "🇨🇩",
         "country_code": "CD",
         "country_number_code": "243"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Denmark",
         "country_flag": "🇩🇰",
         "country_code": "DK",
         "country_number_code": "45"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Djibouti",
         "country_flag": "🇩🇯",
         "country_code": "DJ",
         "country_number_code": "253"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Dominica",
         "country_flag": "🇩🇲",
         "country_code": "DM",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Dominican Republic",
         "country_flag": "🇩🇴",
         "country_code": "DO",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "@####@",
+            "regex": "^([a-zA-Z]\\d{4}[a-zA-Z])$"
+        },
         "country_name": "Ecuador",
         "country_flag": "🇪🇨",
         "country_code": "EC",
         "country_number_code": "593"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Egypt",
         "country_flag": "🇪🇬",
         "country_code": "EG",
         "country_number_code": "20"
     },
     {
+        "postal_code": {
+            "format": "CP ####",
+            "regex": "^(?:CP)*(\\d{4})$"
+        },
         "country_name": "El Salvador",
         "country_flag": "🇸🇻",
         "country_code": "SV",
         "country_number_code": "503"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Equatorial Guinea",
         "country_flag": "🇬🇶",
         "country_code": "GQ",
         "country_number_code": "240"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Eritrea",
         "country_flag": "🇪🇷",
         "country_code": "ER",
         "country_number_code": "291"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Estonia",
         "country_flag": "🇪🇪",
         "country_code": "EE",
         "country_number_code": "372"
     },
     {
+        "postal_code": {
+            "format": "@###",
+            "regex": "^([A-Z]\\d{3})$"
+        },
         "country_name": "Eswatini",
         "country_flag": "🇸🇿",
         "country_code": "SZ",
         "country_number_code": "268"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Ethiopia",
         "country_flag": "🇪🇹",
         "country_code": "ET",
         "country_number_code": "251"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Falkland Islands",
         "country_flag": "🇫🇰",
         "country_code": "FK",
         "country_number_code": "500"
     },
     {
+        "postal_code": {
+            "format": "FO-###",
+            "regex": "^(?:FO)*(\\d{3})$"
+        },
         "country_name": "Faroe Islands",
         "country_flag": "🇫🇴",
         "country_code": "FO",
         "country_number_code": "298"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Fiji",
         "country_flag": "🇫🇯",
         "country_code": "FJ",
         "country_number_code": "679"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(?:FI)*(\\d{5})$"
+        },
         "country_name": "Finland",
         "country_flag": "🇫🇮",
         "country_code": "FI",
         "country_number_code": "358"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "France",
         "country_flag": "🇫🇷",
         "country_code": "FR",
         "country_number_code": "33"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^((97|98)3\\d{2})$"
+        },
         "country_name": "French Guiana",
         "country_flag": "🇬🇫",
         "country_code": "GF",
         "country_number_code": "594"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^((97|98)7\\d{2})$"
+        },
         "country_name": "French Polynesia",
         "country_flag": "🇵🇫",
         "country_code": "PF",
         "country_number_code": "689"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "French Southern and Antarctic Lands",
         "country_flag": "🇹🇫",
         "country_code": "TF",
         "country_number_code": "262"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Gabon",
         "country_flag": "🇬🇦",
         "country_code": "GA",
         "country_number_code": "241"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Gambia",
         "country_flag": "🇬🇲",
         "country_code": "GM",
         "country_number_code": "220"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Georgia",
         "country_flag": "🇬🇪",
         "country_code": "GE",
         "country_number_code": "995"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Germany",
         "country_flag": "🇩🇪",
         "country_code": "DE",
         "country_number_code": "49"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Ghana",
         "country_flag": "🇬🇭",
         "country_code": "GH",
         "country_number_code": "233"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Gibraltar",
         "country_flag": "🇬🇮",
         "country_code": "GI",
         "country_number_code": "350"
     },
     {
+        "postal_code": {
+            "format": "### ##",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Greece",
         "country_flag": "🇬🇷",
         "country_code": "GR",
         "country_number_code": "30"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Greenland",
         "country_flag": "🇬🇱",
         "country_code": "GL",
         "country_number_code": "299"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Grenada",
         "country_flag": "🇬🇩",
         "country_code": "GD",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^((97|98)\\d{3})$"
+        },
         "country_name": "Guadeloupe",
         "country_flag": "🇬🇵",
         "country_code": "GP",
         "country_number_code": "590"
     },
     {
+        "postal_code": {
+            "format": "969##",
+            "regex": "^(969\\d{2})$"
+        },
         "country_name": "Guam",
         "country_flag": "🇬🇺",
         "country_code": "GU",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Guatemala",
         "country_flag": "🇬🇹",
         "country_code": "GT",
         "country_number_code": "502"
     },
     {
+        "postal_code": {
+            "format": "@# #@@|@## #@@|@@# #@@|@@## #@@|@#@ #@@|@@#@ #@@|GIR0AA",
+            "regex": "^(([A-Z]\\d{2}[A-Z]{2})|([A-Z]\\d{3}[A-Z]{2})|([A-Z]{2}\\d{2}[A-Z]{2})|([A-Z]{2}\\d{3}[A-Z]{2})|([A-Z]\\d[A-Z]\\d[A-Z]{2})|([A-Z]{2}\\d[A-Z]\\d[A-Z]{2})|(GIR0AA))$"
+        },
         "country_name": "Guernsey",
         "country_flag": "🇬🇬",
         "country_code": "GG",
         "country_number_code": "44"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Guinea",
         "country_flag": "🇬🇳",
         "country_code": "GN",
         "country_number_code": "224"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Guinea-Bissau",
         "country_flag": "🇬🇼",
         "country_code": "GW",
         "country_number_code": "245"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Guyana",
         "country_flag": "🇬🇾",
         "country_code": "GY",
         "country_number_code": "592"
     },
     {
+        "postal_code": {
+            "format": "HT####",
+            "regex": "^(?:HT)*(\\d{4})$"
+        },
         "country_name": "Haiti",
         "country_flag": "🇭🇹",
         "country_code": "HT",
         "country_number_code": "509"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Heard Island and McDonald Islands",
         "country_flag": "🇭🇲",
         "country_code": "HM",
         "country_number_code": "672"
     },
     {
+        "postal_code": {
+            "format": "@@####",
+            "regex": "^([A-Z]{2}\\d{4})$"
+        },
         "country_name": "Honduras",
         "country_flag": "🇭🇳",
         "country_code": "HN",
         "country_number_code": "504"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Hong Kong",
         "country_flag": "🇭🇰",
         "country_code": "HK",
         "country_number_code": "852"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Hungary",
         "country_flag": "🇭🇺",
         "country_code": "HU",
         "country_number_code": "36"
     },
     {
+        "postal_code": {
+            "format": "###",
+            "regex": "^(\\d{3})$"
+        },
         "country_name": "Iceland",
         "country_flag": "🇮🇸",
         "country_code": "IS",
         "country_number_code": "354"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "India",
         "country_flag": "🇮🇳",
         "country_code": "IN",
         "country_number_code": "91"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Indonesia",
         "country_flag": "🇮🇩",
         "country_code": "ID",
         "country_number_code": "62"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Iran",
         "country_flag": "🇮🇷",
         "country_code": "IR",
         "country_number_code": "98"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Iraq",
         "country_flag": "🇮🇶",
         "country_code": "IQ",
         "country_number_code": "964"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Ireland",
         "country_flag": "🇮🇪",
         "country_code": "IE",
         "country_number_code": "353"
     },
     {
+        "postal_code": {
+            "format": "@# #@@|@## #@@|@@# #@@|@@## #@@|@#@ #@@|@@#@ #@@|GIR0AA",
+            "regex": "^(([A-Z]\\d{2}[A-Z]{2})|([A-Z]\\d{3}[A-Z]{2})|([A-Z]{2}\\d{2}[A-Z]{2})|([A-Z]{2}\\d{3}[A-Z]{2})|([A-Z]\\d[A-Z]\\d[A-Z]{2})|([A-Z]{2}\\d[A-Z]\\d[A-Z]{2})|(GIR0AA))$"
+        },
         "country_name": "Isle of Man",
         "country_flag": "🇮🇲",
         "country_code": "IM",
         "country_number_code": "44"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Israel",
         "country_flag": "🇮🇱",
         "country_code": "IL",
         "country_number_code": "972"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Italy",
         "country_flag": "🇮🇹",
         "country_code": "IT",
         "country_number_code": "39"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Ivory Coast",
         "country_flag": "🇨🇮",
         "country_code": "CI",
         "country_number_code": "225"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Jamaica",
         "country_flag": "🇯🇲",
         "country_code": "JM",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "###-####",
+            "regex": "^(\\d{7})$"
+        },
         "country_name": "Japan",
         "country_flag": "🇯🇵",
         "country_code": "JP",
         "country_number_code": "81"
     },
     {
+        "postal_code": {
+            "format": "@# #@@|@## #@@|@@# #@@|@@## #@@|@#@ #@@|@@#@ #@@|GIR0AA",
+            "regex": "^(([A-Z]\\d{2}[A-Z]{2})|([A-Z]\\d{3}[A-Z]{2})|([A-Z]{2}\\d{2}[A-Z]{2})|([A-Z]{2}\\d{3}[A-Z]{2})|([A-Z]\\d[A-Z]\\d[A-Z]{2})|([A-Z]{2}\\d[A-Z]\\d[A-Z]{2})|(GIR0AA))$"
+        },
         "country_name": "Jersey",
         "country_flag": "🇯🇪",
         "country_code": "JE",
         "country_number_code": "44"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Jordan",
         "country_flag": "🇯🇴",
         "country_code": "JO",
         "country_number_code": "962"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Kazakhstan",
         "country_flag": "🇰🇿",
         "country_code": "KZ",
         "country_number_code": "7"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Kenya",
         "country_flag": "🇰🇪",
         "country_code": "KE",
         "country_number_code": "254"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Kiribati",
         "country_flag": "🇰🇮",
         "country_code": "KI",
         "country_number_code": "686"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Kosovo",
         "country_flag": "🇽🇰",
         "country_code": "XK",
         "country_number_code": "383"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Kuwait",
         "country_flag": "🇰🇼",
         "country_code": "KW",
         "country_number_code": "965"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Kyrgyzstan",
         "country_flag": "🇰🇬",
         "country_code": "KG",
         "country_number_code": "996"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Laos",
         "country_flag": "🇱🇦",
         "country_code": "LA",
         "country_number_code": "856"
     },
     {
+        "postal_code": {
+            "format": "LV-####",
+            "regex": "^(?:LV)*(\\d{4})$"
+        },
         "country_name": "Latvia",
         "country_flag": "🇱🇻",
         "country_code": "LV",
         "country_number_code": "371"
     },
     {
+        "postal_code": {
+            "format": "#### ####|####",
+            "regex": "^(\\d{4}(\\d{4})?)$"
+        },
         "country_name": "Lebanon",
         "country_flag": "🇱🇧",
         "country_code": "LB",
         "country_number_code": "961"
     },
     {
+        "postal_code": {
+            "format": "###",
+            "regex": "^(\\d{3})$"
+        },
         "country_name": "Lesotho",
         "country_flag": "🇱🇸",
         "country_code": "LS",
         "country_number_code": "266"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Liberia",
         "country_flag": "🇱🇷",
         "country_code": "LR",
         "country_number_code": "231"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Libya",
         "country_flag": "🇱🇾",
         "country_code": "LY",
         "country_number_code": "218"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Liechtenstein",
         "country_flag": "🇱🇮",
         "country_code": "LI",
         "country_number_code": "423"
     },
     {
+        "postal_code": {
+            "format": "LT-#####",
+            "regex": "^(?:LT)*(\\d{5})$"
+        },
         "country_name": "Lithuania",
         "country_flag": "🇱🇹",
         "country_code": "LT",
         "country_number_code": "370"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Luxembourg",
         "country_flag": "🇱🇺",
         "country_code": "LU",
         "country_number_code": "352"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Macau",
         "country_flag": "🇲🇴",
         "country_code": "MO",
         "country_number_code": "853"
     },
     {
+        "postal_code": {
+            "format": "###",
+            "regex": "^(\\d{3})$"
+        },
         "country_name": "Madagascar",
         "country_flag": "🇲🇬",
         "country_code": "MG",
         "country_number_code": "261"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Malawi",
         "country_flag": "🇲🇼",
         "country_code": "MW",
         "country_number_code": "265"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Malaysia",
         "country_flag": "🇲🇾",
         "country_code": "MY",
         "country_number_code": "60"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Maldives",
         "country_flag": "🇲🇻",
         "country_code": "MV",
         "country_number_code": "960"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Mali",
         "country_flag": "🇲🇱",
         "country_code": "ML",
         "country_number_code": "223"
     },
     {
+        "postal_code": {
+            "format": "@@@ ###|@@@ ##",
+            "regex": "^([A-Z]{3}\\d{2}\\d?)$"
+        },
         "country_name": "Malta",
         "country_flag": "🇲🇹",
         "country_code": "MT",
         "country_number_code": "356"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Marshall Islands",
         "country_flag": "🇲🇭",
         "country_code": "MH",
         "country_number_code": "692"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Martinique",
         "country_flag": "🇲🇶",
         "country_code": "MQ",
         "country_number_code": "596"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Mauritania",
         "country_flag": "🇲🇷",
         "country_code": "MR",
         "country_number_code": "222"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Mauritius",
         "country_flag": "🇲🇺",
         "country_code": "MU",
         "country_number_code": "230"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Mayotte",
         "country_flag": "🇾🇹",
         "country_code": "YT",
         "country_number_code": "262"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Mexico",
         "country_flag": "🇲🇽",
         "country_code": "MX",
         "country_number_code": "52"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Micronesia",
         "country_flag": "🇫🇲",
         "country_code": "FM",
         "country_number_code": "691"
     },
     {
+        "postal_code": {
+            "format": "MD-####",
+            "regex": "^(?:MD)*(\\d{4})$"
+        },
         "country_name": "Moldova",
         "country_flag": "🇲🇩",
         "country_code": "MD",
         "country_number_code": "373"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Monaco",
         "country_flag": "🇲🇨",
         "country_code": "MC",
         "country_number_code": "377"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Mongolia",
         "country_flag": "🇲🇳",
         "country_code": "MN",
         "country_number_code": "976"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Montenegro",
         "country_flag": "🇲🇪",
         "country_code": "ME",
         "country_number_code": "382"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Montserrat",
         "country_flag": "🇲🇸",
         "country_code": "MS",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Morocco",
         "country_flag": "🇲🇦",
         "country_code": "MA",
         "country_number_code": "212"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Mozambique",
         "country_flag": "🇲🇿",
         "country_code": "MZ",
         "country_number_code": "258"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Myanmar",
         "country_flag": "🇲🇲",
         "country_code": "MM",
         "country_number_code": "95"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Namibia",
         "country_flag": "🇳🇦",
         "country_code": "NA",
         "country_number_code": "264"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Nauru",
         "country_flag": "🇳🇷",
         "country_code": "NR",
         "country_number_code": "674"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Nepal",
         "country_flag": "🇳🇵",
         "country_code": "NP",
         "country_number_code": "977"
     },
     {
+        "postal_code": {
+            "format": "#### @@",
+            "regex": "^(\\d{4}[A-Z]{2})$"
+        },
         "country_name": "Netherlands",
         "country_flag": "🇳🇱",
         "country_code": "NL",
         "country_number_code": "31"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "New Caledonia",
         "country_flag": "🇳🇨",
         "country_code": "NC",
         "country_number_code": "687"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "New Zealand",
         "country_flag": "🇳🇿",
         "country_code": "NZ",
         "country_number_code": "64"
     },
     {
+        "postal_code": {
+            "format": "###-###-#",
+            "regex": "^(\\d{7})$"
+        },
         "country_name": "Nicaragua",
         "country_flag": "🇳🇮",
         "country_code": "NI",
         "country_number_code": "505"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Niger",
         "country_flag": "🇳🇪",
         "country_code": "NE",
         "country_number_code": "227"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Nigeria",
         "country_flag": "🇳🇬",
         "country_code": "NG",
         "country_number_code": "234"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Niue",
         "country_flag": "🇳🇺",
         "country_code": "NU",
         "country_number_code": "683"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Norfolk Island",
         "country_flag": "🇳🇫",
         "country_code": "NF",
         "country_number_code": "672"
     },
     {
+        "postal_code": {
+            "format": "###-###",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "North Korea",
         "country_flag": "🇰🇵",
         "country_code": "KP",
         "country_number_code": "850"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "North Macedonia",
         "country_flag": "🇲🇰",
         "country_code": "MK",
         "country_number_code": "389"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Northern Cyprus",
         "country_flag": "",
         "country_code": "",
         "country_number_code": "90"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Northern Mariana Islands",
         "country_flag": "🇲🇵",
         "country_code": "MP",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Norway",
         "country_flag": "🇳🇴",
         "country_code": "NO",
         "country_number_code": "47"
     },
     {
+        "postal_code": {
+            "format": "###",
+            "regex": "^(\\d{3})$"
+        },
         "country_name": "Oman",
         "country_flag": "🇴🇲",
         "country_code": "OM",
         "country_number_code": "968"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Pakistan",
         "country_flag": "🇵🇰",
         "country_code": "PK",
         "country_number_code": "92"
     },
     {
+        "postal_code": {
+            "format": "96940",
+            "regex": "^(96940)$"
+        },
         "country_name": "Palau",
         "country_flag": "🇵🇼",
         "country_code": "PW",
         "country_number_code": "680"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Palestine",
         "country_flag": "🇵🇸",
         "country_code": "PS",
         "country_number_code": "970"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Panama",
         "country_flag": "🇵🇦",
         "country_code": "PA",
         "country_number_code": "507"
     },
     {
+        "postal_code": {
+            "format": "###",
+            "regex": "^(\\d{3})$"
+        },
         "country_name": "Papua New Guinea",
         "country_flag": "🇵🇬",
         "country_code": "PG",
         "country_number_code": "675"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Paraguay",
         "country_flag": "🇵🇾",
         "country_code": "PY",
         "country_number_code": "595"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Peru",
         "country_flag": "🇵🇪",
         "country_code": "PE",
         "country_number_code": "51"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Philippines",
         "country_flag": "🇵🇭",
         "country_code": "PH",
         "country_number_code": "63"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Pitcairn Islands",
         "country_flag": "🇵🇳",
         "country_code": "PN",
         "country_number_code": "64"
     },
     {
+        "postal_code": {
+            "format": "##-###",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Poland",
         "country_flag": "🇵🇱",
         "country_code": "PL",
         "country_number_code": "48"
     },
     {
+        "postal_code": {
+            "format": "####-###",
+            "regex": "^(\\d{7})$"
+        },
         "country_name": "Portugal",
         "country_flag": "🇵🇹",
         "country_code": "PT",
         "country_number_code": "351"
     },
     {
+        "postal_code": {
+            "format": "#####-####",
+            "regex": "^(\\d{9})$"
+        },
         "country_name": "Puerto Rico",
         "country_flag": "🇵🇷",
         "country_code": "PR",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Qatar",
         "country_flag": "🇶🇦",
         "country_code": "QA",
         "country_number_code": "974"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Romania",
         "country_flag": "🇷🇴",
         "country_code": "RO",
         "country_number_code": "40"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Russia",
         "country_flag": "🇷🇺",
         "country_code": "RU",
         "country_number_code": "7"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Rwanda",
         "country_flag": "🇷🇼",
         "country_code": "RW",
         "country_number_code": "250"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^((97|98)(4|7|8)\\d{2})$"
+        },
         "country_name": "Réunion",
         "country_flag": "🇷🇪",
         "country_code": "RE",
         "country_number_code": "262"
     },
     {
+        "postal_code": {
+            "format": "### ###",
+            "regex": ""
+        },
         "country_name": "Saint Barthélemy",
         "country_flag": "🇧🇱",
         "country_code": "BL",
         "country_number_code": "590"
     },
     {
+        "postal_code": {
+            "format": "STHL 1ZZ",
+            "regex": "^(STHL1ZZ)$"
+        },
         "country_name": "Saint Helena, Ascension and Tristan da Cunha",
         "country_flag": "🇸🇭",
         "country_code": "SH",
         "country_number_code": "290"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Saint Kitts and Nevis",
         "country_flag": "🇰🇳",
         "country_code": "KN",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Saint Lucia",
         "country_flag": "🇱🇨",
         "country_code": "LC",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "### ###",
+            "regex": ""
+        },
         "country_name": "Saint Martin",
         "country_flag": "🇲🇫",
         "country_code": "MF",
         "country_number_code": "590"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(97500)$"
+        },
         "country_name": "Saint Pierre and Miquelon",
         "country_flag": "🇵🇲",
         "country_code": "PM",
         "country_number_code": "508"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Saint Vincent and the Grenadines",
         "country_flag": "🇻🇨",
         "country_code": "VC",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Samoa",
         "country_flag": "🇼🇸",
         "country_code": "WS",
         "country_number_code": "685"
     },
     {
+        "postal_code": {
+            "format": "4789#",
+            "regex": "^(4789\\d)$"
+        },
         "country_name": "San Marino",
         "country_flag": "🇸🇲",
         "country_code": "SM",
         "country_number_code": "378"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Saudi Arabia",
         "country_flag": "🇸🇦",
         "country_code": "SA",
         "country_number_code": "966"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Senegal",
         "country_flag": "🇸🇳",
         "country_code": "SN",
         "country_number_code": "221"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Serbia",
         "country_flag": "🇷🇸",
         "country_code": "RS",
         "country_number_code": "381"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Seychelles",
         "country_flag": "🇸🇨",
         "country_code": "SC",
         "country_number_code": "248"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Sierra Leone",
         "country_flag": "🇸🇱",
         "country_code": "SL",
         "country_number_code": "232"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Singapore",
         "country_flag": "🇸🇬",
         "country_code": "SG",
         "country_number_code": "65"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Sint Maarten",
         "country_flag": "🇸🇽",
         "country_code": "SX",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "###  ##",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Slovakia",
         "country_flag": "🇸🇰",
         "country_code": "SK",
         "country_number_code": "421"
     },
     {
+        "postal_code": {
+            "format": "SI- ####",
+            "regex": "^(?:SI)*(\\d{4})$"
+        },
         "country_name": "Slovenia",
         "country_flag": "🇸🇮",
         "country_code": "SI",
         "country_number_code": "386"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Solomon Islands",
         "country_flag": "🇸🇧",
         "country_code": "SB",
         "country_number_code": "677"
     },
     {
+        "postal_code": {
+            "format": "@@  #####",
+            "regex": "^([A-Z]{2}\\d{5})$"
+        },
         "country_name": "Somalia",
         "country_flag": "🇸🇴",
         "country_code": "SO",
         "country_number_code": "252"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Somaliland",
         "country_flag": "",
         "country_code": "",
         "country_number_code": "252"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "South Africa",
         "country_flag": "🇿🇦",
         "country_code": "ZA",
         "country_number_code": "27"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "South Georgia",
         "country_flag": "🇬🇸",
         "country_code": "GS",
         "country_number_code": "500"
     },
     {
+        "postal_code": {
+            "format": "SEOUL ###-###",
+            "regex": "^(?:SEOUL)*(\\d{6})$"
+        },
         "country_name": "South Korea",
         "country_flag": "🇰🇷",
         "country_code": "KR",
         "country_number_code": "82"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "South Ossetia",
         "country_flag": "",
         "country_code": "",
         "country_number_code": "7"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "South Sudan",
         "country_flag": "🇸🇸",
         "country_code": "SS",
         "country_number_code": "211"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Spain",
         "country_flag": "🇪🇸",
         "country_code": "ES",
         "country_number_code": "34"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Sri Lanka",
         "country_flag": "🇱🇰",
         "country_code": "LK",
         "country_number_code": "94"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Sudan",
         "country_flag": "🇸🇩",
         "country_code": "SD",
         "country_number_code": "249"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Suriname",
         "country_flag": "🇸🇷",
         "country_code": "SR",
         "country_number_code": "597"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Svalbard and Jan Mayen",
         "country_flag": "🇸🇯",
         "country_code": "SJ",
         "country_number_code": "47"
     },
     {
+        "postal_code": {
+            "format": "SE-### ##",
+            "regex": "^(?:SE)*(\\d{5})$"
+        },
         "country_name": "Sweden",
         "country_flag": "🇸🇪",
         "country_code": "SE",
         "country_number_code": "46"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Switzerland",
         "country_flag": "🇨🇭",
         "country_code": "CH",
         "country_number_code": "41"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Syria",
         "country_flag": "🇸🇾",
         "country_code": "SY",
         "country_number_code": "963"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "São Tomé and Príncipe",
         "country_flag": "🇸🇹",
         "country_code": "ST",
         "country_number_code": "239"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Taiwan",
         "country_flag": "🇹🇼",
         "country_code": "TW",
         "country_number_code": "886"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Tajikistan",
         "country_flag": "🇹🇯",
         "country_code": "TJ",
         "country_number_code": "992"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Tanzania",
         "country_flag": "🇹🇿",
         "country_code": "TZ",
         "country_number_code": "255"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Thailand",
         "country_flag": "🇹🇭",
         "country_code": "TH",
         "country_number_code": "66"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Timor-Leste",
         "country_flag": "🇹🇱",
         "country_code": "TL",
         "country_number_code": "670"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Togo",
         "country_flag": "🇹🇬",
         "country_code": "TG",
         "country_number_code": "228"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Tokelau",
         "country_flag": "🇹🇰",
         "country_code": "TK",
         "country_number_code": "690"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Tonga",
         "country_flag": "🇹🇴",
         "country_code": "TO",
         "country_number_code": "676"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Trinidad and Tobago",
         "country_flag": "🇹🇹",
         "country_code": "TT",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Tunisia",
         "country_flag": "🇹🇳",
         "country_code": "TN",
         "country_number_code": "216"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Turkey",
         "country_flag": "🇹🇷",
         "country_code": "TR",
         "country_number_code": "90"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Turkmenistan",
         "country_flag": "🇹🇲",
         "country_code": "TM",
         "country_number_code": "993"
     },
     {
+        "postal_code": {
+            "format": "TKCA 1ZZ",
+            "regex": "^(TKCA 1ZZ)$"
+        },
         "country_name": "Turks and Caicos Islands",
         "country_flag": "🇹🇨",
         "country_code": "TC",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Tuvalu",
         "country_flag": "🇹🇻",
         "country_code": "TV",
         "country_number_code": "688"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Uganda",
         "country_flag": "🇺🇬",
         "country_code": "UG",
         "country_number_code": "256"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Ukraine",
         "country_flag": "🇺🇦",
         "country_code": "UA",
         "country_number_code": "380"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "United Arab Emirates",
         "country_flag": "🇦🇪",
         "country_code": "AE",
         "country_number_code": "971"
     },
     {
+        "postal_code": {
+            "format": "@# #@@|@## #@@|@@# #@@|@@## #@@|@#@ #@@|@@#@ #@@|GIR0AA",
+            "regex": "^(([A-Z]\\d{2}[A-Z]{2})|([A-Z]\\d{3}[A-Z]{2})|([A-Z]{2}\\d{2}[A-Z]{2})|([A-Z]{2}\\d{3}[A-Z]{2})|([A-Z]\\d[A-Z]\\d[A-Z]{2})|([A-Z]{2}\\d[A-Z]\\d[A-Z]{2})|(GIR0AA))$"
+        },
         "country_name": "United Kingdom",
         "country_flag": "🇬🇧",
         "country_code": "GB",
         "country_number_code": "44"
     },
     {
+        "postal_code": {
+            "format": "#####-####",
+            "regex": "^\\d{5}(-\\d{4})?$"
+        },
         "country_name": "United States",
         "country_flag": "🇺🇸",
         "country_code": "US",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "United States Minor Outlying Islands",
         "country_flag": "🇺🇲",
         "country_code": "UM",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "United States Virgin Islands",
         "country_flag": "🇻🇮",
         "country_code": "VI",
         "country_number_code": "1"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Uruguay",
         "country_flag": "🇺🇾",
         "country_code": "UY",
         "country_number_code": "598"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Uzbekistan",
         "country_flag": "🇺🇿",
         "country_code": "UZ",
         "country_number_code": "998"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Vanuatu",
         "country_flag": "🇻🇺",
         "country_code": "VU",
         "country_number_code": "678"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Vatican City",
         "country_flag": "🇻🇦",
         "country_code": "VA",
         "country_number_code": "379"
     },
     {
+        "postal_code": {
+            "format": "####",
+            "regex": "^(\\d{4})$"
+        },
         "country_name": "Venezuela",
         "country_flag": "🇻🇪",
         "country_code": "VE",
         "country_number_code": "58"
     },
     {
+        "postal_code": {
+            "format": "######",
+            "regex": "^(\\d{6})$"
+        },
         "country_name": "Vietnam",
         "country_flag": "🇻🇳",
         "country_code": "VN",
         "country_number_code": "84"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(986\\d{2})$"
+        },
         "country_name": "Wallis and Futuna",
         "country_flag": "🇼🇫",
         "country_code": "WF",
         "country_number_code": "681"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Western Sahara",
         "country_flag": "🇪🇭",
         "country_code": "EH",
         "country_number_code": "212"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Yemen",
         "country_flag": "🇾🇪",
         "country_code": "YE",
         "country_number_code": "967"
     },
     {
+        "postal_code": {
+            "format": "#####",
+            "regex": "^(\\d{5})$"
+        },
         "country_name": "Zambia",
         "country_flag": "🇿🇲",
         "country_code": "ZM",
         "country_number_code": "260"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Zimbabwe",
         "country_flag": "🇿🇼",
         "country_code": "ZW",
         "country_number_code": "263"
     },
     {
+        "postal_code": {
+            "format": "##########",
+            "regex": "^(\\d{10})$"
+        },
         "country_name": "Åland Islands",
         "country_flag": "🇦🇽",
         "country_code": "AX",

@@ -304,7 +304,6 @@ async def sing_in(db: db_dependencies, user_info: SignIn, request: Request):
             .first()
         )
 
-        # print(user)
 
         if not user:
 

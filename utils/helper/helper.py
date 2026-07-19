@@ -178,12 +178,11 @@ def update_model_data(
     record = db.query(model).filter(getattr(model, id_field) == model_id).first()
 
     if not record:
-        print(f"Record with {id_field}={model_id} not found")
         return None
     else:
         updated_data_dict = updated_data.__dict__ if hasattr(updated_data, "__dict__") else updated_data
         if not isinstance(updated_data_dict, dict):
-            print(f"Expected updated_data to be a dict, but got {type(updated_data_dict)}")
+            
             return None
         else:
 

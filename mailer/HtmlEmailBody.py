@@ -62,7 +62,7 @@ def ResetPasswordHtmlBody(url: str):
     with open(path, "r") as file:
         html_content = file.read()
 
-        # print(url)
+        
     html_content = (
         (html_content.replace("{create_password_link}", url))
         .replace("{facebook_url}", FACEBOOK_LINK)

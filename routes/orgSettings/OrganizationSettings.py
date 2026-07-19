@@ -670,7 +670,6 @@ async def fetch_location_config(
         cache_key = f"location_config_{user.organization_id}"
 
         cache_data = await cache_database.get(cache_key)
-        print(cache_data, "cache_data")
 
         if cache_data:
             return {
@@ -682,8 +681,6 @@ async def fetch_location_config(
         query_data.sort(key=lambda x: x.created_at, reverse=(order == "desc"))
 
         data = [model_to_filtered_dict(_data) for _data in query_data]
-
-        print(data, "data")
 
         await cache_database.set(cache_key, json.dumps(jsonable_encoder(data)), ex=3600)
 

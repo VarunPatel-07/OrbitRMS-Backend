@@ -6,6 +6,7 @@ import unicodedata
 import httpx
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, Request, status
+import requests
 
 from config.EnvConfig import EnvConfig
 from constants.constant import SUCCESS
@@ -311,71 +312,6 @@ async def getCountryFormats(request: Request, country_code: str = Query(..., ali
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_STATE_DATA,
-                "success": SUCCESS.FALSE,
-                "error": str(e),
-            },
-        )
-
-
-@countryApiRouter.get("/fetchAllCountry", status_code=status.HTTP_200_OK)
-@limiter.limit(API_RATE_LIMITING)
-async def fetchAllTheCountryData(request: Request, order: str = Query("asc", alias="order")):
-    try:
-        cache_data_key = "AllCountryCachedDataKey_order_" + order.lower()
-        cache_data = await cache_database.get(cache_data_key)
-        if cache_data:
-            sorted_cached_data = json.loads(cache_data)
-            return {
-                "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
-                "success": SUCCESS.TRUE,
-                "data": sorted_cached_data,
-            }
-
-        response = await fetch_data(url=REST_API_URL)
-
-        countryData = response
-
-        data = []
-        for country in countryData:
-
-            postal_code = country.get("postalCode")
-            default_postal_code = {
-                "format": "##########",
-                "regex": "^(\\d{10})$",
-            }
-
-            global country_number_code
-            if country.get("idd"):
-                root = country.get("idd").get("root", "")
-                suffixes = country.get("idd").get("suffixes", [])
-                if suffixes:
-                    country_number_code = root + suffixes[0]
-                else:
-                    country_number_code = root
-            obj = {
-                "postal_code": postal_code if postal_code else default_postal_code,
-                "country_name": country.get("name", {}).get("common", "N/A"),
-                "country_code": country.get("cca2"),
-                "country_flag": country.get("flag", "N/A"),
-                "country_number_code": country_number_code,
-            }
-
-            data.append(obj)
-        reverse = order.lower() == "desc"
-
-        data.sort(key=lambda x: x["country_name"], reverse=reverse)
-
-        await cache_database.set(cache_data_key, json.dumps(data), ex=30 * 24 * 3600)
-        return {
-            "message": SUCCESS_MESSAGE.FETCHED_SUCCESSFULLY,
-            "success": SUCCESS.TRUE,
-            "data": data,
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": ERROR_MESSAGE.ERROR_WHILE_FETCHING_COUNTRY,
                 "success": SUCCESS.FALSE,
                 "error": str(e),
             },

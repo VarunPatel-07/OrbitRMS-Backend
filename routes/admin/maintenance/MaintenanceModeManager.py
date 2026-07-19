@@ -110,7 +110,7 @@ async def Toggle_Maintenance_Mode(
                 maintenance_mode.message = maintenance_mode_data.message
 
                 started_at = datetime.now(ZoneInfo("UTC"))
-                # print(started_at)
+                
 
                 db.add(
                     Models.MaintenanceLog(
@@ -230,9 +230,7 @@ async def Maintenance_Mode_Schedule_Toggler(
         start_date = parse_date(maintenance_mode_data.started_at)
         end_date = parse_date(maintenance_mode_data.ended_at)
 
-        # print("start_date", start_date)
-
-        # print("end_date", end_date)
+        
 
         if start_date > end_date:
             raise HTTPException(

@@ -59,5 +59,5 @@ async def BulkLikeFeeder(db: db_dependencies):
                 await cache_database.expire(f"post:{post_id}:likes", 600)
 
         except Exception as e:
-            # print(e)
+            
             await asyncio.sleep(5)

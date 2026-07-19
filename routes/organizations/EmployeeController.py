@@ -708,7 +708,7 @@ async def edit_employee_profile(
             db.query(Models.PersonalContactInfo).filter_by(user_id=employee.id).update(personal_contact_info_data)
 
             contact_info_id = employee.personal_contact_info.id
-            # # print("in the if")
+            
 
         else:
             new_personal_contact_info = Models.PersonalContactInfo(user_id=employee.id, **personal_contact_info_data)
