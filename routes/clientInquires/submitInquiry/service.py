@@ -29,6 +29,10 @@ cloudinary.config(
 async def upload_single_file(file: UploadFile):
     file_bytes = await file.read()
 
+    # An empty browser placeholder must never be sent to Cloudinary.
+    if not file_bytes:
+        return None
+
     result = await run_in_threadpool(
         cloudinary.uploader.upload,
         file_bytes,
@@ -135,12 +139,11 @@ async def submit_inquiry_service_function(request, db, background_task, api_key,
         value = query_payload.get(field_name)
 
         if field_type == "file":
-
             files_value = value if isinstance(value, list) else [value]
+            files_value = [file for file in files_value if file is not None]
             uploaded_files = await asyncio.gather(*(upload_single_file(file) for file in files_value))
 
-
-            inquiry_data[field_name] = uploaded_files
+            inquiry_data[field_name] = [url for url in uploaded_files if url]
 
         else:
 

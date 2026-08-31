@@ -208,7 +208,8 @@ async def verify_form_schema_service(query_payload, form_fields) -> CommonCrudeF
 
     valid_fields = [field.field_name for field in form_fields]
 
-    missing_fields = [key for key in valid_fields if key not in query_payload]
+    required_fields = {field.field_name for field in form_fields if field.is_required_field}
+    missing_fields = [key for key in required_fields if key not in query_payload]
 
     if missing_fields:
         return {
@@ -241,7 +242,11 @@ async def verify_form_schema_service(query_payload, form_fields) -> CommonCrudeF
         for field in form_fields
     ]
 
-    null_fields = [field for field in form_entity_fields if not validate_field(query_payload.get(field["field_name"]))]
+    null_fields = [
+        field
+        for field in form_entity_fields
+        if field["is_required_field"] and not validate_field(query_payload.get(field["field_name"]))
+    ]
 
     if null_fields:
         return {

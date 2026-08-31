@@ -40,6 +40,11 @@ async def parse_inquiry_payload(request: Request):
 
         for key, value in form.multi_items():
             if isinstance(value, StarletteUploadFile):
+                # Browsers submit an empty UploadFile when a file input is left
+                # blank. Treat that placeholder as an omitted optional field.
+                if not value.filename:
+                    value = None
+
                 # If same file field comes multiple times, store it as list
                 if key in payload:
                     if isinstance(payload[key], list):
