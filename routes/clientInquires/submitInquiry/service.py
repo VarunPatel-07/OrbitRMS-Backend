@@ -17,7 +17,7 @@ from routes.clientInquires.submitInquiry.utils import (
     validate_request_origin,
 )
 from utils.helper.encryption_helper import decrypt_data_service
-from utils.responseMessages import ERROR_MESSAGE
+
 
 cloudinary.config(
     cloud_name=EnvConfig.CLOUDINARY_CLOUD_NAME,
@@ -139,6 +139,7 @@ async def submit_inquiry_service_function(request, db, background_task, api_key,
             files_value = value if isinstance(value, list) else [value]
             uploaded_files = await asyncio.gather(*(upload_single_file(file) for file in files_value))
 
+
             inquiry_data[field_name] = uploaded_files
 
         else:
@@ -154,7 +155,7 @@ async def submit_inquiry_service_function(request, db, background_task, api_key,
         organization_profile_picture=organization.general_info.organization_profile_picture,
         form_schema=form_schema,
         inquiry_data=inquiry_data,
-        query_payload=query_payload,
+        query_payload=inquiry_data,
     )
 
     return client_inquiry_data

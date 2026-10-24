@@ -28,6 +28,8 @@ from routes.admin.organization.AdminFeedController import adminFeedControl
 from routes.admin.organization.EmployeeManager.EmployeeManager import adminOrgEmpControl
 from routes.admin.organization.organization import adminOrgRoute
 from routes.apiManager.index import ApiManager
+from routes.admin.rolePermissionSync.routes import rolesPermissionSyncRoute
+
 
 # from routes.Organizations.organizations import organization_router
 from routes.auth.authentication import authRoutes
@@ -105,6 +107,8 @@ app.include_router(attendanceRoute)
 app.include_router(adminFeedControl)
 app.include_router(adminImgRoute)
 app.include_router(logsController)
+app.include_router(rolesPermissionSyncRoute)
+
 
 scheduler = BackgroundScheduler()
 

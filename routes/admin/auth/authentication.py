@@ -177,10 +177,9 @@ async def Admin_Panel_Sign_In_Function(
             "subject": "Verify Your Email Address to Activate Your OrbitRMS Account",
             "body": NewAdminLoginGeneratedOtp(otp_code),
         }
-
         email_instance = EmailSchema(**email_data)
 
-        email_sender_function(email_instance)
+        await email_sender_function(email_instance)
 
         otp_expiry_key = f"{admin_signature}_otp_expiry"
         otp_resend_available_at = await cache_database.get(otp_expiry_key)

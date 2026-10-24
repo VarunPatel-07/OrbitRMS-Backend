@@ -191,12 +191,16 @@ async def get_config_module_data(db: db_dependencies, org_id: str):
 
 
 async def get_form_data(db: db_dependencies, form_id: str, config_module_id: str):
-    form_schema = db.query(Models.InquiryFormSchema).filter(
-        and_(
-            Models.InquiryFormSchema.config_module_id == config_module_id,
-            Models.InquiryFormSchema.form_id == form_id,
+    form_schema = (
+        db.query(Models.InquiryFormSchema)
+        .filter(
+            and_(
+                Models.InquiryFormSchema.config_module_id == config_module_id,
+                Models.InquiryFormSchema.form_id == form_id,
+            )
         )
-    ).first()
+        .first()
+    )
     return form_schema
 
 
@@ -235,7 +239,6 @@ async def verify_form_schema_service(query_payload, form_fields) -> CommonCrudeF
             "is_required_field": field.is_required_field,
         }
         for field in form_fields
-        if field.is_required_field
     ]
 
     null_fields = [field for field in form_entity_fields if not validate_field(query_payload.get(field["field_name"]))]
