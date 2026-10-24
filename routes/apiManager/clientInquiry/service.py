@@ -261,6 +261,7 @@ async def verify_cloudflare_turnstile_setup_service(
             }
         inquiry_form.turnstile_enabled = True
         inquiry_form.turnstile_verification_status = "verified"
+        inquiry_form.status = True
 
         db.commit()
         db.refresh(inquiry_form)

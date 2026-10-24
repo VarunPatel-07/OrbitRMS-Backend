@@ -285,6 +285,122 @@
         ]
       },
       {
+        "module_label": "attendance",
+        "module_title": "Attendance",
+        "is_active": true,
+        "permissions": [
+          {
+            "label": "view",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "edit",
+            "is_allowed": true,
+            "show_input": false
+          },
+          {
+            "label": "delete",
+            "is_allowed": true,
+            "show_input": false
+          }
+        ],
+        "sub_modules": [
+          {
+            "module_label": "punch_in_out",
+            "module_title": "Punch In / Out",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": false
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "my_leaves",
+            "module_title": "My Leaves",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": false
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "team_leaves",
+            "module_title": "Team Leaves",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": false
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "organization_leaves",
+            "module_title": "Organization Leaves",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": false
+              }
+            ],
+            "sub_modules": []
+          }
+        ]
+      },
+      {
         "module_label": "client_inquiry",
         "module_title": "Client Inquiry",
         "is_active": true,
@@ -680,6 +796,52 @@
           {
             "module_label": "holiday",
             "module_title": "Holiday",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "leave_types",
+            "module_title": "Leave Types",
+            "is_active": true,
+            "permissions": [
+              {
+                "label": "view",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "edit",
+                "is_allowed": true,
+                "show_input": true
+              },
+              {
+                "label": "delete",
+                "is_allowed": true,
+                "show_input": true
+              }
+            ],
+            "sub_modules": []
+          },
+          {
+            "module_label": "location_config",
+            "module_title": "Location Config",
             "is_active": true,
             "permissions": [
               {
